@@ -107,7 +107,7 @@ contract RhShieldedVaultTest {
         require(vault.noteCount() == 3, "note count after transfer");
 
         bytes32 withdrawNullifier = bytes32(uint256(202));
-        vault.withdraw(proof(), address(token), address(this), 40 ether, withdrawNullifier);
+        vault.withdraw(proof(), bytes32(uint256(13)), address(token), address(this), 40 ether, withdrawNullifier);
         require(vault.publicReserves(address(token)) == 60 ether, "remaining reserve");
         require(token.balanceOf(address(this)) == 940 ether, "wallet balance");
     }

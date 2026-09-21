@@ -1,0 +1,14 @@
+textarea {
+  width: 100%;
+  padding: 15px;
+  resize: vertical;
+  color: var(--ink);
+  background: #030303;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+}
+textarea:focus { border-color: var(--acid); box-shadow: 0 0 0 3px #f4b72818; }
+#withdrawal-planner { display: grid; gap: 13px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+#withdrawal-planner[hidden] { display: none; }
+#withdrawal-planner small { color: var(--muted); }

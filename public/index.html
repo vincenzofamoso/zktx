@@ -7,6 +7,7 @@
     <title>ZKTX — private token transactions</title>
     <link rel="icon" href="./assets/zktx-mark.svg" />
     <link rel="stylesheet" href="./veil.css" />
+    <link rel="stylesheet" href="./withdrawal.css" />
   </head>
   <body>
     <div class="noise"></div>
@@ -49,6 +50,11 @@
             <label>Token contract<input id="token" autocomplete="off" placeholder="0x… PONS token" /></label>
             <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>USDC</option></select></label></div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
+            <div id="withdrawal-planner" hidden>
+              <label>Destination wallets<textarea id="destinations" rows="3" placeholder="One EVM address per line · 2–4 different wallets"></textarea></label>
+              <label>Standard denominations<input id="denominations" inputmode="numeric" placeholder="5000,1000,100" /></label>
+              <small>Amounts use token base units. Any remainder stays shielded as private change. Execution times are independently randomized.</small>
+            </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a shielded note</b><small id="action-copy">Your deposit is public. Activity after shielding uses private notes.</small></div></div>
             <button class="submit" type="submit">Create encrypted preview note</button>
             <p id="form-result" class="form-result">No contract has been deployed. This interface cannot accept funds.</p>

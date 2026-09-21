@@ -1,4 +1,5 @@
 import { createNote, serializePrivateNote, parsePrivateNote } from "../src/notes.js";
+import { planWithdrawals } from "../src/withdrawal-plan.js";
 
 const STORE_KEY = "zktx.encrypted-notes.v1";
 const encoder = new TextEncoder();
@@ -60,4 +61,4 @@ export function clearStoredNotes() {
   localStorage.removeItem(STORE_KEY);
 }
 
-window.ZKTXWallet = { createEncryptedNote, decryptNote, storedNotes, clearStoredNotes };
+window.ZKTXWallet = { createEncryptedNote, decryptNote, storedNotes, clearStoredNotes, planWithdrawals };

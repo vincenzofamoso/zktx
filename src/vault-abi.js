@@ -18,7 +18,7 @@ export const vaultAbi = [
     { name: "nullifier", type: "bytes32" }, { name: "outputOne", type: "bytes32" }, { name: "outputTwo", type: "bytes32" },
   ], outputs: [] },
   { type: "function", name: "withdraw", stateMutability: "nonpayable", inputs: [
-    { name: "proof", type: "bytes" }, { name: "asset", type: "address" }, { name: "recipient", type: "address" },
+    { name: "proof", type: "bytes" }, { name: "root", type: "bytes32" }, { name: "asset", type: "address" }, { name: "recipient", type: "address" },
     { name: "amount", type: "uint256" }, { name: "nullifier", type: "bytes32" },
   ], outputs: [] },
 ];

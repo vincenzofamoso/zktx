@@ -35,6 +35,7 @@ contract RhShieldedVault {
     mapping(address => uint256) public reserveCaps;
     mapping(address => uint256) public publicReserves;
     mapping(bytes32 => bool) public knownCommitments;
+    mapping(bytes32 => bool) public knownRoots;
     mapping(bytes32 => bool) public spentNullifiers;
 
     uint256 private unlocked = 1;
@@ -76,6 +77,7 @@ contract RhShieldedVault {
         transferVerifier = transferVerifier_;
         withdrawVerifier = withdrawVerifier_;
         currentRoot = genesisRoot_;
+        knownRoots[genesisRoot_] = true;
         emit OwnershipTransferred(address(0), owner_);
     }
 
@@ -147,6 +149,7 @@ contract RhShieldedVault {
         publicReserves[asset] += amount;
         knownCommitments[commitment] = true;
         currentRoot = newRoot;
+        knownRoots[newRoot] = true;
         emit Deposit(asset, amount, commitment, newRoot, noteCount++);
     }
 
@@ -180,6 +183,7 @@ contract RhShieldedVault {
         knownCommitments[outputOne] = true;
         knownCommitments[outputTwo] = true;
         currentRoot = newRoot;
+        knownRoots[newRoot] = true;
         noteCount += 2;
         emit PrivateTransfer(oldRoot, newRoot, nullifier, outputOne, outputTwo);
     }
@@ -187,18 +191,20 @@ contract RhShieldedVault {
     /// @dev Public signals: root, nullifier, asset, recipient, amount, chain id, vault.
     function withdraw(
         bytes calldata proof,
+        bytes32 root,
         address asset,
         address recipient,
         uint256 amount,
         bytes32 nullifier
     ) external nonReentrant whenActive {
         if (!supportedAssets[asset]) revert AssetNotSupported();
+        if (!knownRoots[root]) revert InvalidRoot();
         if (amount == 0 || recipient == address(0)) revert ZeroValue();
         if (spentNullifiers[nullifier]) revert NullifierAlreadySpent();
         if (publicReserves[asset] < amount) revert ReserveTooLow();
 
         uint256[7] memory signals;
-        signals[0] = _field(currentRoot);
+        signals[0] = _field(root);
         signals[1] = _field(nullifier);
         signals[2] = uint160(asset);
         signals[3] = uint160(recipient);

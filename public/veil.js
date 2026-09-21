@@ -8,6 +8,9 @@ const localNotes = document.querySelector("#local-notes");
 const password = document.querySelector("#note-password");
 const token = document.querySelector("#token");
 const amount = document.querySelector("#amount");
+const planner = document.querySelector("#withdrawal-planner");
+const destinations = document.querySelector("#destinations");
+const denominations = document.querySelector("#denominations");
 
 const copy = {
   shield: ["Create a shielded note", "Your deposit is public. Activity after shielding uses private notes."],
@@ -34,6 +37,8 @@ document.querySelectorAll(".tabs button").forEach((button) => button.addEventLis
   document.querySelector(".tabs .selected")?.classList.remove("selected");
   button.classList.add("selected");
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
+  planner.hidden = button.dataset.tab !== "withdraw";
+  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : "Create encrypted preview note";
 }));
 
 connect.addEventListener("click", async () => {
@@ -56,7 +61,16 @@ connect.addEventListener("click", async () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (document.querySelector(".tabs .selected")?.dataset.tab !== "shield") {
+  const selected = document.querySelector(".tabs .selected")?.dataset.tab;
+  if (selected === "withdraw") {
+    try {
+      const plan = window.ZKTXWallet.planWithdrawals({ total: BigInt(amount.value), destinations: destinations.value.split(/\r?\n/).filter(Boolean), denominations: denominations.value.split(",").map((value) => BigInt(value.trim())) });
+      const summary = plan.withdrawals.map((item) => `${item.amount} → ${item.recipient.slice(0, 8)}… after ${new Date(item.executeAfter).toLocaleString()}`).join(" | ");
+      result.textContent = `Preview plan: ${summary}. Private change: ${plan.privateChange}. No transaction was sent.`;
+    } catch (error) { result.textContent = error?.message || "Could not create withdrawal plan."; }
+    return;
+  }
+  if (selected !== "shield") {
     result.textContent = "Private sends, swaps, and withdrawals need a deposited note and production proof keys.";
     return;
   }

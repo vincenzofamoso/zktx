@@ -22,11 +22,11 @@ export function createRelayer({ rpcUrl, privateKey, vaultAddress, chainId = 4663
       functionName = "transact";
       args = [payload.proof, payload.oldRoot, payload.newRoot, payload.nullifier, payload.outputOne, payload.outputTwo];
     } else if (payload.action === "withdraw") {
-      if (!address.test(payload.asset || "") || !address.test(payload.recipient || "") || !bytes32.test(payload.nullifier || "")) throw new Error("Invalid withdrawal fields");
+      if (!bytes32.test(payload.root || "") || !address.test(payload.asset || "") || !address.test(payload.recipient || "") || !bytes32.test(payload.nullifier || "")) throw new Error("Invalid withdrawal fields");
       const amount = BigInt(payload.amount);
       if (amount <= 0n) throw new Error("Invalid amount");
       functionName = "withdraw";
-      args = [payload.proof, payload.asset, payload.recipient, amount, payload.nullifier];
+      args = [payload.proof, payload.root, payload.asset, payload.recipient, amount, payload.nullifier];
     } else throw new Error("Unsupported relay action");
 
     const request = await publicClient.simulateContract({ account, address: vaultAddress, abi: vaultAbi, functionName, args });
