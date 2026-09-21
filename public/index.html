@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Shield PONS-launched tokens and transact through a private note pool on Robinhood Chain." />
+    <title>ZKTX — private token transactions</title>
+    <link rel="icon" href="./assets/zktx-mark.svg" />
+    <link rel="stylesheet" href="./veil.css" />
+  </head>
+  <body>
+    <div class="noise"></div>
+    <header class="topbar">
+      <a class="brand" href="./"><img src="./assets/zktx-mark.svg" alt="ZKTX" /><span><b>ZKTX</b><small>shielded transactions</small></span></a>
+      <nav><a href="#pool">Pool</a><a href="#privacy">Privacy</a><a href="#architecture">Architecture</a></nav>
+      <button id="connect" class="connect" type="button">Connect wallet</button>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="kicker">ZEC-INSPIRED PRIVACY · ROBINHOOD CHAIN</p>
+          <h1>Take your token<br /><em>off the timeline.</em></h1>
+          <p class="lede">Shield PONS-launched tokens, transfer private notes, and return to the public market when you choose.</p>
+          <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Protocol preview</span></div>
+        </div>
+        <div class="orb" aria-hidden="true"><div class="orb-core">Z</div><span class="orbit one"></span><span class="orbit two"></span><span class="orbit three"></span></div>
+      </section>
+
+      <section class="boundary" aria-label="Privacy boundary">
+        <div><span>01</span><b>Deposit</b><small>Public boundary</small></div>
+        <div class="active"><span>02</span><b>Transact</b><small>Private note set</small></div>
+        <div class="active"><span>03</span><b>Swap</b><small>Private liquidity</small></div>
+        <div><span>04</span><b>Withdraw</b><small>Public boundary</small></div>
+      </section>
+
+      <section id="pool" class="workspace">
+        <div class="workspace-copy">
+          <p class="kicker">SHIELDED VAULT</p>
+          <h2>Move value without publishing the path.</h2>
+          <p>Deposits and withdrawals are visible onchain. Activity inside the shielded note set is represented by proofs, commitments, and nullifiers.</p>
+          <dl><div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div><div><dt>Assets</dt><dd>PONS ERC-20s</dd></div><div><dt>Execution</dt><dd>Relayed ZK proofs</dd></div></dl>
+        </div>
+
+        <div class="terminal">
+          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Private swap</button><button data-tab="withdraw">Withdraw</button></div>
+          <form id="veil-form">
+            <div class="status"><span>Pool status</span><b><i></i> Preview only</b></div>
+            <label>Token contract<input id="token" autocomplete="off" placeholder="0x… PONS token" /></label>
+            <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>Private ZEC</option><option>USDC</option></select></label></div>
+            <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a shielded note</b><small id="action-copy">Your deposit is public. Activity after shielding uses private notes.</small></div></div>
+            <button class="submit" type="submit" disabled>Connect wallet to continue</button>
+            <p id="form-result" class="form-result">No contract has been deployed. This interface cannot accept funds.</p>
+          </form>
+        </div>
+      </section>
+
+      <section id="privacy" class="privacy-grid">
+        <article><span>VISIBLE</span><h3>Pool entry and exit</h3><p>Deposits, withdrawals, asset contracts, boundary amounts, and their timestamps remain onchain.</p></article>
+        <article class="private"><span>SHIELDED</span><h3>Internal transfers</h3><p>Owners and note values stay encrypted while zero-knowledge proofs enforce balance conservation.</p></article>
+        <article><span>AGGREGATED</span><h3>Public market flow</h3><p>Any PONS market execution appears as vault activity and is batched to reduce user-level correlation.</p></article>
+      </section>
+
+      <section id="architecture" class="architecture">
+        <p class="kicker">HOW IT FITS TOGETHER</p><h2>One public token. A private ownership layer.</h2>
+        <div class="flow"><div><b>PONS token</b><small>Standard ERC-20</small></div><i>→</i><div><b>Shielded vault</b><small>Public custody</small></div><i>→</i><div class="glow"><b>Private notes</b><small>Transfer + swap</small></div><i>→</i><div><b>Relayer</b><small>Proof broadcast</small></div></div>
+      </section>
+    </main>
+    <footer><span>ZKTX</span><p>Cryptographic prototype. No mainnet contracts. Do not deposit funds.</p></footer>
+    <script type="module" src="./veil.js"></script>
+  </body>
+</html>

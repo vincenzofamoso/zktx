@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="ZKTX">
+  <circle cx="64" cy="64" r="60" fill="#f4b728"/>
+  <circle cx="64" cy="64" r="49" fill="#050505" stroke="#f4b728" stroke-width="3"/>
+  <path d="M39 39h51v13L60 76h30v13H38V76l30-24H39z" fill="#f4b728"/>
+  <path d="M55 28h18v13H55zM55 87h18v13H55z" fill="#f4b728"/>
+</svg>
