@@ -6,3 +6,5 @@ cache/
 out/
 data/
 public/zk-client.js
+build/dev-keys/
+contracts/generated/

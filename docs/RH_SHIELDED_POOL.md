@@ -32,4 +32,16 @@ The current circuits implement shield, private transfer with change, and withdra
 5. A multisig owner, supported-token policy, incident runbook, monitoring, and capped rollout.
 6. A funded relayer fleet with abuse controls and a privacy-preserving fee policy.
 
+## Mainnet pilot configuration
+
+- Robinhood Chain ID: `4663`
+- Vault owner: an encrypted, server-held operator wallet until control is moved to a multisig
+- Gas: platform-funded relayer with simulation and request limits
+- Asset rollout: one token at a time, with an immutable-on-transaction owner-set reserve cap
+- Swap roadmap: two-party atomic swaps plus batched PONS execution
+
+Atomic swaps cannot safely require either trader to reveal a note secret to the other trader or to the matcher. The implementation therefore needs proof-compatible two-party authorization before the swap path can be activated. Batched PONS execution also needs a separately constrained batch circuit, maximum slippage, deadlines, and an audited matcher. Both remain disabled until those protections exist.
+
+The requested pilot skips a multi-party production ceremony. Development proving keys can demonstrate the full proving and verification path, but they are not acceptable for uncapped public funds because one setup operator may retain toxic waste. This limitation cannot be repaired with application code.
+
 Never deploy `RhShieldedVault.sol` with mock or development verifiers.

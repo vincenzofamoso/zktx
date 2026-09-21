@@ -1,0 +1,11 @@
+{
+  "network": "Robinhood Chain",
+  "chainId": 4663,
+  "owner": "0xcfe90661717a1f2b19bAf5436B5b31A30DC81828",
+  "token": null,
+  "relayerGas": "platform-funded",
+  "swapModes": ["atomic", "batched-pons"],
+  "productionCeremony": false,
+  "deploymentMode": "capped-mainnet-pilot",
+  "status": "blocked-until-token-verifiers-and-audit"
+}

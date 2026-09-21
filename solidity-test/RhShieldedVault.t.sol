@@ -1,17 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IZkVerifier} from "../contracts/IZkVerifier.sol";
+import {IDepositVerifier, ITransferVerifier, IWithdrawVerifier} from "../contracts/IZkVerifier.sol";
 import {RhShieldedVault} from "../contracts/RhShieldedVault.sol";
 
-contract MockVerifier is IZkVerifier {
+contract MockVerifier is IDepositVerifier, ITransferVerifier, IWithdrawVerifier {
     bool public result = true;
 
     function setResult(bool next) external {
         result = next;
     }
 
-    function verifyProof(bytes calldata, uint256[] calldata) external view returns (bool) {
+    function verifyProof(
+        uint256[2] calldata,
+        uint256[2][2] calldata,
+        uint256[2] calldata,
+        uint256[8] calldata
+    ) external view returns (bool) {
+        return result;
+    }
+
+    function verifyProof(
+        uint256[2] calldata,
+        uint256[2][2] calldata,
+        uint256[2] calldata,
+        uint256[9] calldata
+    ) external view returns (bool) {
+        return result;
+    }
+
+    function verifyProof(
+        uint256[2] calldata,
+        uint256[2][2] calldata,
+        uint256[2] calldata,
+        uint256[7] calldata
+    ) external view returns (bool) {
         return result;
     }
 }
@@ -49,24 +72,31 @@ contract RhShieldedVaultTest {
     RhShieldedVault vault;
     bytes32 constant ROOT = bytes32(uint256(11));
 
+    function proof() internal pure returns (bytes memory) {
+        return abi.encode(
+            uint256[2]([uint256(1), 2]), [[uint256(3), 4], [uint256(5), 6]], uint256[2]([uint256(7), 8])
+        );
+    }
+
     function setUp() public {
         verifier = new MockVerifier();
         token = new MockToken();
         vault = new RhShieldedVault(address(this), verifier, verifier, verifier, ROOT);
         vault.setAssetSupported(address(token), true);
+        vault.setReserveCap(address(token), 200 ether);
         token.mint(address(this), 1_000 ether);
         token.approve(address(vault), type(uint256).max);
     }
 
     function testDepositTransferWithdrawLifecycle() public {
         bytes32 commitment = bytes32(uint256(101));
-        vault.deposit(hex"01", address(token), 100 ether, commitment, bytes32(uint256(12)));
+        vault.deposit(proof(), address(token), 100 ether, commitment, bytes32(uint256(12)));
         require(vault.publicReserves(address(token)) == 100 ether, "reserve");
         require(vault.noteCount() == 1, "note count after deposit");
 
         bytes32 nullifier = bytes32(uint256(201));
         vault.transact(
-            hex"02",
+            proof(),
             bytes32(uint256(12)),
             bytes32(uint256(13)),
             nullifier,
@@ -77,7 +107,7 @@ contract RhShieldedVaultTest {
         require(vault.noteCount() == 3, "note count after transfer");
 
         bytes32 withdrawNullifier = bytes32(uint256(202));
-        vault.withdraw(hex"03", address(token), address(this), 40 ether, withdrawNullifier);
+        vault.withdraw(proof(), address(token), address(this), 40 ether, withdrawNullifier);
         require(vault.publicReserves(address(token)) == 60 ether, "remaining reserve");
         require(token.balanceOf(address(this)) == 940 ether, "wallet balance");
     }
@@ -88,17 +118,17 @@ contract RhShieldedVaultTest {
             .call(
                 abi.encodeCall(
                     vault.deposit,
-                    (hex"01", address(token), 1 ether, bytes32(uint256(1)), bytes32(uint256(12)))
+                    (proof(), address(token), 1 ether, bytes32(uint256(1)), bytes32(uint256(12)))
                 )
             );
         require(!ok, "invalid proof accepted");
     }
 
     function testRejectsSpentNullifier() public {
-        vault.deposit(hex"01", address(token), 10 ether, bytes32(uint256(101)), bytes32(uint256(12)));
+        vault.deposit(proof(), address(token), 10 ether, bytes32(uint256(101)), bytes32(uint256(12)));
         bytes32 nullifier = bytes32(uint256(201));
         vault.transact(
-            hex"02",
+            proof(),
             bytes32(uint256(12)),
             bytes32(uint256(13)),
             nullifier,
@@ -110,7 +140,7 @@ contract RhShieldedVaultTest {
                 abi.encodeCall(
                     vault.transact,
                     (
-                        hex"02",
+                        proof(),
                         bytes32(uint256(13)),
                         bytes32(uint256(14)),
                         nullifier,
@@ -128,9 +158,20 @@ contract RhShieldedVaultTest {
             .call(
                 abi.encodeCall(
                     vault.deposit,
-                    (hex"01", address(token), 1 ether, bytes32(uint256(1)), bytes32(uint256(12)))
+                    (proof(), address(token), 1 ether, bytes32(uint256(1)), bytes32(uint256(12)))
                 )
             );
         require(!ok, "paused deposit accepted");
+    }
+
+    function testReserveCapBlocksExcessDeposit() public {
+        (bool ok,) = address(vault)
+            .call(
+                abi.encodeCall(
+                    vault.deposit,
+                    (proof(), address(token), 201 ether, bytes32(uint256(1)), bytes32(uint256(12)))
+                )
+            );
+        require(!ok, "reserve cap exceeded");
     }
 }

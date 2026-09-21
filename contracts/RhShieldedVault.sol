@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IZkVerifier} from "./IZkVerifier.sol";
+import {IDepositVerifier, ITransferVerifier, IWithdrawVerifier} from "./IZkVerifier.sol";
 
 /// @notice Shielded note custody for standard PONS ERC-20 tokens on Robinhood Chain.
 /// @dev Verifiers must be generated from the pinned and audited ZKTX circuits.
@@ -18,6 +18,7 @@ contract RhShieldedVault {
     error Paused();
     error ReentrantCall();
     error ReserveTooLow();
+    error ReserveCapExceeded();
     error TransferFailed();
     error ZeroValue();
 
@@ -26,11 +27,12 @@ contract RhShieldedVault {
     bytes32 public currentRoot;
     uint256 public noteCount;
 
-    IZkVerifier public immutable depositVerifier;
-    IZkVerifier public immutable transferVerifier;
-    IZkVerifier public immutable withdrawVerifier;
+    IDepositVerifier public immutable depositVerifier;
+    ITransferVerifier public immutable transferVerifier;
+    IWithdrawVerifier public immutable withdrawVerifier;
 
     mapping(address => bool) public supportedAssets;
+    mapping(address => uint256) public reserveCaps;
     mapping(address => uint256) public publicReserves;
     mapping(bytes32 => bool) public knownCommitments;
     mapping(bytes32 => bool) public spentNullifiers;
@@ -38,6 +40,7 @@ contract RhShieldedVault {
     uint256 private unlocked = 1;
 
     event AssetSupportChanged(address indexed asset, bool supported);
+    event ReserveCapChanged(address indexed asset, uint256 cap);
     event Deposit(
         address indexed asset, uint256 amount, bytes32 indexed commitment, bytes32 newRoot, uint256 noteIndex
     );
@@ -56,9 +59,9 @@ contract RhShieldedVault {
 
     constructor(
         address owner_,
-        IZkVerifier depositVerifier_,
-        IZkVerifier transferVerifier_,
-        IZkVerifier withdrawVerifier_,
+        IDepositVerifier depositVerifier_,
+        ITransferVerifier transferVerifier_,
+        IWithdrawVerifier withdrawVerifier_,
         bytes32 genesisRoot_
     ) {
         if (
@@ -99,6 +102,12 @@ contract RhShieldedVault {
         emit AssetSupportChanged(asset, supported);
     }
 
+    function setReserveCap(address asset, uint256 cap) external onlyOwner {
+        if (asset == address(0)) revert ZeroValue();
+        reserveCaps[asset] = cap;
+        emit ReserveCapChanged(asset, cap);
+    }
+
     function setPaused(bool nextPaused) external onlyOwner {
         paused = nextPaused;
         emit PauseChanged(nextPaused);
@@ -118,8 +127,11 @@ contract RhShieldedVault {
     {
         if (!supportedAssets[asset]) revert AssetNotSupported();
         if (amount == 0 || commitment == bytes32(0)) revert ZeroValue();
+        if (reserveCaps[asset] == 0 || publicReserves[asset] + amount > reserveCaps[asset]) {
+            revert ReserveCapExceeded();
+        }
         if (knownCommitments[commitment]) revert CommitmentAlreadyExists();
-        uint256[] memory signals = new uint256[](8);
+        uint256[8] memory signals;
         signals[0] = _field(currentRoot);
         signals[1] = _field(newRoot);
         signals[2] = _field(commitment);
@@ -128,7 +140,8 @@ contract RhShieldedVault {
         signals[5] = amount;
         signals[6] = block.chainid;
         signals[7] = uint160(address(this));
-        if (!depositVerifier.verifyProof(proof, signals)) revert InvalidProof();
+        (uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) = _decodeProof(proof);
+        if (!depositVerifier.verifyProof(a, b, c, signals)) revert InvalidProof();
 
         _safeTransferFrom(asset, msg.sender, address(this), amount);
         publicReserves[asset] += amount;
@@ -150,7 +163,7 @@ contract RhShieldedVault {
         if (spentNullifiers[nullifier]) revert NullifierAlreadySpent();
         if (knownCommitments[outputOne] || knownCommitments[outputTwo]) revert CommitmentAlreadyExists();
 
-        uint256[] memory signals = new uint256[](9);
+        uint256[9] memory signals;
         signals[0] = _field(oldRoot);
         signals[1] = _field(newRoot);
         signals[2] = _field(nullifier);
@@ -160,7 +173,8 @@ contract RhShieldedVault {
         signals[6] = noteCount + 1;
         signals[7] = block.chainid;
         signals[8] = uint160(address(this));
-        if (!transferVerifier.verifyProof(proof, signals)) revert InvalidProof();
+        (uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) = _decodeProof(proof);
+        if (!transferVerifier.verifyProof(a, b, c, signals)) revert InvalidProof();
 
         spentNullifiers[nullifier] = true;
         knownCommitments[outputOne] = true;
@@ -183,7 +197,7 @@ contract RhShieldedVault {
         if (spentNullifiers[nullifier]) revert NullifierAlreadySpent();
         if (publicReserves[asset] < amount) revert ReserveTooLow();
 
-        uint256[] memory signals = new uint256[](7);
+        uint256[7] memory signals;
         signals[0] = _field(currentRoot);
         signals[1] = _field(nullifier);
         signals[2] = uint160(asset);
@@ -191,7 +205,8 @@ contract RhShieldedVault {
         signals[4] = amount;
         signals[5] = block.chainid;
         signals[6] = uint160(address(this));
-        if (!withdrawVerifier.verifyProof(proof, signals)) revert InvalidProof();
+        (uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) = _decodeProof(proof);
+        if (!withdrawVerifier.verifyProof(a, b, c, signals)) revert InvalidProof();
 
         spentNullifiers[nullifier] = true;
         publicReserves[asset] -= amount;
@@ -203,6 +218,14 @@ contract RhShieldedVault {
         uint256 result = uint256(value);
         if (result >= SNARK_FIELD) revert InvalidRoot();
         return result;
+    }
+
+    function _decodeProof(bytes calldata proof)
+        private
+        pure
+        returns (uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c)
+    {
+        (a, b, c) = abi.decode(proof, (uint256[2], uint256[2][2], uint256[2]));
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 amount) private {

@@ -11,4 +11,6 @@ Before running it:
 5. Fund a dedicated relayer separately and apply production rate controls.
 6. Deploy the vault, allow only reviewed token contracts, and test with capped limits before removing the pause.
 
+The pilot owner address and selected operating model are recorded in `pilot-config.json`. Its encrypted keystore is intentionally stored outside this repository on the deployment server.
+
 Never reuse development proving keys in production.
