@@ -1,0 +1,9 @@
+[Unit]
+Description=Issue ZKTX TLS certificate after DNS propagation
+After=network-online.target nginx.service
+Wants=network-online.target
+ConditionPathExists=!/etc/letsencrypt/live/zktx.tech/fullchain.pem
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zktx-cert
