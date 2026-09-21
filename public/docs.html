@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Technical and user documentation for the ZKTX shielded transaction protocol on Robinhood Chain." />
+    <title>ZKTX Docs</title>
+    <link rel="icon" href="./assets/zktx-mark.svg" />
+    <link rel="stylesheet" href="./veil.css" />
+    <link rel="stylesheet" href="./docs.css" />
+  </head>
+  <body>
+    <div class="noise"></div>
+    <header class="topbar">
+      <a class="brand" href="./"><img src="./assets/zktx-mark.svg" alt="ZKTX" /><span><b>ZKTX</b><small>protocol documentation</small></span></a>
+      <nav><a href="#overview">Overview</a><a href="#flows">Flows</a><a href="#privacy">Privacy</a><a href="#security">Security</a></nav>
+      <a class="connect docs-home" href="./">Open app</a>
+    </header>
+
+    <main class="docs-layout">
+      <aside class="docs-nav">
+        <b>CONTENTS</b>
+        <a href="#status">Current status</a><a href="#overview">Overview</a><a href="#architecture">Architecture</a>
+        <a href="#notes">Private notes</a><a href="#flows">Transaction flows</a><a href="#withdrawals">Withdrawals</a>
+        <a href="#swaps">Private swaps</a><a href="#proofs">Proof system</a><a href="#contracts">Contracts</a>
+        <a href="#services">Relayer and indexer</a><a href="#privacy">Privacy model</a><a href="#security">Security</a>
+        <a href="#operations">Operations</a><a href="#limitations">Limitations</a><a href="#glossary">Glossary</a>
+      </aside>
+
+      <article class="docs-content">
+        <header class="docs-hero">
+          <p class="kicker">ZKTX DOCUMENTATION · ROBINHOOD CHAIN</p>
+          <h1>A private ownership layer for public tokens.</h1>
+          <p>ZKTX is a shielded-note protocol designed for standard ERC-20 tokens launched through PONS. It keeps the original token and market intact while allowing balances to move through a separate zero-knowledge vault.</p>
+          <div class="notice warning"><b>Protocol preview</b><span>No production vault is deployed. The current interface cannot accept funds. Development proving keys must never secure real user funds.</span></div>
+        </header>
+
+        <section id="status">
+          <p class="kicker">01 · STATUS</p><h2>What works today</h2>
+          <div class="status-grid">
+            <div><b>Implemented</b><ul><li>Domain-bound private notes and nullifiers</li><li>Poseidon incremental Merkle tree</li><li>Deposit, private-transfer, and withdrawal circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note storage</li><li>Persistent event indexer</li><li>Simulation-first relayer</li><li>Multi-destination withdrawal planner</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
+            <div><b>Still gated</b><ul><li>Production verifier ceremony</li><li>Independent security audits</li><li>Final CRCL contract configuration</li><li>Vault and verifier deployment</li><li>Funded production relayer</li><li>Two-party atomic swap authorization</li><li>Batched PONS matching and settlement</li></ul></div>
+          </div>
+        </section>
+
+        <section id="overview">
+          <p class="kicker">02 · OVERVIEW</p><h2>The simple model</h2>
+          <p>A user deposits a public ERC-20 balance into the vault. The client creates a secret note representing ownership of that balance. The blockchain stores only a commitment to the note. Later actions consume existing notes and create new notes while a zero-knowledge proof demonstrates that all protocol rules were followed.</p>
+          <div class="diagram"><span>Public token</span><i>deposit</i><span>Vault reserve</span><i>commitment</i><span class="highlight">Private notes</span><i>proof</i><span>New notes or withdrawal</span></div>
+          <p>The vault never creates underlying tokens. Its public token reserves must always cover the total value represented by unspent private notes.</p>
+        </section>
+
+        <section id="architecture">
+          <p class="kicker">03 · ARCHITECTURE</p><h2>Protocol components</h2>
+          <div class="card-grid">
+            <article><b>Browser wallet</b><p>Creates secrets, commitments, nullifiers, proofs, and encrypted note backups. Sensitive note data remains in the browser unless the user explicitly exports it.</p></article>
+            <article><b>Shielded vault</b><p>Custodies supported ERC-20 assets, verifies proofs, tracks roots and nullifiers, enforces reserve caps, and releases tokens during valid withdrawals.</p></article>
+            <article><b>Circuits</b><p>Prove note membership, ownership, correct nullifiers, asset and amount binding, conservation of value, and valid output commitments.</p></article>
+            <article><b>Indexer</b><p>Reads vault events, rebuilds the commitment tree, records spent nullifiers, and supplies Merkle paths required to create proofs.</p></article>
+            <article><b>Relayer</b><p>Simulates and broadcasts approved private transfers and withdrawals so users do not need a separate public gas-paying wallet for each action.</p></article>
+            <article><b>Swap services</b><p>Planned components for two-party atomic authorization and privacy-aware batches executed against the public PONS market.</p></article>
+          </div>
+        </section>
+
+        <section id="notes">
+          <p class="kicker">04 · PRIVATE NOTES</p><h2>What a note contains</h2>
+          <p>A note commits to the Robinhood chain ID, vault address, asset contract, amount, owner public key, and random blinding value. The chain stores the resulting Poseidon hash, not the private fields.</p>
+          <pre><code>commitment = Poseidon(
+  chainId,
+  vaultAddress,
+  assetAddress,
+  amount,
+  ownerPublicKey,
+  blinding
+)</code></pre>
+          <p>Binding the chain and vault prevents a proof or note from being replayed in another deployment. The nullifier binds the commitment to the owner secret and identifies a spend without revealing which commitment was spent.</p>
+          <pre><code>nullifier = Poseidon(commitment, ownerSecret, chainId, vaultAddress)</code></pre>
+          <div class="notice"><b>Back up note secrets</b><span>Losing the encrypted note data or its password can make the shielded balance unrecoverable. The operator cannot reconstruct a user secret from an onchain commitment.</span></div>
+        </section>
+
+        <section id="flows">
+          <p class="kicker">05 · TRANSACTION FLOWS</p><h2>Deposit, send, and withdraw</h2>
+          <ol class="steps">
+            <li><b>Shield</b><p>The user approves the vault and submits a deposit proof. The proof binds the deposited asset and public amount to the hidden note. The vault transfers the tokens, checks its reserve cap, appends the commitment, and records a new Merkle root.</p></li>
+            <li><b>Private send</b><p>The owner proves membership and knowledge of the note secret. The circuit consumes the note, creates a recipient note and a private change note, and proves that the output amounts equal the input amount. The vault records the nullifier and two new commitments.</p></li>
+            <li><b>Withdraw</b><p>The owner proves an unspent note exists under a known historical root and binds the proof to the public asset, recipient, and amount. The vault marks the nullifier spent and releases the original ERC-20 tokens.</p></li>
+          </ol>
+        </section>
+
+        <section id="withdrawals">
+          <p class="kicker">06 · WITHDRAWAL PLANNING</p><h2>Reducing simple boundary correlation</h2>
+          <p>A single deposit followed by an equal withdrawal to one wallet is easy to correlate. ZKTX therefore plans withdrawals across two to four user-controlled destinations, uses standard denominations, applies independent delay windows, and retains unmatched value as private change.</p>
+          <div class="example"><b>Example</b><p>A shielded balance of 12,347 units could produce standardized withdrawals totalling 12,000 units across several destinations. The remaining 347 units stay shielded. The number and timing of outputs should vary across users.</p></div>
+          <p>The vault recognizes historical Merkle roots, allowing a proof created for a valid earlier root to remain usable after unrelated commitments are appended. Every root accepted by the vault must have been created by a verified state transition.</p>
+          <div class="notice warning"><b>Not anonymity by itself</b><span>Splitting and delaying withdrawals weakens basic amount-and-time matching. It cannot guarantee anonymity, especially when pool activity is low or a user follows a distinctive pattern.</span></div>
+        </section>
+
+        <section id="swaps">
+          <p class="kicker">07 · SWAPS</p><h2>Two planned execution modes</h2>
+          <h3>Atomic private swaps</h3><p>Two owners exchange private assets in one state transition. A safe design must obtain authorization from both owners without requiring either party to reveal its note secret. The authorization circuit and negotiation protocol remain under development.</p>
+          <h3>Batched PONS execution</h3><p>Private orders are combined and settled through larger public trades against PONS. The external PONS trade remains visible. A production batch must enforce asset conservation, limits, deadlines, maximum slippage, matcher authorization, and fair allocation in the proof system.</p>
+          <p>Neither swap path is enabled in the live preview. The interface labels them as protocol phases rather than operational features.</p>
+        </section>
+
+        <section id="proofs">
+          <p class="kicker">08 · PROOF SYSTEM</p><h2>Groth16 over BN254</h2>
+          <p>The current circuits use Circom, Poseidon hashes, a depth-20 commitment tree, and Groth16 proofs on BN254. Separate verifiers are used for deposits, transfers, and withdrawals because each circuit has a different public-signal layout.</p>
+          <table><thead><tr><th>Circuit</th><th>Public information</th><th>Private witness</th></tr></thead><tbody>
+            <tr><td>Deposit</td><td>Roots, commitment, index, asset, amount, chain, vault</td><td>Owner key, blinding, insertion path</td></tr>
+            <tr><td>Transfer</td><td>Roots, nullifier, output commitments, indices, chain, vault</td><td>Input note, membership path, recipients, amounts, blindings</td></tr>
+            <tr><td>Withdrawal</td><td>Root, nullifier, asset, recipient, amount, chain, vault</td><td>Owner secret, blinding, membership path</td></tr>
+          </tbody></table>
+          <p>Development proofs have been generated and verified end to end. Those development keys are server-local and excluded from source control.</p>
+        </section>
+
+        <section id="contracts">
+          <p class="kicker">09 · CONTRACTS</p><h2>Vault controls and invariants</h2>
+          <ul><li>Only explicitly supported assets can enter or leave.</li><li>Every supported asset has an owner-configured reserve cap.</li><li>Commitments cannot be inserted twice.</li><li>Nullifiers cannot be spent twice.</li><li>State transitions must start from the current root.</li><li>Withdrawals may reference only roots previously recorded by the vault.</li><li>Token reserves are tracked and checked before release.</li><li>Deposits and transfers can be paused by the owner.</li><li>External token transfers use return-value checks and reentrancy protection.</li></ul>
+          <p>The pilot owner is an encrypted server-held wallet. Control should be transferred to a multisig before broader usage.</p>
+        </section>
+
+        <section id="services">
+          <p class="kicker">10 · SERVICES</p><h2>Indexer and platform-funded relayer</h2>
+          <p>The indexer reconstructs the commitment tree exclusively from verified vault events. It persists commitments, nullifiers, the last indexed block, leaf count, and current locally derived root.</p>
+          <p>The relayer accepts strictly validated transfer or withdrawal payloads, simulates the contract call, applies per-IP limits, and broadcasts only if simulation succeeds. Its signing key is loaded from server configuration and is never sent to the browser.</p>
+          <p>Platform-funded gas improves usability and avoids forcing the recipient to acquire RH gas before withdrawing. It also creates abuse and availability risks, so production requires quotas, monitoring, multiple relayers, and a defined shutdown policy.</p>
+        </section>
+
+        <section id="privacy">
+          <p class="kicker">11 · PRIVACY MODEL</p><h2>What is hidden and what remains public</h2>
+          <table><thead><tr><th>Hidden inside the pool</th><th>Visible at the boundary</th></tr></thead><tbody><tr><td>Note owners<br />Private balances<br />Internal transfer amounts<br />Sender-to-recipient relationship</td><td>Depositor and deposit amount<br />Withdrawal recipient and amount<br />Asset contracts<br />Transaction timing<br />Aggregate public PONS trades</td></tr></tbody></table>
+          <p>Privacy depends on the anonymity set. A vault with one active user provides little practical privacy even when its proofs are cryptographically correct. Larger shared activity, standard denominations, private change, batching, and varied timing improve resistance to correlation.</p>
+        </section>
+
+        <section id="security">
+          <p class="kicker">12 · SECURITY</p><h2>Threat model</h2>
+          <div class="card-grid"><article><b>Protected against</b><p>Commitment forgery, unbalanced private transfers, cross-vault replay, cross-chain replay, double spending, unsupported assets, reserve-cap overflow, and invalid proof submission.</p></article><article><b>Not automatically protected against</b><p>Device compromise, password loss, malicious browser extensions, traffic analysis, IP logging, timing correlation, unique amounts, coercion, compromised setup parameters, or contract/circuit implementation bugs.</p></article></div>
+          <h3>Trusted setup</h3><p>Groth16 requires a setup. A multi-party ceremony ensures security if at least one contributor destroys its secret contribution. The requested direct-mainnet pilot currently skips this ceremony, so its development setup remains trusted and unsuitable for uncapped public funds.</p>
+          <h3>Audit requirement</h3><p>Passing tests is not an audit. Circuit constraints, generated verifiers, token behavior, upgrade assumptions, client cryptography, operational security, and relayer behavior require independent review before real value is accepted.</p>
+        </section>
+
+        <section id="operations">
+          <p class="kicker">13 · OPERATIONS</p><h2>Capped mainnet pilot</h2>
+          <ol class="steps"><li><b>Configure</b><p>Set the final token contract, small reserve cap, owner, audited verifier addresses, deployment block, RPC endpoint, and dedicated relayer.</p></li><li><b>Deploy paused</b><p>Deploy verifiers and the vault, verify bytecode, register the token and cap, then reconcile the genesis root before enabling deposits.</p></li><li><b>Canary testing</b><p>Perform small deposit, transfer, split withdrawal, delay, and recovery tests. Compare the onchain root with the independent indexer after every step.</p></li><li><b>Monitor</b><p>Alert on root divergence, failed simulations, unusual relay volume, cap pressure, RPC disagreement, and token reserve discrepancies.</p></li><li><b>Expand carefully</b><p>Raise caps only after audits, a production ceremony, stable reconciliation, and a published incident-response process.</p></li></ol>
+        </section>
+
+        <section id="limitations">
+          <p class="kicker">14 · LIMITATIONS</p><h2>Important realities</h2>
+          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Standard denominations and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Public PONS transactions remain visible and may reveal aggregate strategy.</li><li>Local encrypted storage is only as safe as the device and password.</li><li>The current atomic and batched swap systems are not enabled.</li><li>The current proving setup is for development validation, not trust-minimized production.</li></ul>
+        </section>
+
+        <section id="glossary">
+          <p class="kicker">15 · GLOSSARY</p><h2>Key terms</h2>
+          <dl class="glossary"><div><dt>Commitment</dt><dd>A hash representing a private note without revealing its contents.</dd></div><div><dt>Nullifier</dt><dd>A unique value published when a note is spent, preventing reuse.</dd></div><div><dt>Merkle root</dt><dd>A compact fingerprint of every commitment currently recorded in the tree.</dd></div><div><dt>Witness</dt><dd>The private information supplied to a circuit to generate a proof.</dd></div><div><dt>Relayer</dt><dd>A service that submits a valid transaction and pays public network gas.</dd></div><div><dt>Anonymity set</dt><dd>The group of plausible users or notes among which activity may be hidden.</dd></div><div><dt>Private change</dt><dd>Unwithdrawn value returned to a new private note controlled by the user.</dd></div><div><dt>Trusted setup</dt><dd>The parameter-generation process required by Groth16.</dd></div></dl>
+        </section>
+      </article>
+    </main>
+    <footer><span>ZKTX DOCS</span><p>Cryptographic prototype. No production vault. Do not deposit funds.</p></footer>
+  </body>
+</html>
