@@ -2,3 +2,7 @@ build/
 .env
 *.log
 node_modules/
+cache/
+out/
+data/
+public/zk-client.js

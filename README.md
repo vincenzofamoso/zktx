@@ -5,19 +5,23 @@ ZKTX is a standalone Robinhood Chain privacy-pool project for standard ERC-20 to
 The current milestone contains:
 
 - A responsive black-and-yellow product interface
-- A shielded-vault contract scaffold
-- A verifier interface for future zero-knowledge circuits
+- A domain-bound shielded-vault contract with separate deposit, transfer, and withdrawal verifiers
+- Circom deposit, transfer, and withdrawal circuits with a Poseidon Merkle tree
+- A local AES-GCM encrypted note wallet preview
+- A persistent event indexer and guarded, simulation-first relayer
+- A Robinhood Chain-only deployment gate
 - An explicit privacy-boundary specification
 - The Nginx route served at `https://zktx.tech/`
 
 ## Current safety state
 
-The interface is a protocol preview. Fund-moving actions remain disabled. `RhShieldedVault.sol` must not be deployed until the note format, circuits, generated verifier, client wallet, relayer, and audits are complete.
+The interface remains a protocol preview and fund-moving actions remain disabled. The circuits and vault now have executable tests, but production verifier keys, an independent audit, a multisig owner, the final supported token list, and a funded relayer are still required.
 
-## Compile the scaffold
+## Validate the protocol
 
 ```sh
-npx --yes solc@0.8.24 --base-path . --include-path . --abi --bin contracts/RhShieldedVault.sol -o build
+npm install
+npm test
 ```
 
-See `docs/RH_SHIELDED_POOL.md` for the privacy model and remaining production components.
+Run the preview backend with `npm start`. It binds to localhost and defaults to `PROTOCOL_MODE=preview`. See `.env.example`, `docs/RH_SHIELDED_POOL.md`, and `deploy/README.md`.

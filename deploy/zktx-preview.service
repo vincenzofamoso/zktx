@@ -1,0 +1,24 @@
+[Unit]
+Description=ZKTX preview API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ops
+Group=ops
+WorkingDirectory=/home/ops/sessions/group-1004342212523/projects/zktx
+Environment=NODE_ENV=production
+Environment=PROTOCOL_MODE=preview
+Environment=PORT=3531
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ops/sessions/group-1004342212523/projects/zktx/data
+
+[Install]
+WantedBy=multi-user.target

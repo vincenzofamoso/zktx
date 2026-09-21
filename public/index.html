@@ -47,10 +47,12 @@
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> Preview only</b></div>
             <label>Token contract<input id="token" autocomplete="off" placeholder="0x… PONS token" /></label>
-            <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>Private ZEC</option><option>USDC</option></select></label></div>
+            <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>USDC</option></select></label></div>
+            <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a shielded note</b><small id="action-copy">Your deposit is public. Activity after shielding uses private notes.</small></div></div>
-            <button class="submit" type="submit" disabled>Connect wallet to continue</button>
+            <button class="submit" type="submit">Create encrypted preview note</button>
             <p id="form-result" class="form-result">No contract has been deployed. This interface cannot accept funds.</p>
+            <p id="local-notes" class="form-result">0 encrypted notes stored in this browser.</p>
           </form>
         </div>
       </section>
@@ -67,6 +69,7 @@
       </section>
     </main>
     <footer><span>ZKTX</span><p>Cryptographic prototype. No mainnet contracts. Do not deposit funds.</p></footer>
+    <script type="module" src="./zk-client.js"></script>
     <script type="module" src="./veil.js"></script>
   </body>
 </html>

@@ -1,33 +1,89 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IRhShieldVerifier} from "./IRhShieldVerifier.sol";
+import {IZkVerifier} from "./IZkVerifier.sol";
 
-/// @notice Custody and state-transition boundary for PONS-launched ERC-20 assets.
-/// @dev The verifier and circuits are security-critical and must be audited before deployment.
+/// @notice Shielded note custody for standard PONS ERC-20 tokens on Robinhood Chain.
+/// @dev Verifiers must be generated from the pinned and audited ZKTX circuits.
 contract RhShieldedVault {
+    uint256 internal constant SNARK_FIELD =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+    error AssetNotSupported();
+    error CommitmentAlreadyExists();
     error InvalidProof();
     error InvalidRoot();
     error NullifierAlreadySpent();
-    error TransferFailed();
+    error OnlyOwner();
+    error Paused();
     error ReentrantCall();
+    error ReserveTooLow();
+    error TransferFailed();
     error ZeroValue();
 
-    IRhShieldVerifier public immutable verifier;
+    address public owner;
+    bool public paused;
     bytes32 public currentRoot;
     uint256 public noteCount;
-    mapping(bytes32 => bool) public spentNullifiers;
+
+    IZkVerifier public immutable depositVerifier;
+    IZkVerifier public immutable transferVerifier;
+    IZkVerifier public immutable withdrawVerifier;
+
+    mapping(address => bool) public supportedAssets;
     mapping(address => uint256) public publicReserves;
+    mapping(bytes32 => bool) public knownCommitments;
+    mapping(bytes32 => bool) public spentNullifiers;
 
     uint256 private unlocked = 1;
 
-    event Deposit(address indexed asset, uint256 amount, bytes32 indexed commitment, uint256 noteIndex);
-    event PrivateStateTransition(bytes32 indexed oldRoot, bytes32 indexed newRoot, uint256 nullifierCount, uint256 commitmentCount);
-    event Withdrawal(address indexed asset, address indexed recipient, uint256 amount, bytes32 indexed nullifier);
+    event AssetSupportChanged(address indexed asset, bool supported);
+    event Deposit(
+        address indexed asset, uint256 amount, bytes32 indexed commitment, bytes32 newRoot, uint256 noteIndex
+    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event PauseChanged(bool paused);
+    event PrivateTransfer(
+        bytes32 indexed oldRoot,
+        bytes32 indexed newRoot,
+        bytes32 indexed nullifier,
+        bytes32 outputOne,
+        bytes32 outputTwo
+    );
+    event Withdrawal(
+        address indexed asset, address indexed recipient, uint256 amount, bytes32 indexed nullifier
+    );
 
-    constructor(IRhShieldVerifier verifier_, bytes32 genesisRoot_) {
-        verifier = verifier_;
+    constructor(
+        address owner_,
+        IZkVerifier depositVerifier_,
+        IZkVerifier transferVerifier_,
+        IZkVerifier withdrawVerifier_,
+        bytes32 genesisRoot_
+    ) {
+        if (
+            owner_ == address(0) || address(depositVerifier_) == address(0)
+                || address(transferVerifier_) == address(0) || address(withdrawVerifier_) == address(0)
+                || genesisRoot_ == bytes32(0) || uint256(genesisRoot_) >= SNARK_FIELD
+        ) {
+            revert ZeroValue();
+        }
+        owner = owner_;
+        depositVerifier = depositVerifier_;
+        transferVerifier = transferVerifier_;
+        withdrawVerifier = withdrawVerifier_;
         currentRoot = genesisRoot_;
+        emit OwnershipTransferred(address(0), owner_);
+    }
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert OnlyOwner();
+        _;
+    }
+
+    modifier whenActive() {
+        if (paused) revert Paused();
+        _;
     }
 
     modifier nonReentrant() {
@@ -37,61 +93,116 @@ contract RhShieldedVault {
         unlocked = 1;
     }
 
-    /// @notice Moves a public ERC-20 balance into the shielded note set.
-    /// @dev Asset, amount, depositor, commitment, and timing remain public at this boundary.
-    function deposit(address asset, uint256 amount, bytes32 commitment) external nonReentrant {
-        if (amount == 0 || commitment == bytes32(0)) revert ZeroValue();
-        _safeTransferFrom(asset, msg.sender, address(this), amount);
-        publicReserves[asset] += amount;
-        emit Deposit(asset, amount, commitment, noteCount++);
+    function setAssetSupported(address asset, bool supported) external onlyOwner {
+        if (asset == address(0)) revert ZeroValue();
+        supportedAssets[asset] = supported;
+        emit AssetSupportChanged(asset, supported);
     }
 
-    /// @notice Applies a private transfer or private in-pool swap proven by the circuit.
+    function setPaused(bool nextPaused) external onlyOwner {
+        paused = nextPaused;
+        emit PauseChanged(nextPaused);
+    }
+
+    function transferOwnership(address nextOwner) external onlyOwner {
+        if (nextOwner == address(0)) revert ZeroValue();
+        emit OwnershipTransferred(owner, nextOwner);
+        owner = nextOwner;
+    }
+
+    /// @dev Signals: roots, commitment, index, asset, amount, chain id, and vault address.
+    function deposit(bytes calldata proof, address asset, uint256 amount, bytes32 commitment, bytes32 newRoot)
+        external
+        nonReentrant
+        whenActive
+    {
+        if (!supportedAssets[asset]) revert AssetNotSupported();
+        if (amount == 0 || commitment == bytes32(0)) revert ZeroValue();
+        if (knownCommitments[commitment]) revert CommitmentAlreadyExists();
+        uint256[] memory signals = new uint256[](8);
+        signals[0] = _field(currentRoot);
+        signals[1] = _field(newRoot);
+        signals[2] = _field(commitment);
+        signals[3] = noteCount;
+        signals[4] = uint160(asset);
+        signals[5] = amount;
+        signals[6] = block.chainid;
+        signals[7] = uint160(address(this));
+        if (!depositVerifier.verifyProof(proof, signals)) revert InvalidProof();
+
+        _safeTransferFrom(asset, msg.sender, address(this), amount);
+        publicReserves[asset] += amount;
+        knownCommitments[commitment] = true;
+        currentRoot = newRoot;
+        emit Deposit(asset, amount, commitment, newRoot, noteCount++);
+    }
+
+    /// @dev Public signals include roots, nullifier, outputs, insertion indices, chain id, and vault.
     function transact(
         bytes calldata proof,
         bytes32 oldRoot,
         bytes32 newRoot,
-        bytes32[] calldata nullifiers,
-        bytes32[] calldata commitments,
-        bytes32 publicDataHash
-    ) external {
+        bytes32 nullifier,
+        bytes32 outputOne,
+        bytes32 outputTwo
+    ) external whenActive {
         if (oldRoot != currentRoot || newRoot == bytes32(0)) revert InvalidRoot();
-        for (uint256 i; i < nullifiers.length; ++i) {
-            if (spentNullifiers[nullifiers[i]]) revert NullifierAlreadySpent();
-        }
-        if (!verifier.verifyTransaction(proof, oldRoot, newRoot, nullifiers, commitments, publicDataHash)) {
-            revert InvalidProof();
-        }
-        for (uint256 i; i < nullifiers.length; ++i) spentNullifiers[nullifiers[i]] = true;
+        if (spentNullifiers[nullifier]) revert NullifierAlreadySpent();
+        if (knownCommitments[outputOne] || knownCommitments[outputTwo]) revert CommitmentAlreadyExists();
+
+        uint256[] memory signals = new uint256[](9);
+        signals[0] = _field(oldRoot);
+        signals[1] = _field(newRoot);
+        signals[2] = _field(nullifier);
+        signals[3] = _field(outputOne);
+        signals[4] = _field(outputTwo);
+        signals[5] = noteCount;
+        signals[6] = noteCount + 1;
+        signals[7] = block.chainid;
+        signals[8] = uint160(address(this));
+        if (!transferVerifier.verifyProof(proof, signals)) revert InvalidProof();
+
+        spentNullifiers[nullifier] = true;
+        knownCommitments[outputOne] = true;
+        knownCommitments[outputTwo] = true;
         currentRoot = newRoot;
-        noteCount += commitments.length;
-        emit PrivateStateTransition(oldRoot, newRoot, nullifiers.length, commitments.length);
+        noteCount += 2;
+        emit PrivateTransfer(oldRoot, newRoot, nullifier, outputOne, outputTwo);
     }
 
-    /// @notice Releases an original token after a proof burns a shielded note.
-    /// @dev Asset, amount, recipient, nullifier, and timing are public at this boundary.
+    /// @dev Public signals: root, nullifier, asset, recipient, amount, chain id, vault.
     function withdraw(
         bytes calldata proof,
         address asset,
         address recipient,
         uint256 amount,
-        bytes32 nullifier,
-        bytes32 newRoot
-    ) external nonReentrant {
+        bytes32 nullifier
+    ) external nonReentrant whenActive {
+        if (!supportedAssets[asset]) revert AssetNotSupported();
         if (amount == 0 || recipient == address(0)) revert ZeroValue();
         if (spentNullifiers[nullifier]) revert NullifierAlreadySpent();
-        bytes32[] memory nullifiers = new bytes32[](1);
-        nullifiers[0] = nullifier;
-        bytes32[] memory commitments = new bytes32[](0);
-        bytes32 publicDataHash = keccak256(abi.encode("WITHDRAW", block.chainid, address(this), asset, recipient, amount));
-        if (!verifier.verifyTransaction(proof, currentRoot, newRoot, nullifiers, commitments, publicDataHash)) {
-            revert InvalidProof();
-        }
+        if (publicReserves[asset] < amount) revert ReserveTooLow();
+
+        uint256[] memory signals = new uint256[](7);
+        signals[0] = _field(currentRoot);
+        signals[1] = _field(nullifier);
+        signals[2] = uint160(asset);
+        signals[3] = uint160(recipient);
+        signals[4] = amount;
+        signals[5] = block.chainid;
+        signals[6] = uint160(address(this));
+        if (!withdrawVerifier.verifyProof(proof, signals)) revert InvalidProof();
+
         spentNullifiers[nullifier] = true;
-        currentRoot = newRoot;
         publicReserves[asset] -= amount;
         _safeTransfer(asset, recipient, amount);
         emit Withdrawal(asset, recipient, amount, nullifier);
+    }
+
+    function _field(bytes32 value) private pure returns (uint256) {
+        uint256 result = uint256(value);
+        if (result >= SNARK_FIELD) revert InvalidRoot();
+        return result;
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 amount) private {

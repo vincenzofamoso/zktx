@@ -1,0 +1,28 @@
+{
+  "name": "zktx",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:client": "esbuild client/wallet.js --bundle --format=esm --platform=browser --outfile=public/zk-client.js",
+    "check": "node --check server/index.js && node --check src/notes.js && node --check src/merkle-tree.js && node --check public/veil.js",
+    "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits",
+    "contracts:test": "forge test",
+    "start": "node server/index.js",
+    "test": "npm run build:client && npm run circuits:compile && node --test && forge test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "poseidon-lite": "^0.3.0",
+    "viem": "^2.37.3"
+  },
+  "devDependencies": {
+    "circom2": "^0.2.22",
+    "circomlib": "^2.0.5",
+    "esbuild": "^0.28.2",
+    "snarkjs": "^0.7.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
