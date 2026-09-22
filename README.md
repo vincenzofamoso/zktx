@@ -1,12 +1,12 @@
 # ZKTX
 
-ZKTX is a standalone Robinhood Chain privacy-pool project for standard ERC-20 tokens launched through PONS.
+ZKTX is a standalone privacy-pool project for standard ERC-20 tokens on Robinhood Chain, regardless of their launch venue.
 
 The current milestone contains:
 
 - A responsive black-and-yellow product interface
-- A domain-bound shielded-vault contract with separate deposit, transfer, and withdrawal verifiers
-- Circom deposit, transfer, and withdrawal circuits with a Poseidon Merkle tree
+- A domain-bound shielded-vault contract with separate deposit, transfer, withdrawal, RFQ-swap, and order-cancellation verifiers
+- Circom deposit, transfer, withdrawal, RFQ-swap, and order-cancellation circuits with a Poseidon Merkle tree
 - A local AES-GCM encrypted note wallet preview
 - A persistent event indexer and guarded, simulation-first relayer
 - A Robinhood Chain-only deployment gate

@@ -9,7 +9,7 @@ import {
     IWithdrawVerifier
 } from "./IZkVerifier.sol";
 
-/// @notice Shielded note custody for standard PONS ERC-20 tokens on Robinhood Chain.
+/// @notice Shielded note custody for supported standard ERC-20 tokens on Robinhood Chain.
 /// @dev Verifiers must be generated from the pinned and audited ZKTX circuits.
 contract RhShieldedVault {
     uint256 internal constant SNARK_FIELD =
