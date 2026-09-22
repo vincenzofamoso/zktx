@@ -11,7 +11,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  transform: scale(1.08);
+  transform: translateY(8px) scale(1.08);
 }
 
 @media (max-width: 800px) {
