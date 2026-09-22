@@ -1,0 +1,19 @@
+.orb {
+  width: min(430px, 82vw);
+  overflow: hidden;
+  border-color: #806117;
+  background: #030303;
+  box-shadow: 0 0 60px #f4b72836, 0 0 140px #f4b72820, inset 0 0 55px #f4b72818;
+}
+
+.hero-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.08);
+}
+
+@media (max-width: 800px) {
+  .orb { width: min(370px, 82vw); }
+}
