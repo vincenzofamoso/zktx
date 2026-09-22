@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IDepositVerifier, ITransferVerifier, IWithdrawVerifier} from "./IZkVerifier.sol";
+import {
+    ICancelOrderVerifier,
+    IDepositVerifier,
+    ISwapVerifier,
+    ITransferVerifier,
+    IWithdrawVerifier
+} from "./IZkVerifier.sol";
 
 /// @notice Shielded note custody for standard PONS ERC-20 tokens on Robinhood Chain.
 /// @dev Verifiers must be generated from the pinned and audited ZKTX circuits.
@@ -19,6 +25,7 @@ contract RhShieldedVault {
     error ReentrantCall();
     error ReserveTooLow();
     error ReserveCapExceeded();
+    error SwapExpired();
     error TransferFailed();
     error ZeroValue();
 
@@ -30,6 +37,8 @@ contract RhShieldedVault {
     IDepositVerifier public immutable depositVerifier;
     ITransferVerifier public immutable transferVerifier;
     IWithdrawVerifier public immutable withdrawVerifier;
+    ISwapVerifier public immutable swapVerifier;
+    ICancelOrderVerifier public immutable cancelOrderVerifier;
 
     mapping(address => bool) public supportedAssets;
     mapping(address => uint256) public reserveCaps;
@@ -57,17 +66,35 @@ contract RhShieldedVault {
     event Withdrawal(
         address indexed asset, address indexed recipient, uint256 amount, bytes32 indexed nullifier
     );
+    event PrivateSwap(
+        bytes32 indexed oldRoot,
+        bytes32 indexed newRoot,
+        bytes32 indexed makerNullifier,
+        bytes32 takerNullifier,
+        bytes32 makerOutput,
+        bytes32 takerOutput,
+        bytes32 changeOutput
+    );
+    event PrivateOrderCancelled(
+        bytes32 indexed oldRoot,
+        bytes32 indexed newRoot,
+        bytes32 indexed orderNullifier,
+        bytes32 refundCommitment
+    );
 
     constructor(
         address owner_,
         IDepositVerifier depositVerifier_,
         ITransferVerifier transferVerifier_,
         IWithdrawVerifier withdrawVerifier_,
+        ISwapVerifier swapVerifier_,
+        ICancelOrderVerifier cancelOrderVerifier_,
         bytes32 genesisRoot_
     ) {
         if (
             owner_ == address(0) || address(depositVerifier_) == address(0)
                 || address(transferVerifier_) == address(0) || address(withdrawVerifier_) == address(0)
+                || address(swapVerifier_) == address(0) || address(cancelOrderVerifier_) == address(0)
                 || genesisRoot_ == bytes32(0) || uint256(genesisRoot_) >= SNARK_FIELD
         ) {
             revert ZeroValue();
@@ -76,6 +103,8 @@ contract RhShieldedVault {
         depositVerifier = depositVerifier_;
         transferVerifier = transferVerifier_;
         withdrawVerifier = withdrawVerifier_;
+        swapVerifier = swapVerifier_;
+        cancelOrderVerifier = cancelOrderVerifier_;
         currentRoot = genesisRoot_;
         knownRoots[genesisRoot_] = true;
         emit OwnershipTransferred(address(0), owner_);
@@ -218,6 +247,84 @@ contract RhShieldedVault {
         publicReserves[asset] -= amount;
         _safeTransfer(asset, recipient, amount);
         emit Withdrawal(asset, recipient, amount, nullifier);
+    }
+
+    /// @dev Settles committed RFQ terms without publishing traders, assets, or amounts.
+    function settleSwap(
+        bytes calldata proof,
+        bytes32 oldRoot,
+        bytes32 newRoot,
+        bytes32 makerNullifier,
+        bytes32 takerNullifier,
+        bytes32 makerOutput,
+        bytes32 takerOutput,
+        bytes32 changeOutput,
+        uint256 deadline
+    ) external whenActive {
+        if (oldRoot != currentRoot || newRoot == bytes32(0)) revert InvalidRoot();
+        if (deadline < block.timestamp) revert SwapExpired();
+        if (spentNullifiers[makerNullifier] || spentNullifiers[takerNullifier]) {
+            revert NullifierAlreadySpent();
+        }
+        if (makerNullifier == takerNullifier) revert NullifierAlreadySpent();
+        if (knownCommitments[makerOutput] || knownCommitments[takerOutput] || knownCommitments[changeOutput]) revert CommitmentAlreadyExists();
+
+        uint256[13] memory signals;
+        signals[0] = _field(oldRoot);
+        signals[1] = _field(newRoot);
+        signals[2] = _field(makerNullifier);
+        signals[3] = _field(takerNullifier);
+        signals[4] = _field(makerOutput);
+        signals[5] = _field(takerOutput);
+        signals[6] = _field(changeOutput);
+        signals[7] = noteCount;
+        signals[8] = noteCount + 1;
+        signals[9] = noteCount + 2;
+        signals[10] = block.chainid;
+        signals[11] = uint160(address(this));
+        signals[12] = deadline;
+        (uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) = _decodeProof(proof);
+        if (!swapVerifier.verifyProof(a, b, c, signals)) revert InvalidProof();
+
+        spentNullifiers[makerNullifier] = true;
+        spentNullifiers[takerNullifier] = true;
+        knownCommitments[makerOutput] = true;
+        knownCommitments[takerOutput] = true;
+        knownCommitments[changeOutput] = true;
+        currentRoot = newRoot;
+        knownRoots[newRoot] = true;
+        noteCount += 3;
+        emit PrivateSwap(
+            oldRoot, newRoot, makerNullifier, takerNullifier, makerOutput, takerOutput, changeOutput
+        );
+    }
+
+    function cancelOrder(
+        bytes calldata proof,
+        bytes32 oldRoot,
+        bytes32 newRoot,
+        bytes32 orderNullifier,
+        bytes32 refundCommitment
+    ) external whenActive {
+        if (oldRoot != currentRoot || newRoot == bytes32(0)) revert InvalidRoot();
+        if (spentNullifiers[orderNullifier]) revert NullifierAlreadySpent();
+        if (knownCommitments[refundCommitment]) revert CommitmentAlreadyExists();
+        uint256[7] memory signals;
+        signals[0] = _field(oldRoot);
+        signals[1] = _field(newRoot);
+        signals[2] = _field(orderNullifier);
+        signals[3] = _field(refundCommitment);
+        signals[4] = noteCount;
+        signals[5] = block.chainid;
+        signals[6] = uint160(address(this));
+        (uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) = _decodeProof(proof);
+        if (!cancelOrderVerifier.verifyProof(a, b, c, signals)) revert InvalidProof();
+        spentNullifiers[orderNullifier] = true;
+        knownCommitments[refundCommitment] = true;
+        currentRoot = newRoot;
+        knownRoots[newRoot] = true;
+        noteCount += 1;
+        emit PrivateOrderCancelled(oldRoot, newRoot, orderNullifier, refundCommitment);
     }
 
     function _field(bytes32 value) private pure returns (uint256) {

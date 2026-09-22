@@ -6,7 +6,7 @@
   "scripts": {
     "build:client": "esbuild client/wallet.js --bundle --format=esm --platform=browser --outfile=public/zk-client.js",
     "check": "node --check server/index.js && node --check src/notes.js && node --check src/merkle-tree.js && node --check public/veil.js",
-    "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits",
+    "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/swap.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/cancel-order.circom --r1cs --wasm --sym -o build/circuits",
     "contracts:test": "forge test",
     "keys:dev": "bash scripts/setup-development-keys.sh",
     "proof:smoke": "node scripts/prove-development-smoke.mjs",

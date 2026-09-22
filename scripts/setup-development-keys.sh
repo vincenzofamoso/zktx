@@ -15,15 +15,15 @@ if ! flock -n 9; then
   exit 1
 fi
 
-if [[ ! -f "$output/pot16_final.ptau" ]]; then
-  npx snarkjs powersoftau new bn128 16 "$output/pot16_0000.ptau"
-  npx snarkjs powersoftau prepare phase2 "$output/pot16_0000.ptau" "$output/pot16_final.ptau.tmp"
-  mv "$output/pot16_final.ptau.tmp" "$output/pot16_final.ptau"
+if [[ ! -f "$output/pot17_final.ptau" ]]; then
+  npx snarkjs powersoftau new bn128 17 "$output/pot17_0000.ptau"
+  npx snarkjs powersoftau prepare phase2 "$output/pot17_0000.ptau" "$output/pot17_final.ptau.tmp"
+  mv "$output/pot17_final.ptau.tmp" "$output/pot17_final.ptau"
 fi
 
-for circuit in deposit transfer withdraw; do
+for circuit in deposit transfer withdraw swap cancel-order; do
   entropy="$(openssl rand -hex 64)"
-  npx snarkjs groth16 setup "$root/build/circuits/$circuit.r1cs" "$output/pot16_final.ptau" "$output/${circuit}_0000.zkey.tmp"
+  npx snarkjs groth16 setup "$root/build/circuits/$circuit.r1cs" "$output/pot17_final.ptau" "$output/${circuit}_0000.zkey.tmp"
   npx snarkjs zkey contribute "$output/${circuit}_0000.zkey.tmp" "$output/${circuit}_final.zkey.tmp" --name="ZKTX ${circuit} development" -e="$entropy"
   mv "$output/${circuit}_0000.zkey.tmp" "$output/${circuit}_0000.zkey"
   mv "$output/${circuit}_final.zkey.tmp" "$output/${circuit}_final.zkey"

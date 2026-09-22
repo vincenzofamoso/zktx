@@ -21,6 +21,16 @@ export function createRelayer({ rpcUrl, privateKey, vaultAddress, chainId = 4663
       for (const key of ["oldRoot", "newRoot", "nullifier", "outputOne", "outputTwo"]) if (!bytes32.test(payload[key] || "")) throw new Error(`Invalid ${key}`);
       functionName = "transact";
       args = [payload.proof, payload.oldRoot, payload.newRoot, payload.nullifier, payload.outputOne, payload.outputTwo];
+    } else if (payload.action === "swap") {
+      for (const key of ["oldRoot", "newRoot", "makerNullifier", "takerNullifier", "makerOutput", "takerOutput", "changeOutput"]) if (!bytes32.test(payload[key] || "")) throw new Error(`Invalid ${key}`);
+      const deadline = BigInt(payload.deadline);
+      if (deadline <= BigInt(Math.floor(Date.now() / 1000))) throw new Error("Swap quote expired");
+      functionName = "settleSwap";
+      args = [payload.proof, payload.oldRoot, payload.newRoot, payload.makerNullifier, payload.takerNullifier, payload.makerOutput, payload.takerOutput, payload.changeOutput, deadline];
+    } else if (payload.action === "cancel-order") {
+      for (const key of ["oldRoot", "newRoot", "orderNullifier", "refundCommitment"]) if (!bytes32.test(payload[key] || "")) throw new Error(`Invalid ${key}`);
+      functionName = "cancelOrder";
+      args = [payload.proof, payload.oldRoot, payload.newRoot, payload.orderNullifier, payload.refundCommitment];
     } else if (payload.action === "withdraw") {
       if (!bytes32.test(payload.root || "") || !address.test(payload.asset || "") || !address.test(payload.recipient || "") || !bytes32.test(payload.nullifier || "")) throw new Error("Invalid withdrawal fields");
       const amount = BigInt(payload.amount);

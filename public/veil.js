@@ -11,6 +11,10 @@ const amount = document.querySelector("#amount");
 const planner = document.querySelector("#withdrawal-planner");
 const destinations = document.querySelector("#destinations");
 const denominations = document.querySelector("#denominations");
+const swapFields = document.querySelector("#swap-fields");
+const receiveToken = document.querySelector("#receive-token");
+const receiveAmount = document.querySelector("#receive-amount");
+const quoteLifetime = document.querySelector("#quote-lifetime");
 
 const copy = {
   shield: ["Create a shielded note", "Your deposit is public. Activity after shielding uses private notes."],
@@ -38,7 +42,8 @@ document.querySelectorAll(".tabs button").forEach((button) => button.addEventLis
   button.classList.add("selected");
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
   planner.hidden = button.dataset.tab !== "withdraw";
-  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : "Create encrypted preview note";
+  swapFields.hidden = button.dataset.tab !== "swap";
+  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Build private RFQ quote" : "Create encrypted preview note";
 }));
 
 connect.addEventListener("click", async () => {
@@ -70,8 +75,21 @@ form.addEventListener("submit", async (event) => {
     } catch (error) { result.textContent = error?.message || "Could not create withdrawal plan."; }
     return;
   }
+  if (selected === "swap") {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(token.value) || !/^0x[0-9a-fA-F]{40}$/.test(receiveToken.value)) {
+      result.textContent = "Enter valid sell and receive token contract addresses.";
+      return;
+    }
+    if (!/^\d+$/.test(amount.value) || BigInt(amount.value) <= 0n || !/^\d+$/.test(receiveAmount.value) || BigInt(receiveAmount.value) <= 0n) {
+      result.textContent = "Enter both amounts as positive token base-unit integers.";
+      return;
+    }
+    const expires = new Date(Date.now() + Number(quoteLifetime.value) * 1000);
+    result.textContent = `Private RFQ preview: offer ${amount.value} for ${receiveAmount.value}; expires ${expires.toLocaleString()}. A live order requires a deposited note and production proof keys. No transaction was sent.`;
+    return;
+  }
   if (selected !== "shield") {
-    result.textContent = "Private sends, swaps, and withdrawals need a deposited note and production proof keys.";
+    result.textContent = "Private sends and withdrawals need a deposited note and production proof keys.";
     return;
   }
   if (!/^0x[0-9a-fA-F]{40}$/.test(token.value)) {

@@ -39,7 +39,7 @@
           <p class="kicker">01 · STATUS</p><h2>What works today</h2>
           <div class="status-grid">
             <div><b>Implemented</b><ul><li>Domain-bound private notes and nullifiers</li><li>Poseidon incremental Merkle tree</li><li>Deposit, private-transfer, and withdrawal circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note storage</li><li>Persistent event indexer</li><li>Simulation-first relayer</li><li>Multi-destination withdrawal planner</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
-            <div><b>Still gated</b><ul><li>Production verifier ceremony</li><li>Independent security audits</li><li>Final CRCL contract configuration</li><li>Vault and verifier deployment</li><li>Funded production relayer</li><li>Two-party atomic swap authorization</li><li>Batched PONS matching and settlement</li></ul></div>
+            <div><b>Still gated</b><ul><li>Production verifier ceremony</li><li>Independent security audits</li><li>Final CRCL contract configuration</li><li>Vault and verifier deployment</li><li>Funded production relayer</li><li>Browser proof-generation workflow</li><li>Batched PONS matching and settlement</li></ul></div>
           </div>
         </section>
 
@@ -58,7 +58,7 @@
             <article><b>Circuits</b><p>Prove note membership, ownership, correct nullifiers, asset and amount binding, conservation of value, and valid output commitments.</p></article>
             <article><b>Indexer</b><p>Reads vault events, rebuilds the commitment tree, records spent nullifiers, and supplies Merkle paths required to create proofs.</p></article>
             <article><b>Relayer</b><p>Simulates and broadcasts approved private transfers and withdrawals so users do not need a separate public gas-paying wallet for each action.</p></article>
-            <article><b>Swap services</b><p>Planned components for two-party atomic authorization and privacy-aware batches executed against the public PONS market.</p></article>
+            <article><b>Swap services</b><p>Implemented RFQ settlement and maker cancellation proofs, plus a planned privacy-aware batching path against the public PONS market.</p></article>
           </div>
         </section>
 
@@ -96,19 +96,22 @@
         </section>
 
         <section id="swaps">
-          <p class="kicker">07 · SWAPS</p><h2>Two planned execution modes</h2>
-          <h3>Atomic private swaps</h3><p>Two owners exchange private assets in one state transition. A safe design must obtain authorization from both owners without requiring either party to reveal its note secret. The authorization circuit and negotiation protocol remain under development.</p>
+          <p class="kicker">07 · SWAPS</p><h2>Shielded RFQ settlement</h2>
+          <h3>Atomic private swaps</h3><p>A maker locks a shielded note into exact order terms: requested asset and amount, maker receive key, deadline, nonce, and a cancellation key. A taker can fill only those exact terms. One proof consumes the maker and taker notes, pays the maker and taker as new private notes, and returns any taker change.</p>
+          <p>The maker never shares the cancellation secret. A separate cancellation proof lets only the maker consume an unfilled order and recreate the original sell balance as a private refund note. Both fill and cancellation use the same nullifier, so only one can succeed.</p>
           <h3>Batched PONS execution</h3><p>Private orders are combined and settled through larger public trades against PONS. The external PONS trade remains visible. A production batch must enforce asset conservation, limits, deadlines, maximum slippage, matcher authorization, and fair allocation in the proof system.</p>
-          <p>Neither swap path is enabled in the live preview. The interface labels them as protocol phases rather than operational features.</p>
+          <p>The RFQ swap and cancellation circuits, vault entry points, relayer routes, and tests are implemented in the prototype. The browser currently builds quote previews only; mainnet settlement remains disabled until production proving keys, audit, and deployment. Batched PONS execution remains planned.</p>
         </section>
 
         <section id="proofs">
           <p class="kicker">08 · PROOF SYSTEM</p><h2>Groth16 over BN254</h2>
-          <p>The current circuits use Circom, Poseidon hashes, a depth-20 commitment tree, and Groth16 proofs on BN254. Separate verifiers are used for deposits, transfers, and withdrawals because each circuit has a different public-signal layout.</p>
+          <p>The current circuits use Circom, Poseidon hashes, a depth-20 commitment tree, and Groth16 proofs on BN254. Separate verifiers are used because each circuit has a different public-signal layout.</p>
           <table><thead><tr><th>Circuit</th><th>Public information</th><th>Private witness</th></tr></thead><tbody>
             <tr><td>Deposit</td><td>Roots, commitment, index, asset, amount, chain, vault</td><td>Owner key, blinding, insertion path</td></tr>
             <tr><td>Transfer</td><td>Roots, nullifier, output commitments, indices, chain, vault</td><td>Input note, membership path, recipients, amounts, blindings</td></tr>
             <tr><td>Withdrawal</td><td>Root, nullifier, asset, recipient, amount, chain, vault</td><td>Owner secret, blinding, membership path</td></tr>
+            <tr><td>RFQ swap</td><td>Roots, nullifiers, output commitments, indices, chain, vault, deadline</td><td>Both input notes, membership paths, exact order terms, output owners and blindings</td></tr>
+            <tr><td>Cancel order</td><td>Roots, order nullifier, refund commitment and index, chain, vault</td><td>Cancel secret, order terms, maker note and membership path</td></tr>
           </tbody></table>
           <p>Development proofs have been generated and verified end to end. Those development keys are server-local and excluded from source control.</p>
         </section>
@@ -146,7 +149,7 @@
 
         <section id="limitations">
           <p class="kicker">14 · LIMITATIONS</p><h2>Important realities</h2>
-          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Standard denominations and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Public PONS transactions remain visible and may reveal aggregate strategy.</li><li>Local encrypted storage is only as safe as the device and password.</li><li>The current atomic and batched swap systems are not enabled.</li><li>The current proving setup is for development validation, not trust-minimized production.</li></ul>
+          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Standard denominations and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Public PONS transactions remain visible and may reveal aggregate strategy.</li><li>RFQ state transitions remain public even though their owners, assets, and amounts are private.</li><li>Local encrypted storage is only as safe as the device and password.</li><li>The swap browser workflow and batched PONS path are not production-enabled.</li><li>The current proving setup is for development validation, not trust-minimized production.</li></ul>
         </section>
 
         <section id="glossary">

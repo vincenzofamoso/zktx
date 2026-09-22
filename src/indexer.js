@@ -21,6 +21,17 @@ export function createIndexer({ rpcUrl, vaultAddress, store, startBlock = 0n }) 
           await store.recordCommitment(BigInt(log.args.outputTwo), log.blockNumber);
         }
         if (log.eventName === "Withdrawal") await store.recordNullifier(BigInt(log.args.nullifier), log.blockNumber);
+        if (log.eventName === "PrivateSwap") {
+          await store.recordNullifier(BigInt(log.args.makerNullifier), log.blockNumber);
+          await store.recordNullifier(BigInt(log.args.takerNullifier), log.blockNumber);
+          await store.recordCommitment(BigInt(log.args.makerOutput), log.blockNumber);
+          await store.recordCommitment(BigInt(log.args.takerOutput), log.blockNumber);
+          await store.recordCommitment(BigInt(log.args.changeOutput), log.blockNumber);
+        }
+        if (log.eventName === "PrivateOrderCancelled") {
+          await store.recordNullifier(BigInt(log.args.orderNullifier), log.blockNumber);
+          await store.recordCommitment(BigInt(log.args.refundCommitment), log.blockNumber);
+        }
       }
       store.state.lastBlock = Number(latest);
       await store.save();

@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IDepositVerifier, ITransferVerifier, IWithdrawVerifier} from "../contracts/IZkVerifier.sol";
+import {
+    ICancelOrderVerifier,
+    IDepositVerifier,
+    ISwapVerifier,
+    ITransferVerifier,
+    IWithdrawVerifier
+} from "../contracts/IZkVerifier.sol";
 import {RhShieldedVault} from "../contracts/RhShieldedVault.sol";
 
-contract MockVerifier is IDepositVerifier, ITransferVerifier, IWithdrawVerifier {
+contract MockVerifier is
+    IDepositVerifier,
+    ITransferVerifier,
+    IWithdrawVerifier,
+    ISwapVerifier,
+    ICancelOrderVerifier
+{
     bool public result = true;
 
     function setResult(bool next) external {
@@ -24,6 +36,15 @@ contract MockVerifier is IDepositVerifier, ITransferVerifier, IWithdrawVerifier 
         uint256[2] calldata,
         uint256[2][2] calldata,
         uint256[2] calldata,
+        uint256[13] calldata
+    ) external view returns (bool) {
+        return result;
+    }
+
+    function verifyProof(
+        uint256[2] calldata,
+        uint256[2][2] calldata,
+        uint256[2] calldata,
         uint256[9] calldata
     ) external view returns (bool) {
         return result;
@@ -34,7 +55,7 @@ contract MockVerifier is IDepositVerifier, ITransferVerifier, IWithdrawVerifier 
         uint256[2][2] calldata,
         uint256[2] calldata,
         uint256[7] calldata
-    ) external view returns (bool) {
+    ) external view override(IWithdrawVerifier, ICancelOrderVerifier) returns (bool) {
         return result;
     }
 }
@@ -81,7 +102,7 @@ contract RhShieldedVaultTest {
     function setUp() public {
         verifier = new MockVerifier();
         token = new MockToken();
-        vault = new RhShieldedVault(address(this), verifier, verifier, verifier, ROOT);
+        vault = new RhShieldedVault(address(this), verifier, verifier, verifier, verifier, verifier, ROOT);
         vault.setAssetSupported(address(token), true);
         vault.setReserveCap(address(token), 200 ether);
         token.mint(address(this), 1_000 ether);
@@ -107,7 +128,9 @@ contract RhShieldedVaultTest {
         require(vault.noteCount() == 3, "note count after transfer");
 
         bytes32 withdrawNullifier = bytes32(uint256(202));
-        vault.withdraw(proof(), bytes32(uint256(13)), address(token), address(this), 40 ether, withdrawNullifier);
+        vault.withdraw(
+            proof(), bytes32(uint256(13)), address(token), address(this), 40 ether, withdrawNullifier
+        );
         require(vault.publicReserves(address(token)) == 60 ether, "remaining reserve");
         require(token.balanceOf(address(this)) == 940 ether, "wallet balance");
     }
@@ -173,5 +196,33 @@ contract RhShieldedVaultTest {
                 )
             );
         require(!ok, "reserve cap exceeded");
+    }
+
+    function testPrivateSwapLifecycle() public {
+        vault.deposit(proof(), address(token), 100 ether, bytes32(uint256(101)), bytes32(uint256(12)));
+        vault.deposit(proof(), address(token), 100 ether, bytes32(uint256(102)), bytes32(uint256(13)));
+        vault.settleSwap(
+            proof(),
+            bytes32(uint256(13)),
+            bytes32(uint256(14)),
+            bytes32(uint256(201)),
+            bytes32(uint256(202)),
+            bytes32(uint256(301)),
+            bytes32(uint256(302)),
+            bytes32(uint256(303)),
+            block.timestamp + 1 hours
+        );
+        require(vault.noteCount() == 5, "swap output count");
+        require(vault.spentNullifiers(bytes32(uint256(201))), "maker nullifier");
+        require(vault.spentNullifiers(bytes32(uint256(202))), "taker nullifier");
+    }
+
+    function testPrivateOrderCancellation() public {
+        vault.deposit(proof(), address(token), 100 ether, bytes32(uint256(101)), bytes32(uint256(12)));
+        vault.cancelOrder(
+            proof(), bytes32(uint256(12)), bytes32(uint256(13)), bytes32(uint256(201)), bytes32(uint256(301))
+        );
+        require(vault.noteCount() == 2, "cancel output count");
+        require(vault.spentNullifiers(bytes32(uint256(201))), "order nullifier");
     }
 }

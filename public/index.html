@@ -49,6 +49,11 @@
             <div class="status"><span>Pool status</span><b><i></i> Preview only</b></div>
             <label>Token contract<input id="token" autocomplete="off" placeholder="0x… PONS token" /></label>
             <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>USDC</option></select></label></div>
+            <div id="swap-fields" hidden>
+              <label>Receive token contract<input id="receive-token" autocomplete="off" placeholder="0x… token requested from the taker" /></label>
+              <div class="field-row"><label>Receive amount<input id="receive-amount" inputmode="numeric" placeholder="Base units" /></label><label>Quote lifetime<select id="quote-lifetime"><option value="900">15 minutes</option><option value="3600">1 hour</option><option value="86400">24 hours</option></select></label></div>
+              <small>The quote is negotiated offchain. Settlement publishes one vault state transition—not a conventional DEX swap or user-level token transfer.</small>
+            </div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
               <label>Destination wallets<textarea id="destinations" rows="3" placeholder="One EVM address per line · 2–4 different wallets"></textarea></label>
