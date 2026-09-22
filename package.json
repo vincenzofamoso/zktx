@@ -10,6 +10,7 @@
     "contracts:test": "forge test",
     "keys:dev": "bash scripts/setup-development-keys.sh",
     "proof:smoke": "node scripts/prove-development-smoke.mjs",
+    "test:ui": "node scripts/ui-smoke.mjs",
     "start": "node server/index.js",
     "test": "npm run build:client && npm run circuits:compile && node --test && forge test"
   },
@@ -22,6 +23,7 @@
     "circom2": "^0.2.22",
     "circomlib": "^2.0.5",
     "esbuild": "^0.28.2",
+    "playwright-core": "^1.63.0",
     "snarkjs": "^0.7.5"
   },
   "engines": {
