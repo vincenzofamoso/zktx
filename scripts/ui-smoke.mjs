@@ -36,8 +36,11 @@ async function runViewport(name, viewport) {
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
 
   await page.locator('[data-tab="shield"]').click();
-  await page.locator("#token").fill("0x1111111111111111111111111111111111111111");
-  await page.locator("#amount").fill("1000");
+  await page.locator("#token").fill("0xC026Ab5fFE8F5AF0C62f9D7c8567af6e967A1e18");
+  await page.locator("#token").dispatchEvent("change");
+  await page.waitForFunction(() => document.querySelector("#token-meta")?.textContent.includes("SI"));
+  await page.locator("#amount").fill("5");
+  check((await page.locator("#amount-units").textContent())?.includes("5000000000000000000 base units"), `${name}: human SI amount converts to 18-decimal base units`);
   await page.locator("#note-password").fill("headless-test-password");
   await page.locator("#veil-form").evaluate((form) => form.requestSubmit());
   await page.waitForFunction(() => document.querySelector("#form-result")?.textContent.includes("Encrypted preview note created"));

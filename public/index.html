@@ -59,21 +59,21 @@
         </div>
 
         <div class="terminal">
-          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Private swap</button><button data-tab="withdraw">Withdraw</button></div>
+          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Private RFQ swap</button><button data-tab="withdraw">Withdraw</button></div>
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> E2E validated · UI gated</b></div>
-            <label>Token contract<input id="token" autocomplete="off" placeholder="0x… Robinhood Chain token" /></label>
-            <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>USDC</option></select></label></div>
+            <label><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
+            <label><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
-              <label>Receive token contract<input id="receive-token" autocomplete="off" placeholder="0x… token requested from the taker" /></label>
-              <div class="field-row"><label>Receive amount<input id="receive-amount" inputmode="numeric" placeholder="Base units" /></label><label>Quote lifetime<select id="quote-lifetime"><option value="900">15 minutes</option><option value="3600">1 hour</option><option value="86400">24 hours</option></select></label></div>
-              <small>The quote is negotiated offchain. Settlement publishes one vault state transition—not a conventional DEX swap or user-level token transfer.</small>
+              <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
+              <div class="field-row"><label>Minimum amount received<input id="receive-amount" inputmode="decimal" placeholder="Example: 5" /><small id="receive-amount-units" class="token-meta">Enter a normal token amount.</small></label><label>Quote expires after<select id="quote-lifetime"><option value="900">15 minutes</option><option value="3600">1 hour</option><option value="86400">24 hours</option></select></label></div>
+              <div class="explain-box"><b>This is a private RFQ, not an automatic market buy.</b><span>You offer one shielded token for another at the amounts above. A counterparty must accept the quote. ZKTX then settles both sides inside the shielded pool.</span></div>
             </div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
               <label>Destination wallets<textarea id="destinations" rows="3" placeholder="One EVM address per line · 2–4 different wallets"></textarea></label>
-              <label>Standard denominations<input id="denominations" inputmode="numeric" placeholder="5000,1000,100" /></label>
-              <small>Amounts use token base units. Any remainder stays shielded as private change. Execution times are independently randomized.</small>
+              <label>Split sizes, in normal token amounts<input id="denominations" inputmode="decimal" placeholder="Example: 5, 2, 1" /></label>
+              <small>Any remainder stays shielded as private change. Execution times are independently randomized.</small>
             </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
             <button class="submit" type="submit">Create encrypted preview note</button>

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { StateStore } from "../src/state-store.js";
 import { createIndexer } from "../src/indexer.js";
 import { createRelayer } from "../src/relayer.js";
+import { createPublicClient, http, parseAbi } from "viem";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
@@ -12,6 +13,10 @@ const mode = process.env.PROTOCOL_MODE === "live" ? "live" : "preview";
 const chainId = 4663;
 const vaultAddress = process.env.ZKTX_VAULT_ADDRESS || null;
 const rpcUrl = process.env.RH_RPC_URL || null;
+const readRpcUrl = rpcUrl || "https://rpc.mainnet.chain.robinhood.com";
+const readClient = createPublicClient({ transport: http(readRpcUrl, { retryCount: 1 }) });
+const tokenAbi = parseAbi(["function name() view returns (string)", "function symbol() view returns (string)", "function decimals() view returns (uint8)"]);
+const tokenCache = new Map();
 const store = new StateStore(process.env.ZKTX_STATE_FILE || path.join(root, "data", "state.json"));
 await store.load();
 let indexer = null;
@@ -38,6 +43,26 @@ app.get("/api/status", (_req, res) => res.json({
   relayerReady: Boolean(relayer),
   state: store.snapshot(),
 }));
+
+app.get("/api/token/:address", async (req, res) => {
+  const address = req.params.address;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return res.status(400).json({ error: "Invalid token contract" });
+  const key = address.toLowerCase();
+  if (tokenCache.has(key)) return res.json(tokenCache.get(key));
+  try {
+    const [name, symbol, decimals] = await Promise.all([
+      readClient.readContract({ address, abi: tokenAbi, functionName: "name" }),
+      readClient.readContract({ address, abi: tokenAbi, functionName: "symbol" }),
+      readClient.readContract({ address, abi: tokenAbi, functionName: "decimals" }),
+    ]);
+    const metadata = { address, name, symbol, decimals: Number(decimals) };
+    if (!Number.isInteger(metadata.decimals) || metadata.decimals < 0 || metadata.decimals > 36) throw new Error("Unsupported token decimals");
+    tokenCache.set(key, metadata);
+    return res.json(metadata);
+  } catch {
+    return res.status(404).json({ error: "Token metadata could not be read on Robinhood Chain" });
+  }
+});
 
 app.get("/api/tree/path/:index", (req, res) => {
   try {
