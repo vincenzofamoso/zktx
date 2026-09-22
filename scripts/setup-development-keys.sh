@@ -22,6 +22,10 @@ if [[ ! -f "$output/pot17_final.ptau" ]]; then
 fi
 
 for circuit in deposit transfer withdraw swap cancel-order; do
+  case "$circuit" in
+    cancel-order) verifier_name="CancelOrderVerifier" ;;
+    *) verifier_name="${circuit^}Verifier" ;;
+  esac
   entropy="$(openssl rand -hex 64)"
   npx snarkjs groth16 setup "$root/build/circuits/$circuit.r1cs" "$output/pot17_final.ptau" "$output/${circuit}_0000.zkey.tmp"
   npx snarkjs zkey contribute "$output/${circuit}_0000.zkey.tmp" "$output/${circuit}_final.zkey.tmp" --name="ZKTX ${circuit} development" -e="$entropy"
@@ -29,8 +33,8 @@ for circuit in deposit transfer withdraw swap cancel-order; do
   mv "$output/${circuit}_final.zkey.tmp" "$output/${circuit}_final.zkey"
   unset entropy
   npx snarkjs zkey export verificationkey "$output/${circuit}_final.zkey" "$output/${circuit}_verification_key.json"
-  npx snarkjs zkey export solidityverifier "$output/${circuit}_final.zkey" "$root/contracts/generated/${circuit^}Verifier.sol"
-  sed -i "s/contract Groth16Verifier/contract ${circuit^}Verifier/" "$root/contracts/generated/${circuit^}Verifier.sol"
+  npx snarkjs zkey export solidityverifier "$output/${circuit}_final.zkey" "$root/contracts/generated/${verifier_name}.sol"
+  sed -i "s/contract Groth16Verifier/contract ${verifier_name}/" "$root/contracts/generated/${verifier_name}.sol"
 done
 
 echo "Development keys generated. They are ignored by git and MUST NOT secure real funds."
