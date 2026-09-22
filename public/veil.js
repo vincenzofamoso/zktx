@@ -17,8 +17,8 @@ const receiveAmount = document.querySelector("#receive-amount");
 const quoteLifetime = document.querySelector("#quote-lifetime");
 
 const copy = {
-  shield: ["Create a shielded note", "Your deposit is public. Activity after shielding uses private notes."],
-  send: ["Send a private note", "Recipient ownership and value are encrypted inside the shielded note set."],
+  shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note—no ZEC or bridge required."],
+  send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
   swap: ["Swap inside the pool", "The proof conserves both assets without publishing the user's order."],
   withdraw: ["Return to a public wallet", "The withdrawal destination and amount become public at the boundary."],
 };

@@ -1,6 +1,12 @@
 # Robinhood Chain shielded pool
 
-This module accepts supported standard ERC-20 tokens on Robinhood Chain, regardless of their launch venue, and represents deposited balances as private notes. The original token remains public outside the vault.
+This module accepts supported standard ERC-20 tokens on Robinhood Chain, regardless of their launch venue, and represents deposited balances as Zcash-style private notes. The original token remains public outside the vault.
+
+## Zcash-style architecture without ZEC
+
+ZKTX borrows the privacy pattern rather than the ZEC asset. A note represents a secret claim on ERC-20 reserves; its commitment enters a Merkle tree; a one-time nullifier prevents double-spending; and a zero-knowledge proof authorizes each private state transition. A relayer can broadcast valid proofs so the note owner is not exposed as the gas payer.
+
+The implementation is native to Robinhood Chain and EVM verification. It does not run Orchard, bridge ZEC, or require a second wallet. Users connect an RH wallet, shield the RH token they already own, transact as private notes, and later withdraw the original RH asset. ZKTX is independent and is not affiliated with the Zcash project.
 
 ## Privacy boundary
 

@@ -1,6 +1,8 @@
 # ZKTX
 
-ZKTX is a standalone privacy-pool project for standard ERC-20 tokens on Robinhood Chain, regardless of their launch venue.
+ZKTX is a standalone privacy-pool project that adapts Zcash-style shielded notes, commitments, nullifiers, Merkle membership, and zero-knowledge authorization to standard ERC-20 tokens on Robinhood Chain, regardless of their launch venue.
+
+Users keep the RH tokens and wallet they already have. ZKTX does not require ZEC, a Zcash wallet, bridging, wrapping, or a pre-swap. The original ERC-20 enters a token-backed vault and its ownership is represented by private notes until withdrawal. ZKTX is an independent EVM implementation inspired by shielded-payment architecture; it is not an Orchard deployment and is not affiliated with the Zcash project.
 
 The current milestone contains:
 

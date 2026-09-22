@@ -3,7 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="description" content="Shield standard Robinhood Chain tokens and transact through a private note pool." />
+    <meta name="description" content="Zcash-style shielded notes and ZK swaps for standard Robinhood Chain tokens. No ZEC or bridge required." />
+    <link rel="canonical" href="https://zktx.tech/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ZKTX" />
+    <meta property="og:url" content="https://zktx.tech/" />
+    <meta property="og:title" content="ZKTX — Zcash-style privacy for RH tokens" />
+    <meta property="og:description" content="Shield, transfer, and swap Robinhood Chain tokens with zero-knowledge proofs—without ZEC or bridging." />
+    <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ZKTX — shielded transactions on Robinhood Chain" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ZKTX — Zcash-style privacy for RH tokens" />
+    <meta name="twitter:description" content="Shield, transfer, and swap RH tokens with zero-knowledge proofs—without ZEC or bridging." />
+    <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX — private token transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
     <link rel="stylesheet" href="./veil.css" />
@@ -21,9 +35,9 @@
     <main>
       <section class="hero">
         <div>
-          <p class="kicker">ZEC-INSPIRED PRIVACY · ROBINHOOD CHAIN</p>
+          <p class="kicker">ZCASH-STYLE PRIVACY · NATIVE RH TOKENS</p>
           <h1>Take your token<br /><em>off the timeline.</em></h1>
-          <p class="lede">Shield any standard Robinhood Chain token, transfer private notes, and return to the public market when you choose.</p>
+          <p class="lede">Turn any standard Robinhood Chain token into a shielded note, then transfer or swap it with zero-knowledge proofs. No ZEC, bridge, or second wallet required.</p>
           <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Protocol preview</span></div>
         </div>
         <div class="orb" aria-hidden="true"><img class="hero-logo" src="./assets/zktx-mark-v2.png" alt="" /></div>
@@ -40,7 +54,7 @@
         <div class="workspace-copy">
           <p class="kicker">SHIELDED VAULT</p>
           <h2>Move value without publishing the path.</h2>
-          <p>Deposits and withdrawals are visible onchain. Activity inside the shielded note set is represented by proofs, commitments, and nullifiers.</p>
+          <p>ZK token swaps on Robinhood Chain, built around the same core ideas that make Zcash private: shielded notes, hidden commitments, one-time nullifiers, Merkle membership proofs, and relayed transactions.</p>
           <dl><div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div><div><dt>Assets</dt><dd>Standard ERC-20s</dd></div><div><dt>Execution</dt><dd>Relayed ZK proofs</dd></div></dl>
         </div>
 
@@ -61,7 +75,7 @@
               <label>Standard denominations<input id="denominations" inputmode="numeric" placeholder="5000,1000,100" /></label>
               <small>Amounts use token base units. Any remainder stays shielded as private change. Execution times are independently randomized.</small>
             </div>
-            <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a shielded note</b><small id="action-copy">Your deposit is public. Activity after shielding uses private notes.</small></div></div>
+            <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
             <button class="submit" type="submit">Create encrypted preview note</button>
             <p id="form-result" class="form-result">No contract has been deployed. This interface cannot accept funds.</p>
             <p id="local-notes" class="form-result">0 encrypted notes stored in this browser.</p>
@@ -71,16 +85,16 @@
 
       <section id="privacy" class="privacy-grid">
         <article><span>VISIBLE</span><h3>Pool entry and exit</h3><p>Deposits, withdrawals, asset contracts, boundary amounts, and their timestamps remain onchain.</p></article>
-        <article class="private"><span>SHIELDED</span><h3>Internal transfers</h3><p>Owners and note values stay encrypted while zero-knowledge proofs enforce balance conservation.</p></article>
+        <article class="private"><span>ZCASH-STYLE</span><h3>Shielded note ownership</h3><p>Commitments hide note contents, nullifiers prevent double-spending, and zero-knowledge proofs enforce balance conservation.</p></article>
         <article><span>AGGREGATED</span><h3>Public market flow</h3><p>Any PONS market execution appears as vault activity and is batched to reduce user-level correlation.</p></article>
       </section>
 
       <section id="architecture" class="architecture">
-        <p class="kicker">HOW IT FITS TOGETHER</p><h2>One public token. A private ownership layer.</h2>
-        <div class="flow"><div><b>RH token</b><small>Standard ERC-20</small></div><i>→</i><div><b>Shielded vault</b><small>Public custody</small></div><i>→</i><div class="glow"><b>Private notes</b><small>Transfer + swap</small></div><i>→</i><div><b>Relayer</b><small>Proof broadcast</small></div></div>
+        <p class="kicker">ZCASH CONCEPTS · RH EXECUTION</p><h2>Keep the RH token. Replace its public trail with private notes.</h2>
+        <div class="flow"><div><b>RH token</b><small>No bridge or pre-swap</small></div><i>→</i><div><b>Shielded vault</b><small>Token-backed reserve</small></div><i>→</i><div class="glow"><b>Private notes</b><small>Commitment + nullifier</small></div><i>→</i><div><b>ZK relayer</b><small>Gas-sponsored proof</small></div></div>
       </section>
     </main>
-    <footer><span>ZKTX</span><p>Cryptographic prototype. No mainnet contracts. Do not deposit funds.</p></footer>
+    <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p></footer>
     <script type="module" src="./zk-client.js"></script>
     <script type="module" src="./veil.js"></script>
   </body>
