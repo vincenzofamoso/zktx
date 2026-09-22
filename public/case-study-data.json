@@ -1,0 +1,138 @@
+{
+  "generatedAt": "2026-09-22T17:57:08.301Z",
+  "network": "Robinhood Chain",
+  "chainId": 4663,
+  "warning": "Capped E2E run using development proving keys and valueless test assets; not a production ceremony or audit.",
+  "contracts": {
+    "vault": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da",
+    "tokenA": "0x308FFbDb97f4EDda9345D8376a63c60B9917E29b",
+    "tokenB": "0xD03315c62875661fd56e42A3bAaE7daF83Eff59A",
+    "depositVerifier": "0x695A2E3ACb8A87c70509F49aa812AD5dBAC4eACf",
+    "transferVerifier": "0x077cC901f1E4218e562BB49690848AF87b51DD10",
+    "withdrawVerifier": "0x838c1324A662097b61634ff50F30b5366Fed4B36",
+    "swapVerifier": "0x537d0E4E686Dc4c8dEBB4D6357bE1C6B8c052337",
+    "cancelOrderVerifier": "0x4f2B3F15CA99e2DaDfa207Ff68BB8D06a82b1406"
+  },
+  "transactions": [
+    {
+      "label": "Alice approves token A",
+      "role": "alice",
+      "hash": "0x777e3b9087dfb11fae07e4aedd157590d43d5e54c3efb7de40f0069e0e67f08a",
+      "blockNumber": "69850710",
+      "gasUsed": "47257",
+      "address": "0x308FFbDb97f4EDda9345D8376a63c60B9917E29b"
+    },
+    {
+      "label": "Bob approves token B",
+      "role": "bob",
+      "hash": "0xd477c10445767f9789e37fba936cf1d82ff81ce550d305b48096adbaacbfcfe5",
+      "blockNumber": "69850726",
+      "gasUsed": "47264",
+      "address": "0xD03315c62875661fd56e42A3bAaE7daF83Eff59A"
+    },
+    {
+      "label": "Alice shields 10 token A",
+      "role": "alice",
+      "hash": "0xbb39f563959cdd123a0b10b4fe33c4fca5ca4412143f13c84126fe60272b2aa1",
+      "blockNumber": "69850762",
+      "gasUsed": "419323",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Bob shields 20 token B",
+      "role": "bob",
+      "hash": "0xbaf50ffe90f4b3bce4b37384a511e3cb7b707796d4e0572daa3801df5bc3e2a6",
+      "blockNumber": "69850791",
+      "gasUsed": "402241",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Relayed private transfer",
+      "role": "relayer",
+      "hash": "0x41029836576580d73b1e0349325fe5e8624f9d25ff065a3ac247f7e1170523ea",
+      "blockNumber": "69850839",
+      "gasUsed": "386790",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Relayed withdrawal to fresh receiver",
+      "role": "relayer",
+      "hash": "0xd012e2e276b98300dc6aafb5f2a03511971269a7ac95b304eb37502e89d78402",
+      "blockNumber": "69850862",
+      "gasUsed": "340825",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Alice shields private RFQ order",
+      "role": "alice",
+      "hash": "0x769498679cb0faced84a261fa0548d83649f3fc19e2b87c2b42443eee2cf0ce6",
+      "blockNumber": "69850891",
+      "gasUsed": "368050",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Bob shields RFQ liquidity",
+      "role": "bob",
+      "hash": "0xa33aa8a2940dd385de78f4133cbf77177e06fb066d93ced599df6891c65c94b2",
+      "blockNumber": "69850929",
+      "gasUsed": "368032",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Relayed private RFQ swap",
+      "role": "relayer",
+      "hash": "0x279b9c28091db76c0eb7b464f256c46c5a39e98cbdb2e4bf8f4c0948a8bac1c9",
+      "blockNumber": "69850981",
+      "gasUsed": "461220",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Alice shields cancellable RFQ order",
+      "role": "alice",
+      "hash": "0xcec471663378c7ab81a0a27fec6a2a41847bdb0d79eb4ac2662661ffcdb135d4",
+      "blockNumber": "69851018",
+      "gasUsed": "368048",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Relayed private order cancellation",
+      "role": "relayer",
+      "hash": "0x57b8d7114b47bc78a1bb2962d1d718824913aefd1926a2557662e1825bcf6074",
+      "blockNumber": "69851052",
+      "gasUsed": "349901",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    }
+  ],
+  "checks": [
+    {
+      "name": "nullifier replay rejected",
+      "passed": true
+    },
+    {
+      "name": "onchain root equals locally derived root",
+      "passed": true
+    },
+    {
+      "name": "fresh receiver obtained withdrawn token A",
+      "passed": true
+    }
+  ],
+  "finalState": {
+    "root": "0x090ab4837fad20f5a7e213731eeff1dac32034903c9d21bbbc7232f5f258e047",
+    "localRoot": "0x090ab4837fad20f5a7e213731eeff1dac32034903c9d21bbbc7232f5f258e047",
+    "noteCount": "11",
+    "reserveA": "12000000000000000000",
+    "reserveB": "27000000000000000000",
+    "receiverBalance": "4000000000000000000"
+  },
+  "contractTransactions": {
+    "vault": "0xa5e35298542601f605a7ca1934cc0993f6659affe5ba81d85041a930e18f43a6",
+    "depositVerifier": "0xd36bcdd1f05a9ec4f28af2b04c1e5a2cc7a10524e996d485cad1fd8b4e9c5459",
+    "transferVerifier": "0x3e8368ce43fcc8ea06354a12c97d8893897f58fb6a348362bd48ec37a3d7b423",
+    "withdrawVerifier": "0xaf5d0b19a43a948a7452280d95e4215b7c745037f42d3cde6173e30035d73a90",
+    "swapVerifier": "0x71379e09378175f19b771a3f2a2c57ac319334ba0f7dc4a5ea19a479c592735a",
+    "cancelOrderVerifier": "0x5ce2f519e3b2c02eee0c083047c51ff28139b115f3c5afaab013e769a698de4c",
+    "tokenA": "0x762b1792f57c95f76fee81f11f1bdab5e76cf9fd61d45735e302d5b8c38f0853",
+    "tokenB": "0xafc61ed8e353bb1802b28609af1e64f68e169acfddc637a8b7b7feaff977ce9e"
+  }
+}

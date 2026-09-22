@@ -16,8 +16,12 @@ if ! flock -n 9; then
 fi
 
 if [[ ! -f "$output/pot17_final.ptau" ]]; then
+  phase_one_entropy="$(openssl rand -hex 64)"
   npx snarkjs powersoftau new bn128 17 "$output/pot17_0000.ptau"
-  npx snarkjs powersoftau prepare phase2 "$output/pot17_0000.ptau" "$output/pot17_final.ptau.tmp"
+  npx snarkjs powersoftau contribute "$output/pot17_0000.ptau" "$output/pot17_0001.ptau" \
+    --name="ZKTX development phase 1" -e="$phase_one_entropy"
+  unset phase_one_entropy
+  npx snarkjs powersoftau prepare phase2 "$output/pot17_0001.ptau" "$output/pot17_final.ptau.tmp"
   mv "$output/pot17_final.ptau.tmp" "$output/pot17_final.ptau"
 fi
 

@@ -28,7 +28,7 @@
     <div class="noise"></div>
     <header class="topbar">
       <a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>shielded transactions</small></span></a>
-      <nav><a href="#pool">Pool</a><a href="#privacy">Privacy</a><a href="#architecture">Architecture</a><a href="./docs.html">Docs</a></nav>
+      <nav><a href="#pool">Pool</a><a href="#privacy">Privacy</a><a href="#architecture">Architecture</a><a href="./case-study.html">Case study</a><a href="./docs.html">Docs</a></nav>
       <button id="connect" class="connect" type="button">Connect wallet</button>
     </header>
 
@@ -61,7 +61,7 @@
         <div class="terminal">
           <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Private swap</button><button data-tab="withdraw">Withdraw</button></div>
           <form id="veil-form">
-            <div class="status"><span>Pool status</span><b><i></i> Preview only</b></div>
+            <div class="status"><span>Pool status</span><b><i></i> E2E validated · UI gated</b></div>
             <label>Token contract<input id="token" autocomplete="off" placeholder="0x… Robinhood Chain token" /></label>
             <div class="field-row"><label>Amount<input id="amount" inputmode="decimal" placeholder="0.00" /></label><label>Asset<select id="asset"><option>Token</option><option>USDC</option></select></label></div>
             <div id="swap-fields" hidden>
@@ -77,7 +77,7 @@
             </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
             <button class="submit" type="submit">Create encrypted preview note</button>
-            <p id="form-result" class="form-result">No contract has been deployed. This interface cannot accept funds.</p>
+            <p id="form-result" class="form-result">The capped engineering vault passed its mainnet E2E run. Public deposits remain disabled pending a production ceremony and audit.</p>
             <p id="local-notes" class="form-result">0 encrypted notes stored in this browser.</p>
           </form>
         </div>

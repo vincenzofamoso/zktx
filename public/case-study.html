@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="A transaction-by-transaction Robinhood Chain case study of ZKTX deposits, private transfers, withdrawals, swaps, and order cancellation." />
+    <link rel="canonical" href="https://zktx.tech/case-study.html" />
+    <meta property="og:title" content="ZKTX mainnet case study" />
+    <meta property="og:description" content="Eleven confirmed transactions proving the complete shielded-note lifecycle on Robinhood Chain." />
+    <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
+    <title>ZKTX Mainnet Case Study</title>
+    <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
+    <link rel="stylesheet" href="./veil.css" />
+    <link rel="stylesheet" href="./docs.css" />
+    <style>
+      .case-shell{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:84px 0}.case-hero{padding:48px 0 56px}.case-hero h1{font-size:clamp(48px,8vw,94px);max-width:900px}.case-hero>p{max-width:780px}.proof-strip{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:28px 0}.proof-strip div{padding:22px;border-right:1px solid var(--line)}.proof-strip div:last-child{border:0}.proof-strip b,.proof-strip small{display:block}.proof-strip b{font-size:26px;color:var(--yellow)}.proof-strip small{color:var(--muted);margin-top:6px}.tx-list{display:grid;gap:10px}.tx{display:grid;grid-template-columns:42px minmax(220px,1fr) 130px 170px;align-items:center;gap:16px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.tx .n{color:var(--yellow);font-family:var(--mono)}.tx b,.tx small{display:block}.tx small{color:var(--muted);margin-top:4px}.tx code{font-size:12px}.tx a{color:var(--yellow);font-weight:800}.check-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.check{padding:20px;border:1px solid #1f6b45;border-radius:14px;background:#0b2419;color:#7ff5ae}.finding{border-color:#80671d;background:#2a220a}.contract-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.contract-grid article{overflow:hidden}.contract-grid code{display:block;overflow:hidden;text-overflow:ellipsis}.contract-grid a{color:var(--yellow)}@media(max-width:780px){.proof-strip,.check-grid,.contract-grid{grid-template-columns:1fr}.proof-strip div{border-right:0;border-bottom:1px solid var(--line)}.tx{grid-template-columns:32px 1fr}.tx .role,.tx>a{grid-column:2}}
+    </style>
+  </head>
+  <body>
+    <div class="noise"></div>
+    <header class="topbar"><a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>mainnet evidence</small></span></a><nav><a href="./">App</a><a href="./docs.html">Docs</a></nav></header>
+    <main class="case-shell">
+      <section class="case-hero"><p class="kicker">CONFIRMED ON ROBINHOOD CHAIN · 22 SEP 2026</p><h1>The complete private-note lifecycle, onchain.</h1><p>Two participants shielded valueless E2E assets, transferred a note privately, withdrew to a fresh address, settled a two-asset RFQ swap, and cancelled a second private order. Every transaction below links to the public Robinhood explorer.</p><div class="notice warning"><b>Capped engineering run</b><span>This validates implementation behavior with development proving keys and valueless test tokens. It is not an audit, production ceremony, or invitation to deposit valuable assets.</span></div></section>
+      <section><div class="proof-strip"><div><b>11</b><small>confirmed lifecycle transactions</small></div><div><b>11</b><small>final commitment leaves</small></div><div><b>2</b><small>shielded test assets</small></div><div><b>3/3</b><small>independent final checks passed</small></div></div></section>
+      <section><p class="kicker">DEPLOYMENT</p><h2>Contracts used in the run</h2><div class="contract-grid" id="contracts"></div></section>
+      <section><p class="kicker">TRANSACTION LOG</p><h2>Follow every state transition</h2><div class="tx-list" id="transactions"></div></section>
+      <section><p class="kicker">FINAL ASSERTIONS</p><h2>What was independently checked</h2><div class="check-grid" id="checks"></div></section>
+      <section><p class="kicker">A REAL TEST FINDING</p><h2>The EVM rejected a bad setup that JavaScript accepted.</h2><div class="notice finding"><b>Found and repaired before any deposit</b><span>The first development Powers of Tau file lacked a phase-one contribution and produced degenerate verifier points. Offchain JavaScript verification returned true, while both a local EVM and Robinhood Chain returned false. Simulation prevented the deposit from broadcasting. The setup script was fixed, all keys and verifiers were regenerated, the corrected verifier was proven locally, and only then was the successful mainnet run executed.</span></div></section>
+    </main>
+    <footer><span>ZKTX CASE STUDY</span><p>Verifiable evidence, explicit limitations, no hidden failures.</p></footer>
+    <script type="module" src="./case-study.js"></script>
+  </body>
+</html>

@@ -27,7 +27,7 @@
     <div class="noise"></div>
     <header class="topbar">
       <a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>protocol documentation</small></span></a>
-      <nav><a href="#overview">Overview</a><a href="#flows">Flows</a><a href="#privacy">Privacy</a><a href="#security">Security</a></nav>
+      <nav><a href="#overview">Overview</a><a href="#flows">Flows</a><a href="#privacy">Privacy</a><a href="#security">Security</a><a href="./case-study.html">Case study</a></nav>
       <a class="connect docs-home" href="./">Open app</a>
     </header>
 
@@ -46,14 +46,14 @@
           <p class="kicker">ZKTX DOCUMENTATION · ROBINHOOD CHAIN</p>
           <h1>Zcash-style privacy for Robinhood Chain tokens.</h1>
           <p>ZKTX adapts the shielded-note model—commitments, nullifiers, Merkle membership and zero-knowledge proofs—to standard RH ERC-20 tokens. Users keep their existing token and wallet: no ZEC, bridge, wrapper purchase, or pre-swap is required.</p>
-          <div class="notice warning"><b>Protocol preview</b><span>No production vault is deployed. The current interface cannot accept funds. Development proving keys must never secure real user funds.</span></div>
+          <div class="notice warning"><b>Protocol preview</b><span>A capped mainnet engineering vault has completed an E2E run using valueless test assets and development proving keys. The public interface remains disabled; development keys must never secure real user funds. <a href="./case-study.html">Review every transaction.</a></span></div>
         </header>
 
         <section id="status">
           <p class="kicker">01 · STATUS</p><h2>What works today</h2>
           <div class="status-grid">
             <div><b>Implemented</b><ul><li>Zcash-style private notes and one-time nullifiers</li><li>Poseidon incremental Merkle commitment tree</li><li>Deposit, private-transfer, withdrawal, swap, and cancellation circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note storage</li><li>Persistent event indexer</li><li>Simulation-first gas-paying relayer</li><li>Multi-destination withdrawal planner</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
-            <div><b>Still gated</b><ul><li>Production verifier ceremony</li><li>Independent security audits</li><li>Final CRCL contract configuration</li><li>Vault and verifier deployment</li><li>Funded production relayer</li><li>Browser proof-generation workflow</li><li>Batched PONS matching and settlement</li></ul></div>
+            <div><b>Still gated</b><ul><li>Production verifier ceremony</li><li>Independent security audits</li><li>Final CRCL contract configuration</li><li>Production vault and verifier deployment</li><li>Funded production relayer</li><li>Browser proof-generation workflow</li><li>Batched PONS matching and settlement</li></ul></div>
           </div>
         </section>
 
