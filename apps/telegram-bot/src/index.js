@@ -13,8 +13,8 @@ const stateDir = path.resolve(process.env.ZKTX_BOT_STATE_DIR || "/var/lib/zktx-t
 const stateFile = path.join(stateDir, "state.json");
 const signerUrl = (process.env.ZKTX_SIGNER_URL || "https://zktx.tech/telegram/").replace(/\/+$/, "") + "/";
 const protocolUrl = (process.env.ZKTX_PROTOCOL_URL || "https://zktx.tech").replace(/\/+$/, "");
-const port = Number(process.env.PORT || 3480);
-const allowedChats = new Set((process.env.ALLOWED_CHAT_IDS || "").split(",").map(Number).filter(Number.isSafeInteger));
+const port = Number(process.env.PORT || 3540);
+const allowedChats = new Set((process.env.ALLOWED_CHAT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean).map(Number).filter(Number.isSafeInteger));
 const addressPattern = /^0x[0-9a-fA-F]{40}$/;
 let store = { vaults: {}, drafts: {}, jobs: [] };
 await mkdir(stateDir, { recursive: true, mode: 0o700 });

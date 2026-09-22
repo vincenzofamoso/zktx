@@ -17,4 +17,4 @@ Never reuse development proving keys in production.
 
 ## Telegram bot
 
-Build the trusted-device signer with `npm run build:telegram`, install `zktx-telegram-bot.service`, and place a dedicated BotFather token at `/etc/zktx/telegram-bot-token` with root-only permissions. The `/telegram-api/` Nginx route proxies authenticated Mini App requests to port 3480. Do not reuse another project's bot token.
+Build the trusted-device signer with `npm run build:telegram`, install `zktx-telegram-bot.service`, and place a dedicated BotFather token at `/etc/zktx/telegram-bot-token` with root-only permissions. The `/telegram-api/` Nginx route proxies authenticated Mini App requests to port 3540. Do not reuse another project's bot token.
