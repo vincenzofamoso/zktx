@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:client": "esbuild client/wallet.js --bundle --format=esm --platform=browser --outfile=public/zk-client.js",
+    "build:telegram": "mkdir -p public/telegram && cp apps/telegram-bot/web-src/index.html apps/telegram-bot/web-src/style.css public/telegram/ && esbuild apps/telegram-bot/web-src/wallet.js --bundle --format=esm --platform=browser --outfile=public/telegram/wallet.js",
     "check": "node --check server/index.js && node --check src/notes.js && node --check src/merkle-tree.js && node --check public/veil.js",
     "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/swap.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/cancel-order.circom --r1cs --wasm --sym -o build/circuits",
     "contracts:test": "forge test",
@@ -12,10 +13,12 @@
     "proof:smoke": "node scripts/prove-development-smoke.mjs",
     "test:ui": "node scripts/ui-smoke.mjs",
     "start": "node server/index.js",
+    "start:telegram": "node apps/telegram-bot/src/index.js",
     "test": "npm run build:client && npm run circuits:compile && node --test && forge test"
   },
   "dependencies": {
     "express": "^5.1.0",
+    "grammy": "^1.46.0",
     "poseidon-lite": "^0.3.0",
     "viem": "^2.37.3"
   },

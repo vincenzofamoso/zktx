@@ -12,6 +12,7 @@ The current milestone contains:
 - A local AES-GCM encrypted note wallet preview
 - A persistent event indexer and guarded, simulation-first relayer
 - A Robinhood Chain-only deployment gate
+- A text-first Telegram bot with CURVING-style trusted-device wallet encryption and signing
 - An explicit privacy-boundary specification
 - The Nginx route served at `https://zktx.tech/`
 
@@ -27,3 +28,5 @@ npm test
 ```
 
 Run the preview backend with `npm start`. It binds to localhost and defaults to `PROTOCOL_MODE=preview`. See `.env.example`, `docs/RH_SHIELDED_POOL.md`, and `deploy/README.md`.
+
+The Telegram workflow is documented in `apps/telegram-bot/README.md`. Build its minimal trusted-device signer with `npm run build:telegram`. Its public actions remain gated by the same production-key and audit requirements as the web app.

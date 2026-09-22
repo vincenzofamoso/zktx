@@ -1,0 +1,29 @@
+[Unit]
+Description=ZKTX Telegram bot and trusted-device API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ops
+Group=ops
+WorkingDirectory=/home/ops/sessions/group-1004342212523/projects/zktx
+Environment=NODE_ENV=production
+Environment=PORT=3480
+Environment=ZKTX_BOT_STATE_DIR=/var/lib/zktx-telegram-bot
+Environment=ZKTX_SIGNER_URL=https://zktx.tech/telegram/
+Environment=ZKTX_PROTOCOL_URL=https://zktx.tech
+LoadCredential=telegram-bot-token:/etc/zktx/telegram-bot-token
+Environment=TELEGRAM_BOT_TOKEN_FILE=%d/telegram-bot-token
+ExecStart=/usr/bin/node apps/telegram-bot/src/index.js
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/zktx-telegram-bot
+
+[Install]
+WantedBy=multi-user.target

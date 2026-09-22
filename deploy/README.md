@@ -14,3 +14,7 @@ Before running it:
 The pilot owner address and selected operating model are recorded in `pilot-config.json`. Its encrypted keystore is intentionally stored outside this repository on the deployment server.
 
 Never reuse development proving keys in production.
+
+## Telegram bot
+
+Build the trusted-device signer with `npm run build:telegram`, install `zktx-telegram-bot.service`, and place a dedicated BotFather token at `/etc/zktx/telegram-bot-token` with root-only permissions. The `/telegram-api/` Nginx route proxies authenticated Mini App requests to port 3480. Do not reuse another project's bot token.
