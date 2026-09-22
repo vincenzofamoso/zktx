@@ -43,15 +43,15 @@ async function runViewport(name, viewport) {
   check((await page.locator("#amount-units").textContent())?.includes("5000000000000000000 base units"), `${name}: human SI amount converts to 18-decimal base units`);
   await page.locator("#note-password").fill("headless-test-password");
   await page.locator("#veil-form").evaluate((form) => form.requestSubmit());
-  await page.waitForFunction(() => document.querySelector("#form-result")?.textContent.includes("Encrypted preview note created"));
-  check((await page.locator("#local-notes").textContent())?.startsWith("1 encrypted note"), `${name}: encrypted preview note persists locally`);
+  await page.waitForFunction(() => document.querySelector("#form-result")?.textContent.includes("Connect your wallet"));
+  check((await page.locator("#local-notes").textContent())?.startsWith("0 encrypted notes"), `${name}: no note is stored before an onchain confirmation`);
 
   const caseResponse = await page.goto(`${base}/case-study.html`, { waitUntil: "networkidle" });
   check(caseResponse?.ok(), `${name}: case study returns success`);
-  check(await page.locator(".tx").count() === 11, `${name}: 11 transactions render`);
+  check(await page.locator(".tx").count() === 12, `${name}: 12 transactions render`);
   check(await page.locator("#contracts article").count() === 8, `${name}: 8 contracts render`);
-  check(await page.locator("#checks .check").count() === 3, `${name}: 3 final checks render`);
-  check(await page.locator('.tx a[href^="https://robinhoodchain.blockscout.com/tx/"]').count() === 11, `${name}: all transaction links target Blockscout`);
+  check(await page.locator("#checks .check").count() === 4, `${name}: 4 final checks render`);
+  check(await page.locator('.tx a[href^="https://robinhoodchain.blockscout.com/tx/"]').count() === 12, `${name}: all transaction links target Blockscout`);
 
   const docsResponse = await page.goto(`${base}/docs.html`, { waitUntil: "networkidle" });
   check(docsResponse?.ok(), `${name}: docs return success`);

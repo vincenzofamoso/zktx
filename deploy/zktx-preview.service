@@ -1,5 +1,5 @@
 [Unit]
-Description=ZKTX preview API
+Description=ZKTX capped experimental mainnet API
 After=network-online.target
 Wants=network-online.target
 
@@ -9,8 +9,11 @@ User=ops
 Group=ops
 WorkingDirectory=/home/ops/sessions/group-1004342212523/projects/zktx
 Environment=NODE_ENV=production
-Environment=PROTOCOL_MODE=preview
+Environment=PROTOCOL_MODE=live
 Environment=PORT=3531
+Environment=ZKTX_VAULT_ADDRESS=0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da
+Environment=RH_RPC_URL=https://rpc.mainnet.chain.robinhood.com
+Environment=ZKTX_START_BLOCK=69850600
 ExecStart=/usr/bin/node server/index.js
 Restart=on-failure
 RestartSec=3

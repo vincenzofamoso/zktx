@@ -46,14 +46,14 @@
           <p class="kicker">ZKTX DOCUMENTATION · ROBINHOOD CHAIN</p>
           <h1>Zcash-style privacy for Robinhood Chain tokens.</h1>
           <p>ZKTX adapts the shielded-note model—commitments, nullifiers, Merkle membership and zero-knowledge proofs—to standard RH ERC-20 tokens. Users keep their existing token and wallet: no ZEC, bridge, wrapper purchase, or pre-swap is required.</p>
-          <div class="notice warning"><b>Protocol preview</b><span>A capped mainnet engineering vault has completed an E2E run using valueless test assets and development proving keys. The public interface remains disabled; development keys must never secure real user funds. <a href="./case-study.html">Review every transaction.</a></span></div>
+          <div class="notice warning"><b>Experimental mainnet pilot</b><span>The Shield interface now generates its proof in the browser, requests token approval and deposit signatures from the connected wallet, and stores the encrypted note only after confirmation. It is capped to valueless test assets and uses development proving keys; it must never secure valuable funds. <a href="./case-study.html">Review the onchain evidence.</a></span></div>
         </header>
 
         <section id="status">
           <p class="kicker">01 · STATUS</p><h2>What works today</h2>
           <div class="status-grid">
             <div><b>Implemented</b><ul><li>Zcash-style private notes and one-time nullifiers</li><li>Poseidon incremental Merkle commitment tree</li><li>Deposit, private-transfer, withdrawal, swap, and cancellation circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note storage</li><li>Persistent event indexer</li><li>Simulation-first gas-paying relayer</li><li>Multi-destination withdrawal planner</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
-            <div><b>Still gated</b><ul><li>Production verifier ceremony</li><li>Independent security audits</li><li>Final CRCL contract configuration</li><li>Production vault and verifier deployment</li><li>Funded production relayer</li><li>Browser proof-generation workflow</li><li>Batched PONS matching and settlement</li></ul></div>
+            <div><b>Still gated</b><ul><li>Independent security audits</li><li>Final production token configuration</li><li>Production vault and verifier deployment</li><li>Funded production relayer</li><li>Browser transfer, withdrawal, and RFQ proof workflows</li><li>Batched PONS matching and settlement</li></ul></div>
           </div>
         </section>
 
@@ -128,7 +128,7 @@
           <h3>Atomic private swaps</h3><p>A maker locks a shielded note into exact order terms: requested asset and amount, maker receive key, deadline, nonce, and a cancellation key. A taker can fill only those exact terms. One proof consumes the maker and taker notes, pays the maker and taker as new private notes, and returns any taker change.</p>
           <p>The maker never shares the cancellation secret. A separate cancellation proof lets only the maker consume an unfilled order and recreate the original sell balance as a private refund note. Both fill and cancellation use the same nullifier, so only one can succeed.</p>
           <h3>Batched PONS execution</h3><p>Private orders are combined and settled through larger public trades against PONS. The external PONS trade remains visible. A production batch must enforce asset conservation, limits, deadlines, maximum slippage, matcher authorization, and fair allocation in the proof system.</p>
-          <p>The RFQ swap and cancellation circuits, vault entry points, relayer routes, and tests are implemented in the prototype. The browser currently builds quote previews only; mainnet settlement remains disabled until production proving keys, audit, and deployment. Batched PONS execution remains planned.</p>
+          <p>The RFQ swap and cancellation circuits, vault entry points, relayer routes, and tests are implemented in the prototype. Browser shielding is live for capped pilot assets; the browser still builds RFQ quote previews only, and private-swap settlement remains gated. Batched PONS execution remains planned.</p>
         </section>
 
         <section id="proofs">
@@ -177,7 +177,7 @@
 
         <section id="limitations">
           <p class="kicker">14 · LIMITATIONS</p><h2>Important realities</h2>
-          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Standard denominations and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Public PONS transactions remain visible and may reveal aggregate strategy.</li><li>RFQ state transitions remain public even though their owners, assets, and amounts are private.</li><li>Local encrypted storage is only as safe as the device and password.</li><li>The swap browser workflow and batched PONS path are not production-enabled.</li><li>The current proving setup is for development validation, not trust-minimized production.</li></ul>
+          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Standard denominations and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Public PONS transactions remain visible and may reveal aggregate strategy.</li><li>RFQ state transitions remain public even though their owners, assets, and amounts are private.</li><li>Local encrypted storage is only as safe as the device and password.</li><li>Only the capped pilot Shield flow is currently enabled in the browser; private send, withdrawal, RFQ settlement, and batched PONS execution remain gated.</li><li>The current proving setup is for development validation, not trust-minimized production.</li></ul>
         </section>
 
         <section id="glossary">

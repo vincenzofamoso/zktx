@@ -106,7 +106,7 @@ document.querySelectorAll(".tabs button").forEach((button) => button.addEventLis
   swapFields.hidden = button.dataset.tab !== "swap";
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
-  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Build private RFQ quote" : "Create encrypted preview note";
+  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Build private RFQ quote" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
 }));
 
 connect.addEventListener("click", async () => {
@@ -119,9 +119,23 @@ connect.addEventListener("click", async () => {
     const chainHex = await window.ethereum.request({ method: "eth_chainId" });
     connected = Boolean(account);
     connect.textContent = connected ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet";
-    result.textContent = Number(chainHex) === protocol.chainId
-      ? "Wallet connected to Robinhood Chain. Mainnet actions remain locked until audited contracts are deployed."
-      : `Wallet connected, but chain ${Number(chainHex)} is selected. Switch to Robinhood Chain (${protocol.chainId}) before any future live action.`;
+    if (Number(chainHex) !== protocol.chainId) {
+      try {
+        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${protocol.chainId.toString(16)}` }] });
+      } catch (switchError) {
+        if (switchError?.code !== 4902) throw switchError;
+        await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{
+          chainId: `0x${protocol.chainId.toString(16)}`,
+          chainName: "Robinhood Chain",
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
+          blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
+        }] });
+      }
+    }
+    result.textContent = protocol.contractsReady
+      ? "Wallet connected. Experimental live shielding is enabled for capped pilot assets."
+      : "Wallet connected, but the live pilot is not ready.";
   } catch (error) {
     result.textContent = error?.message || "Wallet connection was cancelled.";
   }
@@ -166,14 +180,15 @@ form.addEventListener("submit", async (event) => {
     return;
   }
   try {
-    const record = await window.ZKTXWallet.createEncryptedNote({
-      chainId: protocol.chainId,
-      vaultAddress: protocol.vaultAddress || "0x0000000000000000000000000000000000000001",
-      asset: token.value,
-      amount: payUnits,
-    }, password.value);
+    if (!connected || !account) throw new Error("Connect your wallet before shielding");
+    if (!protocol.contractsReady) throw new Error("The experimental live vault is not ready");
+    const live = await window.ZKTXWallet.shieldLive({
+      account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
+      asset: token.value, amount: payUnits, password: password.value,
+      onProgress: (message) => { result.textContent = message; },
+    });
     refreshLocalNotes();
-    result.textContent = `Encrypted preview note created. Commitment ${record.commitment.slice(0, 12)}… No transaction was sent.`;
+    result.innerHTML = `Shielded deposit confirmed. Commitment ${live.record.commitment.slice(0, 12)}… <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
   } catch (error) {
     result.textContent = error?.message || "Could not create the encrypted note.";
   }

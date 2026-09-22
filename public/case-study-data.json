@@ -101,6 +101,14 @@
       "blockNumber": "69851052",
       "gasUsed": "349901",
       "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+    },
+    {
+      "label": "Browser wallet shields pilot token",
+      "role": "alice",
+      "hash": "0xca13472927321f19f04505317e3b0bedf3518d5852a069b324126190539b0032",
+      "blockNumber": "70057643",
+      "gasUsed": "360513",
+      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
     }
   ],
   "checks": [
@@ -115,13 +123,17 @@
     {
       "name": "fresh receiver obtained withdrawn token A",
       "passed": true
+    },
+    {
+      "name": "browser-generated proof and wallet-signed deposit confirmed",
+      "passed": true
     }
   ],
   "finalState": {
-    "root": "0x090ab4837fad20f5a7e213731eeff1dac32034903c9d21bbbc7232f5f258e047",
-    "localRoot": "0x090ab4837fad20f5a7e213731eeff1dac32034903c9d21bbbc7232f5f258e047",
-    "noteCount": "11",
-    "reserveA": "12000000000000000000",
+    "root": "0x2edcaa088757d808d037b194628dc6ec2c82fc27e76ed5c7c0b2b6a8d207c03f",
+    "localRoot": "0x2edcaa088757d808d037b194628dc6ec2c82fc27e76ed5c7c0b2b6a8d207c03f",
+    "noteCount": "12",
+    "reserveA": "12001000000000000000",
     "reserveB": "27000000000000000000",
     "receiverBalance": "4000000000000000000"
   },

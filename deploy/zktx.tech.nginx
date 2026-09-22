@@ -1,16 +1,16 @@
 server {
-    listen 80;
-    listen [::]:80;
     server_name zktx.tech www.zktx.tech;
 
     root /var/www/zktx.tech;
     index index.html;
+    include /etc/nginx/zktx-api.conf;
 
     location / {
         try_files $uri $uri/ /index.html;
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        # snarkjs compiles the circuit WASM and fans proving work out to blob workers.
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://telegram.org; worker-src 'self' blob:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 }

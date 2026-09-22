@@ -38,7 +38,7 @@
           <p class="kicker">ZCASH-STYLE PRIVACY · NATIVE RH TOKENS</p>
           <h1>Take your token<br /><em>off the timeline.</em></h1>
           <p class="lede">Turn any standard Robinhood Chain token into a shielded note, then transfer or swap it with zero-knowledge proofs. No ZEC, bridge, or second wallet required.</p>
-          <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Protocol preview</span></div>
+          <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Experimental mainnet pilot</span></div>
         </div>
         <div class="orb" aria-hidden="true"><img class="hero-logo" src="./assets/zktx-mark-v2.png" alt="" /></div>
       </section>
@@ -61,7 +61,7 @@
         <div class="terminal">
           <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Private RFQ swap</button><button data-tab="withdraw">Withdraw</button></div>
           <form id="veil-form">
-            <div class="status"><span>Pool status</span><b><i></i> E2E validated · UI gated</b></div>
+            <div class="status"><span>Pool status</span><b><i></i> Capped experimental mainnet</b></div>
             <label><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
             <label><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
@@ -76,8 +76,8 @@
               <small>Any remainder stays shielded as private change. Execution times are independently randomized.</small>
             </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
-            <button class="submit" type="submit">Create encrypted preview note</button>
-            <p id="form-result" class="form-result">The capped engineering vault passed its mainnet E2E run. Public deposits remain disabled pending a production ceremony and audit.</p>
+            <button class="submit" type="submit">Shield tokens</button>
+            <p id="form-result" class="form-result">Connect a wallet to use the capped experimental vault. This pilot uses development proving keys and must not hold valuable assets.</p>
             <p id="local-notes" class="form-result">0 encrypted notes stored in this browser.</p>
           </form>
         </div>
@@ -95,6 +95,7 @@
       </section>
     </main>
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p></footer>
+    <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js"></script>
     <script type="module" src="./veil.js"></script>
   </body>
