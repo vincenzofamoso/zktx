@@ -29,7 +29,7 @@
     <div class="noise"></div>
     <header class="topbar">
       <a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>shielded transactions</small></span></a>
-      <nav><a href="#pool">Pool</a><a href="#privacy">Privacy</a><a href="#architecture">Architecture</a><a href="./case-study.html">Case study</a><a href="./docs.html">Docs</a></nav>
+      <nav><a href="#pool">Pool</a><a href="#privacy">Privacy</a><a href="#private-tee">Private TEE</a><a href="#architecture">Architecture</a><a href="./case-study.html">Case study</a><a href="./docs.html">Docs</a></nav>
       <button id="connect" class="connect" type="button">Connect wallet</button>
     </header>
 
@@ -117,6 +117,18 @@
         <article><span>VISIBLE</span><h3>Pool entry and exit</h3><p>Deposits, withdrawals, asset contracts, boundary amounts, and their timestamps remain onchain.</p></article>
         <article class="private"><span>ZCASH-STYLE</span><h3>Shielded note ownership</h3><p>Commitments hide note contents, nullifiers prevent double-spending, and zero-knowledge proofs enforce balance conservation.</p></article>
         <article><span>SLICED</span><h3>Public market flow</h3><p>The selected venue still exposes each pool swap. It identifies the ZKTX adapter, while randomized slices and overlapping orders reduce direct wallet and order correlation.</p></article>
+      </section>
+
+      <section id="private-tee" class="tee-section">
+        <p class="kicker">NEXT PRIVACY LAYER</p>
+        <h2>Private TEE execution, without forced waiting.</h2>
+        <p class="tee-lede">Encrypted orders can execute inside hardware-protected memory while remote attestation proves the approved ZKTX code is running. Users choose speed or a stronger anonymity set instead of waiting indefinitely for another trader.</p>
+        <div class="tee-modes">
+          <article class="active"><span>LIVE NOW</span><h3>Instant shielded</h3><p>Execute immediately through RH liquidity. The wallet stays behind the vault, while public market activity remains visible.</p></article>
+          <article><span>IN DESIGN</span><h3>Private TEE</h3><p>Encrypt the order to an attested executor. The operator cannot read the intent, strategy, or private balance in normal server memory.</p></article>
+          <article><span>IN DESIGN</span><h3>Pooled privacy</h3><p>Choose a longer window for internal matching and aggregate settlement. Execute early when enough unrelated flow arrives.</p></article>
+        </div>
+        <div class="tee-trust"><b>Honest status</b><span>The current ZKTX deployment is not running inside an attested TEE. Hardware deployment, remote-attestation verification, encrypted order commitments, and batch-proof contracts must ship before this mode can be enabled.</span></div>
       </section>
 
       <section id="architecture" class="architecture">

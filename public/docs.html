@@ -37,7 +37,7 @@
         <a href="#status">Current status</a><a href="#overview">Overview</a><a href="#zcash-model">Zcash-style model</a><a href="#architecture">Architecture</a>
         <a href="#notes">Private notes</a><a href="#flows">Transaction flows</a><a href="#withdrawals">Withdrawals</a>
         <a href="#swaps">Private swaps</a><a href="#proofs">Proof system</a><a href="#contracts">Contracts</a>
-        <a href="#services">Relayer and indexer</a><a href="#privacy">Privacy model</a><a href="#security">Security</a>
+        <a href="#services">Relayer and indexer</a><a href="#privacy">Privacy model</a><a href="#tee">Private TEE direction</a><a href="#security">Security</a>
         <a href="#operations">Operations</a><a href="#limitations">Limitations</a><a href="#glossary">Glossary</a>
       </aside>
 
@@ -53,7 +53,7 @@
           <p class="kicker">01 · STATUS</p><h2>What works today</h2>
           <div class="status-grid">
             <div><b>Implemented</b><ul><li>Zcash-style private notes and one-time nullifiers</li><li>Poseidon incremental Merkle commitment tree</li><li>Deposit, private-transfer, withdrawal, RFQ, market-order, and market-settlement circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note and settlement-secret storage</li><li>Adapter-based RH execution, including PONS curves and Uniswap pools</li><li>Simulation-first relayer and market keeper</li><li>Browser market-order and settlement proof workflows</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
-            <div><b>Still gated</b><ul><li>Final production Groth16 keys and verifiers</li><li>Final ZKTX and quote-token configuration</li><li>Production vault and adapter deployment</li><li>Funded production relayer and keeper</li><li>Browser transfer, withdrawal, and RFQ settlement workflows</li><li>Operational monitoring and incident controls</li></ul></div>
+            <div><b>Still gated</b><ul><li>Final production Groth16 keys and verifiers</li><li>Final ZKTX and quote-token configuration</li><li>Production vault and adapter deployment</li><li>Private TEE deployment and remote attestation</li><li>Encrypted order batching and aggregate settlement</li><li>Browser transfer and RFQ settlement workflows</li><li>Operational monitoring and incident controls</li></ul></div>
           </div>
         </section>
 
@@ -164,6 +164,18 @@
           <p class="kicker">11 · PRIVACY MODEL</p><h2>What the Zcash-style layer changes</h2>
           <table><thead><tr><th>Hidden inside the pool</th><th>Visible at the boundary</th></tr></thead><tbody><tr><td>Note owners<br />Private balances<br />Internal transfer amounts<br />Sender-to-recipient relationship</td><td>Depositor and deposit amount<br />Withdrawal recipient and amount<br />Asset contracts<br />Transaction timing<br />Aggregate public market trades</td></tr></tbody></table>
           <p>Privacy depends on the anonymity set. A vault with one active user provides little practical privacy even when its proofs are cryptographically correct. Larger shared activity, standard denominations, private change, batching, and varied timing improve resistance to correlation.</p>
+        </section>
+
+        <section id="tee">
+          <p class="kicker">11A · PRIVATE TEE DIRECTION</p><h2>Encrypted execution with user-controlled latency</h2>
+          <p>A Trusted Execution Environment is a hardware-isolated process that can decrypt and execute an order without exposing its plaintext to normal server memory. Remote attestation lets the client verify that the expected ZKTX executor code is running before it releases an encrypted order.</p>
+          <p>A TEE improves intent privacy, but it does not make a solo trade through a transparent AMM invisible. ZKTX therefore treats TEE execution and anonymity-set formation as separate controls.</p>
+          <table><thead><tr><th>Mode</th><th>User experience</th><th>Privacy tradeoff</th></tr></thead><tbody>
+            <tr><td>Instant shielded</td><td>Execute immediately using the existing vault and sliced RH route.</td><td>No waiting, but a lone vault trade can still be correlated with nearby activity.</td></tr>
+            <tr><td>Private TEE</td><td>Encrypt intent to an attested executor and start immediately.</td><td>Hides intent from the operator, but public settlement can still leak timing and net flow.</td></tr>
+            <tr><td>Pooled privacy</td><td>Wait within a user-selected maximum window and execute early when enough unrelated flow arrives.</td><td>Enables internal matching and aggregate public settlement, producing the strongest practical anonymity set.</td></tr>
+          </tbody></table>
+          <div class="notice warning"><b>Not active yet</b><span>The current production path does not claim TEE protection. Enabling this mode requires attested hardware, encrypted-order contracts, an attestation verifier, reproducible executor measurements, batch state proofs, failure recovery, and independent security review.</span></div>
         </section>
 
         <section id="security">
