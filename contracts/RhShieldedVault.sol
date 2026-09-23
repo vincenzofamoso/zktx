@@ -34,6 +34,7 @@ contract RhShieldedVault {
     error MarketNotReady();
     error MarketOrderClosed();
     error MarketOrderMissing();
+    error BuybackAlreadyActive();
     error OnlyFeeRecipient();
     error OnlyKeeper();
     error NullifierAlreadySpent();
@@ -77,6 +78,7 @@ contract RhShieldedVault {
     mapping(address => uint256) public executionFeeBalances;
     uint256 public totalBuybackQuote;
     uint256 public totalZktxBurned;
+    uint256 public pendingBuybackQuote;
 
     struct MarketOrder {
         address assetIn;
@@ -182,6 +184,9 @@ contract RhShieldedVault {
         bytes32 newRoot
     );
     event ExecutionFeesClaimed(address indexed asset, address indexed recipient, uint256 amount);
+    event BuybackQuoteAccrued(uint256 amount, uint256 pendingTotal);
+    event BuybackTokenActivated(address indexed token);
+    event PendingBuybackExecuted(uint256 quoteAmount, uint256 zktxBurned);
 
     constructor(
         address owner_,
@@ -268,8 +273,8 @@ contract RhShieldedVault {
         if (marketConfigured) revert MarketAlreadyConfigured();
         if (
             address(orderVerifier_) == address(0) || address(settlementVerifier_) == address(0)
-                || address(adapter_) == address(0) || quoteAsset_ == address(0) || zktxToken_ == address(0)
-                || feeRecipient_ == address(0) || quoteAsset_ == zktxToken_
+                || address(adapter_) == address(0) || quoteAsset_ == address(0) || feeRecipient_ == address(0)
+                || (zktxToken_ != address(0) && quoteAsset_ == zktxToken_)
         ) revert ZeroValue();
         marketOrderVerifier = orderVerifier_;
         marketSettlementVerifier = settlementVerifier_;
@@ -288,6 +293,16 @@ contract RhShieldedVault {
             feeRecipient_
         );
         emit MarketKeeperChanged(owner, true);
+    }
+
+    /// @notice Permanently enables buyback-and-burn after the real ZKTX token is deployed.
+    /// @dev Before activation, the buyback share remains accounted in `pendingBuybackQuote`.
+    function activateBuybackToken(address token) external onlyOwner {
+        if (!marketConfigured) revert MarketNotConfigured();
+        if (zktxToken != address(0)) revert BuybackAlreadyActive();
+        if (token == address(0) || token == marketQuoteAsset || token.code.length == 0) revert ZeroValue();
+        zktxToken = token;
+        emit BuybackTokenActivated(token);
     }
 
     function setMarketKeeper(address keeper, bool allowed) external onlyOwner {
@@ -566,11 +581,17 @@ contract RhShieldedVault {
         ) revert ReserveCapExceeded();
 
         if (accounting.buybackFee != 0) {
-            if (minimumBuybackOut == 0) revert ZeroValue();
-            accounting.zktxBurned = _executeSwap(
-                marketQuoteAsset, zktxToken, accounting.buybackFee, minimumBuybackOut, address(this)
-            );
-            _burnZktx(accounting.zktxBurned);
+            if (zktxToken == address(0)) {
+                if (minimumBuybackOut != 0) revert ZeroValue();
+                pendingBuybackQuote += accounting.buybackFee;
+                emit BuybackQuoteAccrued(accounting.buybackFee, pendingBuybackQuote);
+            } else {
+                if (minimumBuybackOut == 0) revert ZeroValue();
+                accounting.zktxBurned = _executeSwap(
+                    marketQuoteAsset, zktxToken, accounting.buybackFee, minimumBuybackOut, address(this)
+                );
+                _burnZktx(accounting.zktxBurned);
+            }
         } else if (minimumBuybackOut != 0) {
             revert ZeroValue();
         }
@@ -597,6 +618,24 @@ contract RhShieldedVault {
             accounting.buybackFee,
             accounting.zktxBurned
         );
+    }
+
+    /// @notice Converts quote accumulated during pre-token testing into ZKTX and burns it.
+    function executePendingBuyback(uint256 quoteAmount, uint256 minimumBuybackOut)
+        external
+        nonReentrant
+        whenActive
+        onlyKeeper
+        returns (uint256 zktxBurned)
+    {
+        if (zktxToken == address(0)) revert MarketNotReady();
+        if (quoteAmount == 0 || minimumBuybackOut == 0) revert ZeroValue();
+        if (quoteAmount > pendingBuybackQuote) revert ReserveTooLow();
+        pendingBuybackQuote -= quoteAmount;
+        zktxBurned = _executeSwap(marketQuoteAsset, zktxToken, quoteAmount, minimumBuybackOut, address(this));
+        _burnZktx(zktxBurned);
+        totalZktxBurned += zktxBurned;
+        emit PendingBuybackExecuted(quoteAmount, zktxBurned);
     }
 
     /// @notice Converts completed or expired order proceeds and any unspent input into private notes.

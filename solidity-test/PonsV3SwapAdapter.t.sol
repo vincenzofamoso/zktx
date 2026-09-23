@@ -31,7 +31,6 @@ contract MockV3Router is IUniswapV3SwapRouter {
         returns (uint256 amountOut)
     {
         require(params.fee == 10_000, "fee");
-        require(params.deadline == block.timestamp, "deadline");
         require(
             AdapterTestToken(params.tokenIn).transferFrom(msg.sender, address(this), params.amountIn),
             "input transfer"

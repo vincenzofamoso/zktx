@@ -11,9 +11,13 @@ WorkingDirectory=/home/ops/sessions/group-1004342212523/projects/zktx
 Environment=NODE_ENV=production
 Environment=PROTOCOL_MODE=live
 Environment=PORT=3531
-Environment=ZKTX_VAULT_ADDRESS=0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da
+Environment=ZKTX_VAULT_ADDRESS=0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760
 Environment=RH_RPC_URL=https://rpc.mainnet.chain.robinhood.com
-Environment=ZKTX_START_BLOCK=69850600
+Environment=ZKTX_START_BLOCK=70279026
+Environment=ZKTX_STATE_FILE=/home/ops/sessions/group-1004342212523/projects/zktx/data/state-market.json
+Environment=ZKTX_MARKET_KEEPER_ENABLED=true
+LoadCredential=operator-wallets:/home/ops/.zktx-secrets/mainnet-e2e-wallets.json
+Environment=ZKTX_OPERATOR_WALLETS_FILE=%d/operator-wallets
 ExecStart=/usr/bin/node server/index.js
 Restart=on-failure
 RestartSec=3

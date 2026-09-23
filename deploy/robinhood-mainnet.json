@@ -20,8 +20,26 @@
     }
   },
   "upgradedVault": {
-    "status": "blocked-until-zktx-token-address",
-    "reason": "The immutable market configuration requires the real burnable ZKTX token for its mandatory 1% buyback-and-burn route."
+    "status": "capped-pre-token-pilot",
+    "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760",
+    "deploymentTransaction": "0xdfb5f806aadee5f5640f566774060abef90bbc4bdff9cfc137b2b99b4d782f77",
+    "deploymentBlock": 70279026,
+    "quoteAsset": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+    "buybackMode": "Accumulate the 1% quote allocation until the real ZKTX token is activated."
+  },
+  "pilotExecution": {
+    "swapRouter02": "0xCaf681a66D020601342297493863E78C959E5cb2",
+    "venueAdapter": "0xd8c8291b0b32202dCe58540e956F33018D459F59",
+    "routingAdapter": "0xA5e5C5C182e9C157Ea8d7F5b71b9c7e5b3Ff7fD8",
+    "poolFee": 100,
+    "routes": [
+      "WETH->USDG",
+      "USDG->WETH"
+    ],
+    "canaryTransactions": [
+      "0xc3df56d95404e0d095ac491edd3ec2e44c55b6b6de24441cb8de3e9225dc93c2",
+      "0xba23b50c9671432879f9f19bd9b66751ce8a5be55a18ff57b740f452e54dcf72"
+    ]
   },
   "legacyVault": {
     "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da",

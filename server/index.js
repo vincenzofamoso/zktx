@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { StateStore } from "../src/state-store.js";
@@ -24,12 +25,23 @@ await store.load();
 let indexer = null;
 let relayer = null;
 let marketKeeper = null;
+function credentialKey(role) {
+  const filename = process.env.ZKTX_OPERATOR_WALLETS_FILE;
+  if (!filename) return null;
+  const parsed = JSON.parse(fs.readFileSync(filename, "utf8"));
+  const record = parsed.wallets?.find((wallet) => wallet.role === role);
+  if (!record || !/^0x[0-9a-fA-F]{64}$/.test(record.private_key || "")) {
+    throw new Error(`Missing ${role} key in operator wallet credential`);
+  }
+  return record.private_key;
+}
 if (mode === "live" && vaultAddress && rpcUrl) {
   indexer = createIndexer({ rpcUrl, vaultAddress, store, startBlock: BigInt(process.env.ZKTX_START_BLOCK || 0) });
   await indexer.sync();
   setInterval(() => indexer.sync().catch((error) => console.error("indexer", error.message)), 12_000).unref();
-  if (process.env.ZKTX_RELAYER_PRIVATE_KEY) relayer = createRelayer({ rpcUrl, vaultAddress, privateKey: process.env.ZKTX_RELAYER_PRIVATE_KEY, chainId });
-  const keeperKey = process.env.ZKTX_KEEPER_PRIVATE_KEY || process.env.ZKTX_RELAYER_PRIVATE_KEY;
+  const relayerKey = process.env.ZKTX_RELAYER_PRIVATE_KEY || credentialKey("relayer");
+  if (relayerKey) relayer = createRelayer({ rpcUrl, vaultAddress, privateKey: relayerKey, chainId });
+  const keeperKey = process.env.ZKTX_KEEPER_PRIVATE_KEY || relayerKey;
   if (process.env.ZKTX_MARKET_KEEPER_ENABLED === "true" && keeperKey) {
     marketKeeper = createMarketKeeper({
       rpcUrl,

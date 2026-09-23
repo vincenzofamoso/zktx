@@ -14,7 +14,6 @@ interface IUniswapV3SwapRouter {
         address tokenOut;
         uint24 fee;
         address recipient;
-        uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
@@ -71,7 +70,6 @@ contract PonsV3SwapAdapter is ISwapAdapter {
                 tokenOut: tokenOut,
                 fee: poolFee,
                 recipient: recipient,
-                deadline: block.timestamp,
                 amountIn: amountIn,
                 amountOutMinimum: minimumAmountOut,
                 sqrtPriceLimitX96: 0

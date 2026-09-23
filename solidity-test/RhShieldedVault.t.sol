@@ -362,6 +362,71 @@ contract RhShieldedVaultTest {
         require(zktx.totalSupply() == 0, "supply burn");
     }
 
+    function testPreTokenModeAccruesThenBurnsPendingBuyback() public {
+        RhShieldedVault pilot =
+            new RhShieldedVault(address(this), verifier, verifier, verifier, verifier, verifier, ROOT);
+        pilot.setAssetSupported(address(token), true);
+        pilot.setAssetSupported(address(quote), true);
+        pilot.setReserveCap(address(token), 200 ether);
+        pilot.setReserveCap(address(quote), 200 ether);
+        pilot.configureMarket(verifier, verifier, adapter, address(quote), address(0), address(this));
+        token.approve(address(pilot), type(uint256).max);
+        pilot.deposit(proof(), address(token), 100 ether, bytes32(uint256(121)), bytes32(uint256(12)));
+
+        bytes32 orderId = bytes32(uint256(521));
+        pilot.openMarketOrder(
+            proof(),
+            bytes32(uint256(12)),
+            address(token),
+            100 ether,
+            address(quote),
+            90 ether,
+            orderId,
+            bytes32(uint256(621)),
+            block.timestamp + 5 minutes
+        );
+        RhShieldedVault.MarketOrder memory order = pilot.getMarketOrder(orderId);
+        while (order.executedInput < order.amountIn) {
+            pilot.executeNextMarketSlice(orderId, 0);
+            vm.roll(block.number + 1);
+            order = pilot.getMarketOrder(orderId);
+        }
+
+        require(pilot.pendingBuybackQuote() == 1 ether, "pending buyback quote");
+        require(pilot.totalZktxBurned() == 0, "unexpected pre-token burn");
+        pilot.activateBuybackToken(address(zktx));
+        pilot.executePendingBuyback(1 ether, 1);
+        require(pilot.pendingBuybackQuote() == 0, "pending buyback not cleared");
+        require(pilot.totalZktxBurned() == 1 ether, "pending buyback not burned");
+        require(zktx.totalSupply() == 0, "pending supply burn");
+    }
+
+    function testPreTokenModeRejectsNonzeroBuybackMinimum() public {
+        RhShieldedVault pilot =
+            new RhShieldedVault(address(this), verifier, verifier, verifier, verifier, verifier, ROOT);
+        pilot.setAssetSupported(address(token), true);
+        pilot.setAssetSupported(address(quote), true);
+        pilot.setReserveCap(address(token), 200 ether);
+        pilot.setReserveCap(address(quote), 200 ether);
+        pilot.configureMarket(verifier, verifier, adapter, address(quote), address(0), address(this));
+        token.approve(address(pilot), type(uint256).max);
+        pilot.deposit(proof(), address(token), 100 ether, bytes32(uint256(122)), bytes32(uint256(12)));
+        bytes32 orderId = bytes32(uint256(522));
+        pilot.openMarketOrder(
+            proof(),
+            bytes32(uint256(12)),
+            address(token),
+            100 ether,
+            address(quote),
+            90 ether,
+            orderId,
+            bytes32(uint256(622)),
+            block.timestamp + 5 minutes
+        );
+        (bool ok,) = address(pilot).call(abi.encodeCall(pilot.executeNextMarketSlice, (orderId, 1)));
+        require(!ok, "pre-token mode accepted buyback minimum");
+    }
+
     function testMarketSliceCannotExecuteTwiceInOneBlock() public {
         vault.deposit(proof(), address(token), 100 ether, bytes32(uint256(101)), bytes32(uint256(12)));
         bytes32 orderId = bytes32(uint256(503));
@@ -432,7 +497,8 @@ contract RhShieldedVaultTest {
             bytes32(uint256(606)),
             block.timestamp + 5 minutes
         );
-        (bool ok,) = address(cappedVault).call(abi.encodeCall(cappedVault.executeNextMarketSlice, (orderId, 1)));
+        (bool ok,) =
+            address(cappedVault).call(abi.encodeCall(cappedVault.executeNextMarketSlice, (orderId, 1)));
         require(!ok, "market output exceeded cap");
         RhShieldedVault.MarketOrder memory order = cappedVault.getMarketOrder(orderId);
         require(order.executedInput == 0, "cap failure retained state");
