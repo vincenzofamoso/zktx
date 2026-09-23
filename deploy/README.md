@@ -1,5 +1,7 @@
 # Production deployment gate
 
+The verified Robinhood Chain deployment record is stored in `robinhood-mainnet.json`. The routing adapter deployed at block `70269110`; the earlier capped pilot vault predates market routing and cannot be retrofitted with an adapter.
+
 `deploy-vault.sh` refuses to broadcast unless all verifier contracts exist on Robinhood Chain, the RPC reports chain ID 4663, and `CONFIRM_UNAUDITED_DEPLOY=I_ACCEPT_UNAUDITED_RISK` is present. This acknowledgement records that the requested launch is skipping audits; it is not an audit claim.
 
 Before running it:

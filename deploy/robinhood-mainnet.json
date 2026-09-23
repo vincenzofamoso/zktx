@@ -1,0 +1,16 @@
+{
+  "network": "Robinhood Chain",
+  "chainId": 4663,
+  "routingAdapter": {
+    "address": "0xaBD17fC2e7c4438b3A1ADC73189c3E0eA5f7337C",
+    "owner": "0x720F51102048c24978705CE767bb112eB556F21f",
+    "routeDelaySeconds": 86400,
+    "deploymentTransaction": "0xa8fadb3086cfd026f66ad300cf115afeb7a037e9fea559f1c15a2926be3714c7",
+    "deploymentBlock": 70269110
+  },
+  "legacyVault": {
+    "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da",
+    "routingCompatible": false,
+    "note": "This capped pilot predates market routing. Deploy the upgraded vault to use the routing adapter."
+  }
+}
