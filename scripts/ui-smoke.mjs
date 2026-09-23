@@ -26,7 +26,7 @@ async function runViewport(name, viewport) {
 
   await page.locator('[data-tab="swap"]').click();
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
-  check((await page.locator("#action-title").textContent()) === "Execute a shielded PONS market trade", `${name}: swap copy updates`);
+  check((await page.locator("#action-title").textContent()) === "Execute a shielded market trade", `${name}: swap copy updates`);
   await page.locator('[data-tab="withdraw"]').click();
   check(await page.locator("#withdrawal-planner").isVisible(), `${name}: withdrawal planner appears`);
   await page.locator('[data-tab="send"]').click();

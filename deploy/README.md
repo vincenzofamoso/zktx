@@ -9,9 +9,10 @@ Before running it:
 3. Use a multisig as `ZKTX_OWNER`.
 4. Fund dedicated relayer and keeper accounts and apply production rate controls.
 5. Deploy the vault, allow only reviewed token contracts, and test with capped limits before removing the pause.
-6. Deploy the adapter matching the PONS launch generation. `PonsV2SwapAdapter` supports V2 curves and graduated V4 pools; `PonsV3SwapAdapter` is for V1.
-7. Generate the final market-order and market-settlement verifiers, then run `configure-market.sh`.
-8. Authorize the dedicated keeper and cap its native-gas balance.
+6. Deploy venue adapters for the RH routes being enabled. `PonsV2SwapAdapter` supports V2 curves and graduated V4 pools; `PonsV3SwapAdapter` supports V1 Uniswap V3 pools.
+7. Deploy `RhRoutingSwapAdapter` with `deploy-routing-adapter.sh`, using a reviewed owner and a recommended 24-hour route delay. Propose each direction-specific pair with `configure-routing-adapter.sh`; activate it only after verifying the adapter, tokens, pool, fee tier, quote asset, and canary simulations. Reverse directions are separate routes.
+8. Generate the final market-order and market-settlement verifiers, then run `configure-market.sh` with the routing adapter as `PONS_SWAP_ADAPTER` (the legacy variable name remains for compatibility).
+9. Authorize the dedicated keeper and cap its native-gas balance.
 
 The one-time market configuration fixes the two new verifier addresses, swap adapter, WETH quote asset, ZKTX token, and execution-fee recipient. Replacing any of them requires a new vault and migration plan.
 
