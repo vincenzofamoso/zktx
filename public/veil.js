@@ -312,6 +312,8 @@ form.addEventListener("submit", async (event) => {
     } catch (error) {
       result.textContent = error?.message === "No unspent local note exactly matches this token and amount"
         ? "No matching shielded balance was found. Shield this exact token amount first, or enter the exact amount of an existing shielded note."
+        : error?.message?.includes("Error in template MarketOrder")
+          ? "The selected private note is not synchronized with the current vault. Refresh the page, wait a few seconds, then try again."
         : error?.message || "Could not open the shielded market order.";
     }
     return;
@@ -333,7 +335,9 @@ form.addEventListener("submit", async (event) => {
       onProgress: (message) => { result.textContent = message; },
     });
     refreshLocalNotes();
-    result.innerHTML = `Shielded deposit confirmed. Commitment ${live.record.commitment.slice(0, 12)}… <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
+    result.innerHTML = live.indexed
+      ? `Shielded deposit confirmed and ready to use. Commitment ${live.record.commitment.slice(0, 12)}… <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`
+      : `Shielded deposit confirmed onchain. The private balance is still syncing, so wait a few seconds before swapping. <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
   } catch (error) {
     result.textContent = error?.message || "Could not create the encrypted note.";
   }

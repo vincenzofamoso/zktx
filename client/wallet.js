@@ -136,6 +136,29 @@ function insertedRoot(commitment, pathElements, pathIndices) {
   return value;
 }
 
+function noteMatchesPath(privateNote, path) {
+  return insertedRoot(privateNote.commitment, path.pathElements, path.pathIndices) === BigInt(path.root);
+}
+
+async function loadMerklePath(index) {
+  const response = await fetch(apiUrl(`/api/tree/path/${index}`), { cache: "no-store" });
+  const path = await response.json();
+  if (!response.ok) throw new Error(path.error || "Could not load the note's Merkle path");
+  return path;
+}
+
+async function waitForIndexedNote(privateNote, timeoutMs = 48_000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const path = await loadMerklePath(privateNote.index);
+      if (noteMatchesPath(privateNote, path)) return true;
+    } catch { /* The indexer may not have reached the confirmed deposit yet. */ }
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  return false;
+}
+
 async function rpc(method, params) {
   if (!window.ethereum) throw new Error("Install MetaMask or another EVM wallet");
   return window.ethereum.request({ method, params });
@@ -298,7 +321,9 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
   }]);
   const receipt = await waitForReceipt(depositHash, 180_000, "Shield deposit");
   const record = commitEncryptedNote(preparedRecord);
-  return { record, approvalHash, depositHash, receipt };
+  onProgress("Deposit confirmed. Syncing your private balance...");
+  const indexed = await waitForIndexedNote(created);
+  return { record, approvalHash, depositHash, receipt, indexed };
 }
 
 export async function openMarketOrderLive({
@@ -326,6 +351,8 @@ export async function openMarketOrderLive({
   onProgress("Unlocking the matching local shielded note…");
   let selectedRecord;
   let input;
+  let path;
+  let foundMatchingLocalNote = false;
   for (const record of storedNotes()) {
     if (record.spentBy) continue;
     try {
@@ -335,17 +362,21 @@ export async function openMarketOrderLive({
         && candidate.note.amount === BigInt(amountIn)
         && candidate.index !== null
       ) {
-        selectedRecord = record;
-        input = candidate;
-        break;
+        foundMatchingLocalNote = true;
+        const candidatePath = await loadMerklePath(candidate.index);
+        if (noteMatchesPath(candidate, candidatePath)) {
+          selectedRecord = record;
+          input = candidate;
+          path = candidatePath;
+          break;
+        }
       }
     } catch { /* Keep looking; one wrong/corrupt record must not block the wallet. */ }
   }
-  if (!input) throw new Error("No unspent local note exactly matches this token and amount");
-
-  const pathResponse = await fetch(apiUrl(`/api/tree/path/${input.index}`), { cache: "no-store" });
-  const path = await pathResponse.json();
-  if (!pathResponse.ok) throw new Error(path.error || "Could not load the note's Merkle path");
+  if (!input) {
+    if (foundMatchingLocalNote) throw new Error("This local note is not in the current vault tree. If you just shielded it, wait a few seconds and try again.");
+    throw new Error("No unspent local note exactly matches this token and amount");
+  }
   const outputOwnerSecret = randomField();
   const outputOwnerPublicKey = ownerPublicKey(outputOwnerSecret);
   const outputBlinding = randomField();
