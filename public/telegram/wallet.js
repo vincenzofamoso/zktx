@@ -9179,15 +9179,15 @@ var init_isAddressEqual = __esm({
 });
 
 // node_modules/viem/_esm/utils/formatters/log.js
-function formatLog(log, { args, eventName } = {}) {
+function formatLog(log2, { args, eventName } = {}) {
   return {
-    ...log,
-    blockHash: log.blockHash ? log.blockHash : null,
-    blockNumber: log.blockNumber ? BigInt(log.blockNumber) : null,
-    blockTimestamp: log.blockTimestamp ? BigInt(log.blockTimestamp) : log.blockTimestamp === null ? null : void 0,
-    logIndex: log.logIndex ? Number(log.logIndex) : null,
-    transactionHash: log.transactionHash ? log.transactionHash : null,
-    transactionIndex: log.transactionIndex ? Number(log.transactionIndex) : null,
+    ...log2,
+    blockHash: log2.blockHash ? log2.blockHash : null,
+    blockNumber: log2.blockNumber ? BigInt(log2.blockNumber) : null,
+    blockTimestamp: log2.blockTimestamp ? BigInt(log2.blockTimestamp) : log2.blockTimestamp === null ? null : void 0,
+    logIndex: log2.logIndex ? Number(log2.logIndex) : null,
+    transactionHash: log2.transactionHash ? log2.transactionHash : null,
+    transactionIndex: log2.transactionIndex ? Number(log2.transactionIndex) : null,
     ...eventName ? { args, eventName } : {}
   };
 }
@@ -9308,8 +9308,8 @@ function parseEventLogs(parameters) {
     abi: abiItem,
     selector: toEventSelector(abiItem)
   }));
-  return logs.map((log) => {
-    const formattedLog = typeof log.blockNumber === "string" ? formatLog(log) : log;
+  return logs.map((log2) => {
+    const formattedLog = typeof log2.blockNumber === "string" ? formatLog(log2) : log2;
     const abiItems = abiTopics.filter((abiTopic) => formattedLog.topics[0] === abiTopic.selector);
     if (abiItems.length === 0)
       return null;
@@ -9443,7 +9443,7 @@ async function getLogs(client, { address, blockHash, fromBlock, toBlock, event, 
       ]
     });
   }
-  const formattedLogs = logs.map((log) => formatLog(log));
+  const formattedLogs = logs.map((log2) => formatLog(log2));
   if (!events)
     return formattedLogs;
   return parseEventLogs({
@@ -11920,7 +11920,7 @@ async function getFilterChanges(_client, { filter }) {
   });
   if (typeof logs[0] === "string")
     return logs;
-  const formattedLogs = logs.map((log) => formatLog(log));
+  const formattedLogs = logs.map((log2) => formatLog(log2));
   if (!("abi" in filter) || !filter.abi)
     return formattedLogs;
   return parseEventLogs({
@@ -12023,8 +12023,8 @@ function watchContractEvent(client, parameters) {
           if (batch)
             emit.onLogs(logs);
           else
-            for (const log of logs)
-              emit.onLogs([log]);
+            for (const log2 of logs)
+              emit.onLogs([log2]);
         } catch (err) {
           if (filter && err instanceof InvalidInputRpcError)
             initialized = false;
@@ -12078,15 +12078,15 @@ function watchContractEvent(client, parameters) {
             onData(data) {
               if (!active)
                 return;
-              const log = data.result;
+              const log2 = data.result;
               try {
                 const { eventName: eventName2, args: args2 } = decodeEventLog({
                   abi: abi2,
-                  data: log.data,
-                  topics: log.topics,
+                  data: log2.data,
+                  topics: log2.topics,
                   strict: strict_
                 });
-                const formatted = formatLog(log, {
+                const formatted = formatLog(log2, {
                   args: args2,
                   eventName: eventName2
                 });
@@ -12100,7 +12100,7 @@ function watchContractEvent(client, parameters) {
                   eventName2 = err.abiItem.name;
                   isUnnamed = err.abiItem.inputs?.some((x) => !("name" in x && x.name));
                 }
-                const formatted = formatLog(log, {
+                const formatted = formatLog(log2, {
                   args: isUnnamed ? [] : {},
                   eventName: eventName2
                 });
@@ -12463,10 +12463,10 @@ function withRetry(fn, { delay: delay_ = 100, retryCount = 2, shouldRetry: shoul
         return;
       }
       const retry = async ({ error }) => {
-        const delay = typeof delay_ === "function" ? delay_({ count, error }) : delay_;
-        if (delay) {
+        const delay2 = typeof delay_ === "function" ? delay_({ count, error }) : delay_;
+        if (delay2) {
           try {
-            await wait(delay, { signal });
+            await wait(delay2, { signal });
           } catch (err) {
             reject(err);
             return;
@@ -12510,7 +12510,7 @@ function formatTransactionReceipt(transactionReceipt, _) {
     cumulativeGasUsed: transactionReceipt.cumulativeGasUsed ? BigInt(transactionReceipt.cumulativeGasUsed) : null,
     effectiveGasPrice: transactionReceipt.effectiveGasPrice ? BigInt(transactionReceipt.effectiveGasPrice) : null,
     gasUsed: transactionReceipt.gasUsed ? BigInt(transactionReceipt.gasUsed) : null,
-    logs: transactionReceipt.logs ? transactionReceipt.logs.map((log) => formatLog(log)) : null,
+    logs: transactionReceipt.logs ? transactionReceipt.logs.map((log2) => formatLog(log2)) : null,
     to: transactionReceipt.to ? transactionReceipt.to : null,
     transactionIndex: transactionReceipt.transactionIndex ? hexToNumber(transactionReceipt.transactionIndex) : null,
     status: transactionReceipt.status ? receiptStatuses[transactionReceipt.status] : null,
@@ -13981,7 +13981,7 @@ async function getFilterLogs(_client, { filter }) {
     method: "eth_getFilterLogs",
     params: [filter.id]
   });
-  const formattedLogs = logs.map((log) => formatLog(log));
+  const formattedLogs = logs.map((log2) => formatLog(log2));
   if (!filter.abi)
     return formattedLogs;
   return parseEventLogs({
@@ -17260,7 +17260,7 @@ async function simulateBlocks(client, parameters) {
         const { abi: abi2, args, functionName, to } = blocks[i].calls[j];
         const data = call2.error?.data ?? call2.returnData;
         const gasUsed = BigInt(call2.gasUsed);
-        const logs = call2.logs?.map((log) => formatLog(log));
+        const logs = call2.logs?.map((log2) => formatLog(log2));
         const status2 = call2.status === "0x1" ? "success" : "failure";
         const result2 = abi2 && status2 === "success" && data !== "0x" ? decodeFunctionResult({
           abi: abi2,
@@ -17905,13 +17905,13 @@ function encodeStaticCall(address, data) {
 }
 function tokensFromLogs(logs, account) {
   const account_ = pad(account.toLowerCase(), { size: 32 });
-  return logs.filter((log) => {
-    if (log.topics[0]?.toLowerCase() !== transferEventSelector)
+  return logs.filter((log2) => {
+    if (log2.topics[0]?.toLowerCase() !== transferEventSelector)
       return false;
-    if (log.address.toLowerCase() === ethAddress)
+    if (log2.address.toLowerCase() === ethAddress)
       return false;
-    return log.topics[1]?.toLowerCase() === account_ || log.topics[2]?.toLowerCase() === account_;
-  }).map((log) => log.address.toLowerCase());
+    return log2.topics[1]?.toLowerCase() === account_ || log2.topics[2]?.toLowerCase() === account_;
+  }).map((log2) => log2.address.toLowerCase());
 }
 function isBalance(call2) {
   return call2.status === "success" && /^0x[\da-f]{64}$/i.test(call2.data);
@@ -18873,8 +18873,8 @@ function watchEvent(client, { address, args, batch = true, event, events, fromBl
           if (batch)
             emit.onLogs(logs);
           else
-            for (const log of logs)
-              emit.onLogs([log]);
+            for (const log2 of logs)
+              emit.onLogs([log2]);
         } catch (err) {
           if (filter && err instanceof InvalidInputRpcError)
             initialized = false;
@@ -18922,15 +18922,15 @@ function watchEvent(client, { address, args, batch = true, event, events, fromBl
           onData(data) {
             if (!active)
               return;
-            const log = data.result;
+            const log2 = data.result;
             try {
               const { eventName, args: args2 } = decodeEventLog({
                 abi: events_ ?? [],
-                data: log.data,
-                topics: log.topics,
+                data: log2.data,
+                topics: log2.topics,
                 strict
               });
-              const formatted = formatLog(log, { args: args2, eventName });
+              const formatted = formatLog(log2, { args: args2, eventName });
               onLogs([formatted]);
             } catch (err) {
               let eventName;
@@ -18941,7 +18941,7 @@ function watchEvent(client, { address, args, batch = true, event, events, fromBl
                 eventName = err.abiItem.name;
                 isUnnamed = err.abiItem.inputs?.some((x) => !("name" in x && x.name));
               }
-              const formatted = formatLog(log, {
+              const formatted = formatLog(log2, {
                 args: isUnnamed ? [] : {},
                 eventName
               });
@@ -19347,15 +19347,15 @@ var init_approve = __esm({
       }
       approve2.simulate = simulate;
       function extractEvent(logs) {
-        const [log] = parseEventLogs({
+        const [log2] = parseEventLogs({
           abi: erc20Abi,
           logs,
           eventName: "Approval",
           strict: true
         });
-        if (!log)
+        if (!log2)
           throw new Error("`Approval` event not found.");
-        return log;
+        return log2;
       }
       approve2.extractEvent = extractEvent;
     })(approve || (approve = {}));
@@ -19828,15 +19828,15 @@ var init_transfer = __esm({
       }
       transfer2.simulate = simulate;
       function extractEvent(logs) {
-        const [log] = parseEventLogs({
+        const [log2] = parseEventLogs({
           abi: erc20Abi,
           logs,
           eventName: "Transfer",
           strict: true
         });
-        if (!log)
+        if (!log2)
           throw new Error("`Transfer` event not found.");
-        return log;
+        return log2;
       }
       transfer2.extractEvent = extractEvent;
     })(transfer || (transfer = {}));
@@ -21601,8 +21601,8 @@ function planWithdrawals({ total, destinations, denominations, minDelayMinutes =
     withdrawals[index2 % withdrawals.length].amount += piece;
   });
   for (const withdrawal of withdrawals) {
-    const delay = minDelayMinutes + Math.floor(random() * (maxDelayMinutes - minDelayMinutes + 1));
-    withdrawal.executeAfter = now + delay * 6e4;
+    const delay2 = minDelayMinutes + Math.floor(random() * (maxDelayMinutes - minDelayMinutes + 1));
+    withdrawal.executeAfter = now + delay2 * 6e4;
   }
   withdrawals.sort((a, b) => a.executeAfter - b.executeAfter);
   return { withdrawals, privateChange: remaining, plannedAmount: value - remaining };
@@ -22396,7 +22396,8 @@ function privateKeyToAccount(privateKey, options = {}) {
 
 // apps/telegram-bot/web-src/wallet.js
 globalThis.ZKTX_RUNTIME_CONFIG = { apiBase: "https://zktx.tech", provingBase: "https://zktx.tech/proving" };
-var { shieldLive: shieldLive2, openMarketOrderLive: openMarketOrderLive2 } = await Promise.resolve().then(() => (init_wallet2(), wallet_exports));
+var walletModule = await Promise.resolve().then(() => (init_wallet2(), wallet_exports));
+var { shieldLive: shieldLive2, openMarketOrderLive: openMarketOrderLive2, settleMarketOrderLive: settleMarketOrderLive2, privatePortfolio: privatePortfolio2, storedMarketOrders: storedMarketOrders2 } = walletModule;
 var tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
@@ -22406,13 +22407,16 @@ var jobId = params.get("job") || "";
 var iterations = 6e5;
 var utf8 = new TextEncoder();
 var databaseName = "zktx-trusted-device-v1";
-var chain = { id: 4663, name: "Robinhood Chain", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com"] } } };
+var chain = { id: 4663, name: "Robinhood Chain", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["https://zktx.tech/api/rpc"] } } };
 var transport = http(chain.rpcUrls.default.http[0], { retryCount: 2 });
 var publicClient = createPublicClient({ chain, transport });
 var encode4 = (bytes) => btoa(String.fromCharCode(...bytes));
 var decode2 = (value) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 var status = (text) => document.querySelector("#status").textContent = text;
+var delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 var activeAccount;
+var activeJob;
+var activeOrderId;
 async function db() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, 1);
@@ -22445,7 +22449,10 @@ async function derive(passphrase, vault) {
 async function encrypt(secret, passphrase) {
   const normalized = secret.startsWith("0x") ? secret : `0x${secret}`;
   if (!/^0x[0-9a-fA-F]{64}$/.test(normalized)) throw new Error("Enter a valid EVM private key");
-  const account = privateKeyToAccount(normalized), salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), key = await derive(passphrase, { salt: encode4(salt), kdfIterations: iterations });
+  const account = privateKeyToAccount(normalized);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await derive(passphrase, { salt: encode4(salt), kdfIterations: iterations });
   const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: utf8.encode(`ZKTX:${account.address}:1`) }, key, utf8.encode(normalized)));
   return { account, key, envelope: { version: 1, address: account.address, ciphertext: encode4(ciphertext), iv: encode4(iv), salt: encode4(salt), kdf: "PBKDF2-SHA256", kdfIterations: iterations } };
 }
@@ -22462,49 +22469,154 @@ async function api(path, options = {}) {
   if (!response.ok) throw new Error(payload.error || "Secure wallet request failed");
   return payload;
 }
-async function tokenUnits(address, amount) {
+async function tokenMetadata(address) {
   const response = await fetch(`https://zktx.tech/api/token/${address}`);
   const metadata = await response.json();
   if (!response.ok) throw new Error(metadata.error || "Token metadata unavailable");
+  return metadata;
+}
+async function tokenUnits(address, amount) {
+  const metadata = await tokenMetadata(address);
   const value = String(amount);
   if (!/^\d+(?:\.\d+)?$/.test(value)) throw new Error("Invalid token amount");
   const [whole, fraction = ""] = value.split(".");
   if (fraction.length > metadata.decimals) throw new Error(`Amount has more than ${metadata.decimals} decimals`);
   return BigInt(whole) * 10n ** BigInt(metadata.decimals) + BigInt((fraction + "0".repeat(metadata.decimals)).slice(0, metadata.decimals) || "0");
 }
+function formatUnits2(value, decimals) {
+  const padded = BigInt(value).toString().padStart(decimals + 1, "0");
+  const whole = decimals ? padded.slice(0, -decimals) : padded;
+  const fraction = decimals ? padded.slice(-decimals).replace(/0+$/, "") : "";
+  return fraction ? `${whole}.${fraction}` : whole;
+}
 function installLocalSigner(account) {
   const wallet = createWalletClient({ account, chain, transport });
-  window.ethereum = { request: async ({ method, params: params2 = [] }) => {
+  window.ethereum = { request: async ({ method, params: rpcParams = [] }) => {
     if (method === "eth_chainId") return `0x${chain.id.toString(16)}`;
     if (method === "eth_accounts" || method === "eth_requestAccounts") return [account.address];
-    if (method === "eth_call") return publicClient.request({ method, params: params2 });
-    if (method === "eth_getTransactionReceipt") return publicClient.request({ method, params: params2 });
+    if (method === "eth_call" || method === "eth_getTransactionReceipt") return publicClient.request({ method, params: rpcParams });
     if (method === "eth_sendTransaction") {
-      const tx = params2[0] || {};
-      return wallet.sendTransaction({ account, to: tx.to, data: tx.data, value: tx.value ? BigInt(tx.value) : void 0 });
+      const transaction = rpcParams[0] || {};
+      return wallet.sendTransaction({ account, to: transaction.to, data: transaction.data, value: transaction.value ? BigInt(transaction.value) : void 0 });
     }
-    return publicClient.request({ method, params: params2 });
+    return publicClient.request({ method, params: rpcParams });
   } };
+}
+function startTerminal() {
+  document.querySelector("#execution-terminal").hidden = false;
+  document.querySelector("#execution-lines").replaceChildren();
+  document.querySelector("#execution-state").textContent = "RUNNING";
+}
+function log(message, kind = "normal") {
+  const lines = document.querySelector("#execution-lines");
+  const row = document.createElement("div");
+  row.className = `terminal-line ${kind}`;
+  const time = document.createElement("time");
+  time.textContent = (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const marker = document.createElement("i");
+  marker.textContent = kind === "error" ? "\xD7" : kind === "success" ? "\u2713" : ">";
+  const text = document.createElement("span");
+  text.textContent = message;
+  row.append(time, marker, text);
+  lines.append(row);
+  lines.scrollTop = lines.scrollHeight;
+}
+async function monitorOrder(orderId) {
+  let lastSlices = -1;
+  for (; ; ) {
+    const response = await fetch(`https://zktx.tech/api/market/order/${orderId}`, { cache: "no-store" });
+    const order = await response.json();
+    if (!response.ok) throw new Error(order.error || "Could not load the market order");
+    const slices = Number(order.slicesExecuted);
+    const total = Number(order.sliceCount);
+    if (slices !== lastSlices) {
+      log(slices ? `Execution slice ${slices} of ${total} confirmed` : `Order accepted. Waiting for ${total} execution slices`);
+      lastSlices = slices;
+    }
+    const now = Math.floor(Date.now() / 1e3);
+    const complete = BigInt(order.executedInput) >= BigInt(order.amountIn);
+    const readyAt = complete ? Number(order.lastExecutionAt) + 30 : Number(order.deadline) + 30;
+    if ((complete || now >= Number(order.deadline)) && now >= readyAt) return order;
+    if (complete) document.querySelector("#execution-state").textContent = "FINALIZING";
+    await delay(2500);
+  }
+}
+async function settle(orderId, password, job = null) {
+  document.querySelector("#execution-state").textContent = "CLAIMING";
+  const result = await settleMarketOrderLive2({ orderId, password, onProgress: (message) => log(message) });
+  log("Proceeds added to your Shielded Portfolio", "success");
+  document.querySelector("#execution-state").textContent = "COMPLETE";
+  document.querySelector("#claim").hidden = true;
+  if (job) await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/settle`, { method: "POST", body: JSON.stringify({ orderId, transactionHash: result.transactionHash }) });
+  return result;
 }
 async function execute(job) {
   const password = document.querySelector("#note-password").value;
   if (password.length < 10) throw new Error("Use a private-note password with at least 10 characters");
   installLocalSigner(activeAccount);
   const protocol = await (await fetch("https://zktx.tech/api/status", { cache: "no-store" })).json();
-  let result;
   if (job.type === "shield") {
-    result = await shieldLive2({ account: activeAccount.address, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), password, onProgress: status });
+    const result = await shieldLive2({ account: activeAccount.address, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), password, onProgress: (message) => log(message) });
     return { transactionHash: result.depositHash, approvalHash: result.approvalHash };
   }
   if (job.type === "market") {
     const deadline = BigInt(Math.floor(Date.now() / 1e3) + Number(job.deadlineSeconds));
-    result = await openMarketOrderLive2({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: status });
+    const result = await openMarketOrderLive2({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message) => log(message) });
     return { transactionHash: result.transactionHash, orderId: result.orderId };
   }
   throw new Error("This action does not yet have a live trusted-device executor");
 }
 function showOnly(id) {
-  for (const selector of ["#import", "#unlock", "#wallet", "#review"]) document.querySelector(selector).hidden = selector !== id;
+  for (const selector of ["#import", "#unlock", "#wallet", "#review", "#dashboard"]) document.querySelector(selector).hidden = selector !== id;
+}
+async function loadDashboard() {
+  const password = document.querySelector("#dashboard-password").value;
+  if (password.length < 10) throw new Error("Enter your private-note password");
+  const output = document.querySelector("#dashboard-output");
+  output.replaceChildren();
+  const notes = await privatePortfolio2(password);
+  for (const note of notes) {
+    const metadata = await tokenMetadata(note.asset).catch(() => ({ symbol: `${note.asset.slice(0, 6)}...`, decimals: 0 }));
+    const row = document.createElement("div");
+    row.className = "portfolio-row";
+    const title = document.createElement("b");
+    title.textContent = `${formatUnits2(note.amount, metadata.decimals)} ${metadata.symbol}`;
+    const copy = document.createElement("small");
+    copy.textContent = "Spendable shielded note";
+    row.append(title, copy);
+    output.append(row);
+  }
+  for (const order of storedMarketOrders2().filter((entry) => !entry.settled)) {
+    const row = document.createElement("div");
+    row.className = "portfolio-row";
+    const title = document.createElement("b");
+    title.textContent = "Pending Shielded Swap";
+    const copy = document.createElement("small");
+    copy.textContent = `${order.orderId.slice(0, 12)}...`;
+    const button = document.createElement("button");
+    button.textContent = "Check and claim";
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        startTerminal();
+        await monitorOrder(order.orderId);
+        log("Swap complete. Settlement is ready", "success");
+        await settle(order.orderId, password);
+        await loadDashboard();
+      } catch (error) {
+        log(error.message || "Claim failed", "error");
+        button.disabled = false;
+      }
+    };
+    row.append(title, copy, button);
+    output.append(row);
+  }
+  if (!output.children.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No shielded tokens or pending swaps found for this password.";
+    output.append(empty);
+  }
 }
 async function ready(account) {
   activeAccount = account;
@@ -22515,26 +22627,54 @@ async function ready(account) {
   if (action === "authorize") {
     document.querySelector("#screen-title").textContent = "Review transaction";
     const { message, job } = await api(`/api/v1/jobs/${encodeURIComponent(jobId)}`);
+    activeJob = job;
     document.querySelector("#review").hidden = false;
     document.querySelector("#summary").textContent = message;
     const button = document.querySelector("#authorize");
     button.hidden = false;
     button.onclick = async () => {
       button.disabled = true;
+      startTerminal();
       try {
-        status("Preparing secure execution\u2026");
+        log("Trusted device unlocked");
         const execution = await execute(job);
         await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/complete`, { method: "POST", body: JSON.stringify(execution) });
-        status("Executed successfully. Return to Telegram for the receipt.");
+        if (execution.orderId) {
+          activeOrderId = execution.orderId;
+          log("Private order confirmed onchain", "success");
+          await monitorOrder(execution.orderId);
+          log("Swap complete. Your proceeds are ready to claim", "success");
+          document.querySelector("#execution-state").textContent = "READY TO CLAIM";
+          document.querySelector("#claim").hidden = false;
+        } else {
+          log("Shielded balance updated", "success");
+          document.querySelector("#execution-state").textContent = "COMPLETE";
+          status("Executed successfully. Return to Telegram for the receipt.");
+        }
         tg?.HapticFeedback?.notificationOccurred("success");
       } catch (error) {
-        status(error.shortMessage || error.message || "Execution failed");
+        log(error.shortMessage || error.message || "Execution failed", "error");
+        document.querySelector("#execution-state").textContent = "ACTION NEEDED";
         button.disabled = false;
         tg?.HapticFeedback?.notificationOccurred("error");
       }
     };
+    document.querySelector("#claim").onclick = async () => {
+      const claim = document.querySelector("#claim");
+      claim.disabled = true;
+      try {
+        await settle(activeOrderId, document.querySelector("#note-password").value, activeJob);
+        status("Claim complete. Your proceeds are in the Shielded Portfolio.");
+      } catch (error) {
+        log(error.message || "Claim failed", "error");
+        claim.disabled = false;
+      }
+    };
+    status("Review the action, enter your private-note password, then press the yellow button.");
+  } else {
+    document.querySelector("#dashboard").hidden = false;
+    status("Wallet unlocked. Load your local Shielded Portfolio or resume a pending swap.");
   }
-  status(action === "authorize" ? "Your wallet is ready. Review the action below, choose your private-note password, then press the yellow button." : "Wallet unlocked on this trusted device.");
 }
 async function bootstrap() {
   if (action === "import") {
@@ -22543,7 +22683,8 @@ async function bootstrap() {
     return;
   }
   try {
-    const { vault } = await api("/api/v1/vault"), key = await storedKey(vault.address);
+    const { vault } = await api("/api/v1/vault");
+    const key = await storedKey(vault.address);
     if (!key) {
       showOnly("#unlock");
       status("Unlock the wallet already imported for this Telegram account.");
@@ -22560,11 +22701,18 @@ async function bootstrap() {
     }
   }
 }
+document.querySelector("#refresh-dashboard").onclick = async () => {
+  try {
+    await loadDashboard();
+  } catch (error) {
+    status(error.message || "Could not load portfolio");
+  }
+};
 document.querySelector("#import").onsubmit = async (event) => {
   event.preventDefault();
   const secret = document.querySelector("#private-key"), passphrase = document.querySelector("#passphrase");
   try {
-    status("Encrypting locally\u2026");
+    status("Encrypting locally...");
     const result = await encrypt(secret.value.trim(), passphrase.value);
     secret.value = "";
     passphrase.value = "";

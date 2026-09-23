@@ -2,32 +2,290 @@ import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 globalThis.ZKTX_RUNTIME_CONFIG = { apiBase: "https://zktx.tech", provingBase: "https://zktx.tech/proving" };
-const { shieldLive, openMarketOrderLive } = await import("../../../client/wallet.js");
+const walletModule = await import("../../../client/wallet.js");
+const { shieldLive, openMarketOrderLive, settleMarketOrderLive, privatePortfolio, storedMarketOrders } = walletModule;
 
-const tg = window.Telegram?.WebApp; tg?.ready(); tg?.expand();
-const params = new URL(location.href).searchParams, action = params.get("action") || "wallet", jobId = params.get("job") || "";
-const iterations = 600_000, utf8 = new TextEncoder(), databaseName = "zktx-trusted-device-v1";
-const chain = { id: 4663, name: "Robinhood Chain", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com"] } } };
+const tg = window.Telegram?.WebApp;
+tg?.ready();
+tg?.expand();
+
+const params = new URL(location.href).searchParams;
+const action = params.get("action") || "wallet";
+const jobId = params.get("job") || "";
+const iterations = 600_000;
+const utf8 = new TextEncoder();
+const databaseName = "zktx-trusted-device-v1";
+const chain = { id: 4663, name: "Robinhood Chain", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["https://zktx.tech/api/rpc"] } } };
 const transport = http(chain.rpcUrls.default.http[0], { retryCount: 2 });
 const publicClient = createPublicClient({ chain, transport });
 const encode = (bytes) => btoa(String.fromCharCode(...bytes));
 const decode = (value) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 const status = (text) => document.querySelector("#status").textContent = text;
+const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let activeAccount;
+let activeJob;
+let activeOrderId;
 
-async function db(){return new Promise((resolve,reject)=>{const request=indexedDB.open(databaseName,1);request.onupgradeneeded=()=>request.result.createObjectStore("keys");request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
-async function storedKey(address){const database=await db();return new Promise((resolve,reject)=>{const request=database.transaction("keys","readonly").objectStore("keys").get(address.toLowerCase());request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);}).finally(()=>database.close());}
-async function saveKey(address,key){const database=await db();await new Promise((resolve,reject)=>{const request=database.transaction("keys","readwrite").objectStore("keys").put(key,address.toLowerCase());request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);}).finally(()=>database.close());}
-async function derive(passphrase,vault){if(passphrase.length<12)throw new Error("Use a recovery passphrase with at least 12 characters");const material=await crypto.subtle.importKey("raw",utf8.encode(passphrase),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:decode(vault.salt),iterations:vault.kdfIterations,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);}
-async function encrypt(secret,passphrase){const normalized=secret.startsWith("0x")?secret:`0x${secret}`;if(!/^0x[0-9a-fA-F]{64}$/.test(normalized))throw new Error("Enter a valid EVM private key");const account=privateKeyToAccount(normalized),salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),key=await derive(passphrase,{salt:encode(salt),kdfIterations:iterations});const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv,additionalData:utf8.encode(`ZKTX:${account.address}:1`)},key,utf8.encode(normalized)));return{account,key,envelope:{version:1,address:account.address,ciphertext:encode(ciphertext),iv:encode(iv),salt:encode(salt),kdf:"PBKDF2-SHA256",kdfIterations:iterations}};}
-async function decryptVault(vault,key){const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv:decode(vault.iv),additionalData:utf8.encode(`ZKTX:${vault.address}:1`)},key,decode(vault.ciphertext));const account=privateKeyToAccount(new TextDecoder().decode(clear));if(account.address.toLowerCase()!==vault.address.toLowerCase())throw new Error("Vault address mismatch");return account;}
-async function api(path,options={}){if(!tg?.initData)throw new Error("Open this page from the ZKTX Telegram bot");const response=await fetch(`/telegram-api${path}`,{...options,headers:{"content-type":"application/json","x-telegram-init-data":tg.initData,...options.headers}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"Secure wallet request failed");return payload;}
-async function tokenUnits(address, amount){const response=await fetch(`https://zktx.tech/api/token/${address}`);const metadata=await response.json();if(!response.ok)throw new Error(metadata.error||"Token metadata unavailable");const value=String(amount);if(!/^\d+(?:\.\d+)?$/.test(value))throw new Error("Invalid token amount");const [whole,fraction=""]=value.split(".");if(fraction.length>metadata.decimals)throw new Error(`Amount has more than ${metadata.decimals} decimals`);return BigInt(whole)*10n**BigInt(metadata.decimals)+BigInt((fraction+"0".repeat(metadata.decimals)).slice(0,metadata.decimals)||"0");}
-function installLocalSigner(account){const wallet=createWalletClient({account,chain,transport});window.ethereum={request:async({method,params=[]})=>{if(method==="eth_chainId")return `0x${chain.id.toString(16)}`;if(method==="eth_accounts"||method==="eth_requestAccounts")return[account.address];if(method==="eth_call")return publicClient.request({method,params});if(method==="eth_getTransactionReceipt")return publicClient.request({method,params});if(method==="eth_sendTransaction"){const tx=params[0]||{};return wallet.sendTransaction({account,to:tx.to,data:tx.data,value:tx.value?BigInt(tx.value):undefined});}return publicClient.request({method,params});}};}
-async function execute(job){const password=document.querySelector("#note-password").value;if(password.length<10)throw new Error("Use a private-note password with at least 10 characters");installLocalSigner(activeAccount);const protocol=await(await fetch("https://zktx.tech/api/status",{cache:"no-store"})).json();let result;if(job.type==="shield"){result=await shieldLive({account:activeAccount.address,chainId:protocol.chainId,vaultAddress:protocol.vaultAddress,asset:job.token,amount:await tokenUnits(job.token,job.amount),password,onProgress:status});return{transactionHash:result.depositHash,approvalHash:result.approvalHash};}if(job.type==="market"){const deadline=BigInt(Math.floor(Date.now()/1000)+Number(job.deadlineSeconds));result=await openMarketOrderLive({chainId:protocol.chainId,vaultAddress:protocol.vaultAddress,assetIn:job.token,amountIn:await tokenUnits(job.token,job.amount),assetOut:job.receiveToken,minimumAmountOut:await tokenUnits(job.receiveToken,job.receiveAmount),deadline,password,onProgress:status});return{transactionHash:result.transactionHash,orderId:result.orderId};}throw new Error("This action does not yet have a live trusted-device executor");}
-function showOnly(id){for(const selector of["#import","#unlock","#wallet","#review"])document.querySelector(selector).hidden=selector!==id;}
-async function ready(account){activeAccount=account;document.querySelector("#import").hidden=true;document.querySelector("#unlock").hidden=true;document.querySelector("#wallet").hidden=false;document.querySelector("#address").textContent=account.address;if(action==="authorize"){document.querySelector("#screen-title").textContent="Review transaction";const {message,job}=await api(`/api/v1/jobs/${encodeURIComponent(jobId)}`);document.querySelector("#review").hidden=false;document.querySelector("#summary").textContent=message;const button=document.querySelector("#authorize");button.hidden=false;button.onclick=async()=>{button.disabled=true;try{status("Preparing secure execution…");const execution=await execute(job);await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/complete`,{method:"POST",body:JSON.stringify(execution)});status("Executed successfully. Return to Telegram for the receipt.");tg?.HapticFeedback?.notificationOccurred("success");}catch(error){status(error.shortMessage||error.message||"Execution failed");button.disabled=false;tg?.HapticFeedback?.notificationOccurred("error");}};}status(action==="authorize"?"Your wallet is ready. Review the action below, choose your private-note password, then press the yellow button.":"Wallet unlocked on this trusted device.");}
-async function bootstrap(){if(action==="import"){showOnly("#import");status("One-time setup: encrypt and import your wallet on this device.");return;}try{const {vault}=await api("/api/v1/vault"),key=await storedKey(vault.address);if(!key){showOnly("#unlock");status("Unlock the wallet already imported for this Telegram account.");return;}await ready(await decryptVault(vault,key));}catch(error){if(String(error.message).includes("Wallet not found")){showOnly("#import");status("Import a wallet once, then this transaction will continue automatically.");}else{showOnly("#unlock");status("Unlock the wallet already imported for this Telegram account.");}}}
-document.querySelector("#import").onsubmit=async(event)=>{event.preventDefault();const secret=document.querySelector("#private-key"),passphrase=document.querySelector("#passphrase");try{status("Encrypting locally…");const result=await encrypt(secret.value.trim(),passphrase.value);secret.value="";passphrase.value="";await api("/api/v1/vault",{method:"PUT",body:JSON.stringify(result.envelope)});await saveKey(result.account.address,result.key);document.querySelector("#import").hidden=true;await ready(result.account);}catch(error){secret.value="";passphrase.value="";status(error.message||"Import failed");}};
-document.querySelector("#unlock").onsubmit=async(event)=>{event.preventDefault();const passphrase=document.querySelector("#unlock-passphrase");try{const {vault}=await api("/api/v1/vault"),key=await derive(passphrase.value,vault);passphrase.value="";const account=await decryptVault(vault,key);await saveKey(vault.address,key);document.querySelector("#unlock").hidden=true;await ready(account);}catch{passphrase.value="";status("Wallet unlock failed.");}};
+async function db() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(databaseName, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("keys");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function storedKey(address) {
+  const database = await db();
+  return new Promise((resolve, reject) => {
+    const request = database.transaction("keys", "readonly").objectStore("keys").get(address.toLowerCase());
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  }).finally(() => database.close());
+}
+
+async function saveKey(address, key) {
+  const database = await db();
+  await new Promise((resolve, reject) => {
+    const request = database.transaction("keys", "readwrite").objectStore("keys").put(key, address.toLowerCase());
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  }).finally(() => database.close());
+}
+
+async function derive(passphrase, vault) {
+  if (passphrase.length < 12) throw new Error("Use a recovery passphrase with at least 12 characters");
+  const material = await crypto.subtle.importKey("raw", utf8.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: decode(vault.salt), iterations: vault.kdfIterations, hash: "SHA-256" }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+async function encrypt(secret, passphrase) {
+  const normalized = secret.startsWith("0x") ? secret : `0x${secret}`;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(normalized)) throw new Error("Enter a valid EVM private key");
+  const account = privateKeyToAccount(normalized);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await derive(passphrase, { salt: encode(salt), kdfIterations: iterations });
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: utf8.encode(`ZKTX:${account.address}:1`) }, key, utf8.encode(normalized)));
+  return { account, key, envelope: { version: 1, address: account.address, ciphertext: encode(ciphertext), iv: encode(iv), salt: encode(salt), kdf: "PBKDF2-SHA256", kdfIterations: iterations } };
+}
+
+async function decryptVault(vault, key) {
+  const clear = await crypto.subtle.decrypt({ name: "AES-GCM", iv: decode(vault.iv), additionalData: utf8.encode(`ZKTX:${vault.address}:1`) }, key, decode(vault.ciphertext));
+  const account = privateKeyToAccount(new TextDecoder().decode(clear));
+  if (account.address.toLowerCase() !== vault.address.toLowerCase()) throw new Error("Vault address mismatch");
+  return account;
+}
+
+async function api(path, options = {}) {
+  if (!tg?.initData) throw new Error("Open this page from the ZKTX Telegram bot");
+  const response = await fetch(`/telegram-api${path}`, { ...options, headers: { "content-type": "application/json", "x-telegram-init-data": tg.initData, ...options.headers } });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Secure wallet request failed");
+  return payload;
+}
+
+async function tokenMetadata(address) {
+  const response = await fetch(`https://zktx.tech/api/token/${address}`);
+  const metadata = await response.json();
+  if (!response.ok) throw new Error(metadata.error || "Token metadata unavailable");
+  return metadata;
+}
+
+async function tokenUnits(address, amount) {
+  const metadata = await tokenMetadata(address);
+  const value = String(amount);
+  if (!/^\d+(?:\.\d+)?$/.test(value)) throw new Error("Invalid token amount");
+  const [whole, fraction = ""] = value.split(".");
+  if (fraction.length > metadata.decimals) throw new Error(`Amount has more than ${metadata.decimals} decimals`);
+  return BigInt(whole) * 10n ** BigInt(metadata.decimals) + BigInt((fraction + "0".repeat(metadata.decimals)).slice(0, metadata.decimals) || "0");
+}
+
+function formatUnits(value, decimals) {
+  const padded = BigInt(value).toString().padStart(decimals + 1, "0");
+  const whole = decimals ? padded.slice(0, -decimals) : padded;
+  const fraction = decimals ? padded.slice(-decimals).replace(/0+$/, "") : "";
+  return fraction ? `${whole}.${fraction}` : whole;
+}
+
+function installLocalSigner(account) {
+  const wallet = createWalletClient({ account, chain, transport });
+  window.ethereum = { request: async ({ method, params: rpcParams = [] }) => {
+    if (method === "eth_chainId") return `0x${chain.id.toString(16)}`;
+    if (method === "eth_accounts" || method === "eth_requestAccounts") return [account.address];
+    if (method === "eth_call" || method === "eth_getTransactionReceipt") return publicClient.request({ method, params: rpcParams });
+    if (method === "eth_sendTransaction") {
+      const transaction = rpcParams[0] || {};
+      return wallet.sendTransaction({ account, to: transaction.to, data: transaction.data, value: transaction.value ? BigInt(transaction.value) : undefined });
+    }
+    return publicClient.request({ method, params: rpcParams });
+  } };
+}
+
+function startTerminal() {
+  document.querySelector("#execution-terminal").hidden = false;
+  document.querySelector("#execution-lines").replaceChildren();
+  document.querySelector("#execution-state").textContent = "RUNNING";
+}
+
+function log(message, kind = "normal") {
+  const lines = document.querySelector("#execution-lines");
+  const row = document.createElement("div");
+  row.className = `terminal-line ${kind}`;
+  const time = document.createElement("time");
+  time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const marker = document.createElement("i");
+  marker.textContent = kind === "error" ? "×" : kind === "success" ? "✓" : ">";
+  const text = document.createElement("span");
+  text.textContent = message;
+  row.append(time, marker, text);
+  lines.append(row);
+  lines.scrollTop = lines.scrollHeight;
+}
+
+async function monitorOrder(orderId) {
+  let lastSlices = -1;
+  for (;;) {
+    const response = await fetch(`https://zktx.tech/api/market/order/${orderId}`, { cache: "no-store" });
+    const order = await response.json();
+    if (!response.ok) throw new Error(order.error || "Could not load the market order");
+    const slices = Number(order.slicesExecuted);
+    const total = Number(order.sliceCount);
+    if (slices !== lastSlices) {
+      log(slices ? `Execution slice ${slices} of ${total} confirmed` : `Order accepted. Waiting for ${total} execution slices`);
+      lastSlices = slices;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const complete = BigInt(order.executedInput) >= BigInt(order.amountIn);
+    const readyAt = complete ? Number(order.lastExecutionAt) + 30 : Number(order.deadline) + 30;
+    if ((complete || now >= Number(order.deadline)) && now >= readyAt) return order;
+    if (complete) document.querySelector("#execution-state").textContent = "FINALIZING";
+    await delay(2_500);
+  }
+}
+
+async function settle(orderId, password, job = null) {
+  document.querySelector("#execution-state").textContent = "CLAIMING";
+  const result = await settleMarketOrderLive({ orderId, password, onProgress: (message) => log(message) });
+  log("Proceeds added to your Shielded Portfolio", "success");
+  document.querySelector("#execution-state").textContent = "COMPLETE";
+  document.querySelector("#claim").hidden = true;
+  if (job) await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/settle`, { method: "POST", body: JSON.stringify({ orderId, transactionHash: result.transactionHash }) });
+  return result;
+}
+
+async function execute(job) {
+  const password = document.querySelector("#note-password").value;
+  if (password.length < 10) throw new Error("Use a private-note password with at least 10 characters");
+  installLocalSigner(activeAccount);
+  const protocol = await (await fetch("https://zktx.tech/api/status", { cache: "no-store" })).json();
+  if (job.type === "shield") {
+    const result = await shieldLive({ account: activeAccount.address, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), password, onProgress: (message) => log(message) });
+    return { transactionHash: result.depositHash, approvalHash: result.approvalHash };
+  }
+  if (job.type === "market") {
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(job.deadlineSeconds));
+    const result = await openMarketOrderLive({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message) => log(message) });
+    return { transactionHash: result.transactionHash, orderId: result.orderId };
+  }
+  throw new Error("This action does not yet have a live trusted-device executor");
+}
+
+function showOnly(id) {
+  for (const selector of ["#import", "#unlock", "#wallet", "#review", "#dashboard"]) document.querySelector(selector).hidden = selector !== id;
+}
+
+async function loadDashboard() {
+  const password = document.querySelector("#dashboard-password").value;
+  if (password.length < 10) throw new Error("Enter your private-note password");
+  const output = document.querySelector("#dashboard-output");
+  output.replaceChildren();
+  const notes = await privatePortfolio(password);
+  for (const note of notes) {
+    const metadata = await tokenMetadata(note.asset).catch(() => ({ symbol: `${note.asset.slice(0, 6)}...`, decimals: 0 }));
+    const row = document.createElement("div"); row.className = "portfolio-row";
+    const title = document.createElement("b"); title.textContent = `${formatUnits(note.amount, metadata.decimals)} ${metadata.symbol}`;
+    const copy = document.createElement("small"); copy.textContent = "Spendable shielded note";
+    row.append(title, copy); output.append(row);
+  }
+  for (const order of storedMarketOrders().filter((entry) => !entry.settled)) {
+    const row = document.createElement("div"); row.className = "portfolio-row";
+    const title = document.createElement("b"); title.textContent = "Pending Shielded Swap";
+    const copy = document.createElement("small"); copy.textContent = `${order.orderId.slice(0, 12)}...`;
+    const button = document.createElement("button"); button.textContent = "Check and claim";
+    button.onclick = async () => { button.disabled = true; try { startTerminal(); await monitorOrder(order.orderId); log("Swap complete. Settlement is ready", "success"); await settle(order.orderId, password); await loadDashboard(); } catch (error) { log(error.message || "Claim failed", "error"); button.disabled = false; } };
+    row.append(title, copy, button); output.append(row);
+  }
+  if (!output.children.length) { const empty = document.createElement("p"); empty.className = "empty"; empty.textContent = "No shielded tokens or pending swaps found for this password."; output.append(empty); }
+}
+
+async function ready(account) {
+  activeAccount = account;
+  document.querySelector("#import").hidden = true;
+  document.querySelector("#unlock").hidden = true;
+  document.querySelector("#wallet").hidden = false;
+  document.querySelector("#address").textContent = account.address;
+  if (action === "authorize") {
+    document.querySelector("#screen-title").textContent = "Review transaction";
+    const { message, job } = await api(`/api/v1/jobs/${encodeURIComponent(jobId)}`);
+    activeJob = job;
+    document.querySelector("#review").hidden = false;
+    document.querySelector("#summary").textContent = message;
+    const button = document.querySelector("#authorize");
+    button.hidden = false;
+    button.onclick = async () => {
+      button.disabled = true;
+      startTerminal();
+      try {
+        log("Trusted device unlocked");
+        const execution = await execute(job);
+        await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/complete`, { method: "POST", body: JSON.stringify(execution) });
+        if (execution.orderId) {
+          activeOrderId = execution.orderId;
+          log("Private order confirmed onchain", "success");
+          await monitorOrder(execution.orderId);
+          log("Swap complete. Your proceeds are ready to claim", "success");
+          document.querySelector("#execution-state").textContent = "READY TO CLAIM";
+          document.querySelector("#claim").hidden = false;
+        } else {
+          log("Shielded balance updated", "success");
+          document.querySelector("#execution-state").textContent = "COMPLETE";
+          status("Executed successfully. Return to Telegram for the receipt.");
+        }
+        tg?.HapticFeedback?.notificationOccurred("success");
+      } catch (error) {
+        log(error.shortMessage || error.message || "Execution failed", "error");
+        document.querySelector("#execution-state").textContent = "ACTION NEEDED";
+        button.disabled = false;
+        tg?.HapticFeedback?.notificationOccurred("error");
+      }
+    };
+    document.querySelector("#claim").onclick = async () => {
+      const claim = document.querySelector("#claim"); claim.disabled = true;
+      try { await settle(activeOrderId, document.querySelector("#note-password").value, activeJob); status("Claim complete. Your proceeds are in the Shielded Portfolio."); }
+      catch (error) { log(error.message || "Claim failed", "error"); claim.disabled = false; }
+    };
+    status("Review the action, enter your private-note password, then press the yellow button.");
+  } else {
+    document.querySelector("#dashboard").hidden = false;
+    status("Wallet unlocked. Load your local Shielded Portfolio or resume a pending swap.");
+  }
+}
+
+async function bootstrap() {
+  if (action === "import") { showOnly("#import"); status("One-time setup: encrypt and import your wallet on this device."); return; }
+  try {
+    const { vault } = await api("/api/v1/vault");
+    const key = await storedKey(vault.address);
+    if (!key) { showOnly("#unlock"); status("Unlock the wallet already imported for this Telegram account."); return; }
+    await ready(await decryptVault(vault, key));
+  } catch (error) {
+    if (String(error.message).includes("Wallet not found")) { showOnly("#import"); status("Import a wallet once, then this transaction will continue automatically."); }
+    else { showOnly("#unlock"); status("Unlock the wallet already imported for this Telegram account."); }
+  }
+}
+
+document.querySelector("#refresh-dashboard").onclick = async () => { try { await loadDashboard(); } catch (error) { status(error.message || "Could not load portfolio"); } };
+document.querySelector("#import").onsubmit = async (event) => { event.preventDefault(); const secret = document.querySelector("#private-key"), passphrase = document.querySelector("#passphrase"); try { status("Encrypting locally..."); const result = await encrypt(secret.value.trim(), passphrase.value); secret.value = ""; passphrase.value = ""; await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) }); await saveKey(result.account.address, result.key); document.querySelector("#import").hidden = true; await ready(result.account); } catch (error) { secret.value = ""; passphrase.value = ""; status(error.message || "Import failed"); } };
+document.querySelector("#unlock").onsubmit = async (event) => { event.preventDefault(); const passphrase = document.querySelector("#unlock-passphrase"); try { const { vault } = await api("/api/v1/vault"), key = await derive(passphrase.value, vault); passphrase.value = ""; const account = await decryptVault(vault, key); await saveKey(vault.address, key); document.querySelector("#unlock").hidden = true; await ready(account); } catch { passphrase.value = ""; status("Wallet unlock failed."); } };
 void bootstrap();
