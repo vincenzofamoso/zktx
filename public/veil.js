@@ -253,8 +253,7 @@ function selectTab(button) {
 }
 document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => selectTab(button)));
 
-// Telegram and other trusted entry points can hand off a reviewed action without
-// placing passwords, private notes, proofs, or wallet secrets in the URL.
+// Trusted entry points pass action details without secrets in the URL.
 const handoff = new URL(location.href).searchParams;
 const requestedTab = handoff.get("tab");
 const requestedButton = Object.hasOwn(copy, requestedTab) ? document.querySelector(`.tabs button[data-tab="${requestedTab}"]`) : null;

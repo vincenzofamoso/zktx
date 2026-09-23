@@ -286,7 +286,6 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
 
   const created = createNote({ chainId: BigInt(chainId), vaultAddress, asset, amount });
   created.index = index;
-  // Prove that the note can be encrypted and persisted before any irreversible wallet action.
   const preparedRecord = await prepareEncryptedNote(created, password);
   const newRoot = insertedRoot(created.commitment, path.pathElements, path.pathIndices);
   if (!window.snarkjs?.groth16) throw new Error("The browser proof engine did not load");
@@ -310,7 +309,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
   }]);
   await waitForReceipt(approvalHash, 180_000, "Token approval");
 
-  // Re-read immediately before broadcast; another deposit may have advanced the tree while the proof was built.
+  // Refresh the root before broadcast.
   const fresh = await (await fetch(apiUrl("/api/status"), { cache: "no-store" })).json();
   if (Number(fresh.state.leafCount) !== index || BigInt(fresh.state.root) !== BigInt(path.root)) {
     throw new Error("The pool changed while your proof was being prepared. Your approval is safe; submit again to rebuild the proof.");
@@ -423,7 +422,7 @@ export async function openMarketOrderLive({
     minimumAmountOut: BigInt(minimumAmountOut).toString(),
     deadline: expires.toString(),
   };
-  // Encrypt and persist before submitting so a storage failure cannot strand settlement secrets.
+  // Persist recovery data before submission.
   const encrypted = await encryptText(JSON.stringify(secret), password);
   const record = {
     orderId,
@@ -584,7 +583,7 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
   tree.insert(refund.commitment);
   const outputRecord = await prepareEncryptedNote(output, password);
   const refundRecord = refundAmount > 0n ? await prepareEncryptedNote(refund, password) : null;
-  // Preserve recoverable encrypted outputs before broadcasting an irreversible settlement.
+  // Persist recovery data before settlement.
   record.preparedOutputs = refundRecord ? [outputRecord, refundRecord] : [outputRecord];
   saveMarketOrder(record);
 

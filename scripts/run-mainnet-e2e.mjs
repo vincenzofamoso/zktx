@@ -36,9 +36,7 @@ const transactions = [];
 const checks = [];
 const chainId = 4663n;
 const vault = BigInt(vaultAddress);
-// A "scenario unit" is deliberately configurable per asset. This lets the
-// same lifecycle test exercise tokens with different decimals (for example,
-// 18-decimal WETH and 6-decimal USDG) without moving whole-token balances.
+// Scenario units account for differing token decimals.
 const unitA = BigInt(process.env.ZKTX_TOKEN_A_UNIT || 10n ** 18n);
 const unitB = BigInt(process.env.ZKTX_TOKEN_B_UNIT || 10n ** 18n);
 const symbolA = process.env.ZKTX_TOKEN_A_SYMBOL || "token A";

@@ -1,8 +1,12 @@
 # ZKTX
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ZKTX is a standalone privacy-pool project that adapts Zcash-style shielded notes, commitments, nullifiers, Merkle membership, and zero-knowledge authorization to standard ERC-20 tokens on Robinhood Chain, regardless of their launch venue.
 
 Users keep the RH tokens and wallet they already have. ZKTX does not require ZEC, a Zcash wallet, bridging, wrapping, or a pre-swap. The original ERC-20 enters a token-backed vault and its ownership is represented by private notes until withdrawal. ZKTX is an independent EVM implementation inspired by shielded-payment architecture; it is not an Orchard deployment and is not affiliated with the Zcash project.
+
+The complete protocol, circuits, contracts, web client, relayer, keeper, indexer, deployment scripts, and Telegram client are available in this repository under the MIT License. Runtime secrets, operator keys, and user wallet material are intentionally excluded.
 
 The current milestone contains:
 
