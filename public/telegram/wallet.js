@@ -22356,11 +22356,17 @@ async function execute(job) {
   }
   throw new Error("This action does not yet have a live trusted-device executor");
 }
+function showOnly(id) {
+  for (const selector of ["#import", "#unlock", "#wallet", "#review"]) document.querySelector(selector).hidden = selector !== id;
+}
 async function ready(account) {
   activeAccount = account;
+  document.querySelector("#import").hidden = true;
+  document.querySelector("#unlock").hidden = true;
   document.querySelector("#wallet").hidden = false;
   document.querySelector("#address").textContent = account.address;
   if (action === "authorize") {
+    document.querySelector("#screen-title").textContent = "Review transaction";
     const { message, job } = await api(`/api/v1/jobs/${encodeURIComponent(jobId)}`);
     document.querySelector("#review").hidden = false;
     document.querySelector("#summary").textContent = message;
@@ -22381,21 +22387,30 @@ async function ready(account) {
       }
     };
   }
-  status(action === "authorize" ? "Review the action, enter your private-note password, then sign and execute." : "Wallet unlocked on this trusted device.");
+  status(action === "authorize" ? "Your wallet is ready. Review the action below, choose your private-note password, then press the yellow button." : "Wallet unlocked on this trusted device.");
 }
 async function bootstrap() {
   if (action === "import") {
-    document.querySelector("#import").hidden = false;
-    status("Import and encrypt your wallet locally.");
+    showOnly("#import");
+    status("One-time setup: encrypt and import your wallet on this device.");
     return;
   }
   try {
     const { vault } = await api("/api/v1/vault"), key = await storedKey(vault.address);
-    if (!key) throw new Error();
+    if (!key) {
+      showOnly("#unlock");
+      status("Unlock the wallet already imported for this Telegram account.");
+      return;
+    }
     await ready(await decryptVault(vault, key));
-  } catch {
-    document.querySelector("#unlock").hidden = false;
-    status("Enter the recovery passphrase to unlock this device.");
+  } catch (error) {
+    if (String(error.message).includes("Wallet not found")) {
+      showOnly("#import");
+      status("Import a wallet once, then this transaction will continue automatically.");
+    } else {
+      showOnly("#unlock");
+      status("Unlock the wallet already imported for this Telegram account.");
+    }
   }
 }
 document.querySelector("#import").onsubmit = async (event) => {
@@ -22408,7 +22423,8 @@ document.querySelector("#import").onsubmit = async (event) => {
     passphrase.value = "";
     await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) });
     await saveKey(result.account.address, result.key);
-    status(`Wallet ${result.account.address.slice(0, 8)}\u2026${result.account.address.slice(-6)} imported on this trusted device.`);
+    document.querySelector("#import").hidden = true;
+    await ready(result.account);
   } catch (error) {
     secret.value = "";
     passphrase.value = "";
