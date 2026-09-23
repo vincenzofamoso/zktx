@@ -38,6 +38,12 @@
       "3000": { "address": "0x3441067f5A3E4330B2662C693c3fb4781E8967D5", "deploymentTransaction": "0xd8db54566c7a188e7c3895f6d6227b42c87ff9dfbd0553e7514a84b77ad4abd7" },
       "10000": { "address": "0x63da34029B8705b49a68dCc3442D7EC91E322B9D", "deploymentTransaction": "0xae993632f5580dfa9e483791695a3d77828ba622e3637f8e513d45ad478e4749" }
     },
+    "aggregatorAdapter": {
+      "address": "0x357A1B97EAbA27689D33455Ce768687B696e81ed",
+      "entryPoint": "0x0000000000001fF3684f28c67538d4D072C22734",
+      "operator": "0xebF5D394Af49115E90f49BFf7C23664722399078",
+      "deploymentTransaction": "0xf6226c51626e607d4497de41b2038d0c12091ad471d45ccb7f1c063de746d78c"
+    },
     "routes": [
       "WETH->USDG",
       "USDG->WETH"

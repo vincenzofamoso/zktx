@@ -28,6 +28,8 @@ const factoryAbi = parseAbi(["function getPool(address,address,uint24) view retu
 const poolAbi = parseAbi(["function liquidity() view returns (uint128)"]);
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const V3_FACTORY = "0x1f7d7550B1b028f7571E69A784071F0205FD2EfA";
+const AGGREGATOR_ADAPTER = "0x357A1B97EAbA27689D33455Ce768687B696e81ed";
+const AGGREGATOR_QUOTE_URL = process.env.ZKTX_AGGREGATOR_QUOTE_URL || "http://127.0.0.1:3010/swap-quote";
 const ZERO = "0x0000000000000000000000000000000000000000";
 const v3Adapters = new Map([
   [100, "0xd8c8291b0b32202dCe58540e956F33018D459F59"],
@@ -66,6 +68,8 @@ if (mode === "live" && vaultAddress && rpcUrl) {
       vaultAddress,
       chainId,
       buybackSlippageBps: Number(process.env.ZKTX_BUYBACK_SLIPPAGE_BPS || 500),
+      aggregatorAdapter: AGGREGATOR_ADAPTER,
+      aggregatorQuoteUrl: AGGREGATOR_QUOTE_URL,
     });
     setInterval(() => marketKeeper.tick().catch((error) => console.error("market keeper", error.message)), 1_000).unref();
   }
@@ -92,6 +96,27 @@ async function discoverV3Adapter(tokenIn, tokenOut) {
   return selected;
 }
 
+async function aggregatorHasLiquidity(tokenIn, tokenOut) {
+  const decimals = Number(await readClient.readContract({ address: tokenIn, abi: tokenAbi, functionName: "decimals" }));
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) return false;
+  const nominal = 10n ** BigInt(decimals);
+  const probes = [...new Set([nominal, nominal / 1_000n, nominal / 1_000_000n, 1n].filter((value) => value > 0n))];
+  for (const amount of probes) {
+    try {
+      const response = await fetch(AGGREGATOR_QUOTE_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ kind: "price", sellToken: tokenIn, buyToken: tokenOut, sellAmount: String(amount), taker: AGGREGATOR_ADAPTER, slippageBps: 500 }),
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!response.ok) continue;
+      const quote = await response.json();
+      if (quote.liquidityAvailable === true && BigInt(quote.buyAmount || 0) > 0n) return true;
+    } catch {}
+  }
+  return false;
+}
+
 async function ensureAssetSupported(asset) {
   const supported = await readClient.readContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "supportedAssets", args: [asset] });
   if (supported) return;
@@ -113,16 +138,18 @@ async function ensureRoute(tokenIn, tokenOut) {
   let adapter = await activeRoute(router, tokenIn, tokenOut);
   if (adapter !== ZERO) return { router, adapter, approved: true, activated: false };
   const discovered = await discoverV3Adapter(tokenIn, tokenOut);
-  if (!discovered) throw new Error("No liquid canonical Uniswap V3 pool exists for this WETH pair");
+  const aggregatorAvailable = discovered ? false : await aggregatorHasLiquidity(tokenIn, tokenOut);
+  if (!discovered && !aggregatorAvailable) throw new Error("No executable RH liquidity exists for this pair");
   await ensureAssetSupported(tokenIn);
   await ensureAssetSupported(tokenOut);
-  let hash = await routeOperator.writeContract({ address: router, abi: routingAbi, functionName: "proposeRoute", args: [tokenIn, tokenOut, discovered.adapter] });
+  const selectedAdapter = discovered?.adapter || AGGREGATOR_ADAPTER;
+  let hash = await routeOperator.writeContract({ address: router, abi: routingAbi, functionName: "proposeRoute", args: [tokenIn, tokenOut, selectedAdapter] });
   await readClient.waitForTransactionReceipt({ hash });
   hash = await routeOperator.writeContract({ address: router, abi: routingAbi, functionName: "activateRoute", args: [tokenIn, tokenOut] });
   await readClient.waitForTransactionReceipt({ hash });
   adapter = await activeRoute(router, tokenIn, tokenOut);
-  if (adapter.toLowerCase() !== discovered.adapter.toLowerCase()) throw new Error("Route activation could not be confirmed");
-  return { router, adapter, approved: true, activated: true, fee: discovered.fee, pool: discovered.pool };
+  if (adapter.toLowerCase() !== selectedAdapter.toLowerCase()) throw new Error("Route activation could not be confirmed");
+  return { router, adapter, approved: true, activated: true, venue: discovered ? "uniswap-v3" : "rh-aggregator", fee: discovered?.fee, pool: discovered?.pool };
 }
 
 app.disable("x-powered-by");
