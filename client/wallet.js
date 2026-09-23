@@ -296,6 +296,10 @@ export async function openMarketOrderLive({
   if (!status.contractsReady || !status.relayerReady || !status.marketKeeperReady) {
     throw new Error("The market-order relayer or keeper is not ready");
   }
+  onProgress("Checking RH liquidity and activating the swap route if needed...");
+  const routeResponse = await fetch(apiUrl(`/api/route/${assetIn}/${assetOut}/ensure`), { method: "POST" });
+  const route = await routeResponse.json();
+  if (!routeResponse.ok || !route.approved) throw new Error(route.error || "No executable RH liquidity route was found for this pair");
 
   onProgress("Unlocking the matching local shielded note…");
   let selectedRecord;

@@ -7,7 +7,8 @@ import { createIndexer } from "../src/indexer.js";
 import { createRelayer } from "../src/relayer.js";
 import { createMarketKeeper } from "../src/market-keeper.js";
 import { vaultAbi } from "../src/vault-abi.js";
-import { createPublicClient, http, parseAbi } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
@@ -19,14 +20,28 @@ const rpcUrl = process.env.RH_RPC_URL || null;
 const readRpcUrl = rpcUrl || "https://rpc.mainnet.chain.robinhood.com";
 const readClient = createPublicClient({ transport: http(readRpcUrl, { retryCount: 1 }) });
 const tokenAbi = parseAbi(["function name() view returns (string)", "function symbol() view returns (string)", "function decimals() view returns (uint8)"]);
+const supplyAbi = parseAbi(["function totalSupply() view returns (uint256)"]);
 const marketConfigAbi = parseAbi(["function marketAdapter() view returns (address)"]);
-const routingAbi = parseAbi(["function routeKey(address,address) pure returns (bytes32)", "function routes(bytes32) view returns (address)"]);
+const routingAbi = parseAbi(["function routeKey(address,address) pure returns (bytes32)", "function routes(bytes32) view returns (address)", "function proposeRoute(address,address,address)", "function activateRoute(address,address)"]);
+const vaultAdminAbi = parseAbi(["function supportedAssets(address) view returns (bool)", "function reserveCaps(address) view returns (uint256)", "function setAssetSupported(address,bool)", "function setReserveCap(address,uint256)"]);
+const factoryAbi = parseAbi(["function getPool(address,address,uint24) view returns (address)"]);
+const poolAbi = parseAbi(["function liquidity() view returns (uint128)"]);
+const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
+const V3_FACTORY = "0x1f7d7550B1b028f7571E69A784071F0205FD2EfA";
+const ZERO = "0x0000000000000000000000000000000000000000";
+const v3Adapters = new Map([
+  [100, "0xd8c8291b0b32202dCe58540e956F33018D459F59"],
+  [500, "0x1249E94E2BfA0BB84Ba27c84e79306055b9562EA"],
+  [3000, "0x3441067f5A3E4330B2662C693c3fb4781E8967D5"],
+  [10000, "0x63da34029B8705b49a68dCc3442D7EC91E322B9D"],
+]);
 const tokenCache = new Map();
 const store = new StateStore(process.env.ZKTX_STATE_FILE || path.join(root, "data", "state.json"));
 await store.load();
 let indexer = null;
 let relayer = null;
 let marketKeeper = null;
+let routeOperator = null;
 function credentialKey(role) {
   const filename = process.env.ZKTX_OPERATOR_WALLETS_FILE;
   if (!filename) return null;
@@ -54,6 +69,60 @@ if (mode === "live" && vaultAddress && rpcUrl) {
     });
     setInterval(() => marketKeeper.tick().catch((error) => console.error("market keeper", error.message)), 1_000).unref();
   }
+  const routeOwnerKey = credentialKey("deployer_owner");
+  if (routeOwnerKey) {
+    const account = privateKeyToAccount(routeOwnerKey);
+    routeOperator = createWalletClient({ account, transport: http(rpcUrl) });
+  }
+}
+
+async function activeRoute(router, tokenIn, tokenOut) {
+  const key = await readClient.readContract({ address: router, abi: routingAbi, functionName: "routeKey", args: [tokenIn, tokenOut] });
+  return readClient.readContract({ address: router, abi: routingAbi, functionName: "routes", args: [key] });
+}
+
+async function discoverV3Adapter(tokenIn, tokenOut) {
+  let selected = null;
+  for (const [fee, adapter] of v3Adapters) {
+    const pool = await readClient.readContract({ address: V3_FACTORY, abi: factoryAbi, functionName: "getPool", args: [tokenIn, tokenOut, fee] });
+    if (pool === ZERO) continue;
+    const liquidity = await readClient.readContract({ address: pool, abi: poolAbi, functionName: "liquidity" });
+    if (liquidity > 0n && (!selected || liquidity > selected.liquidity)) selected = { adapter, fee, pool, liquidity };
+  }
+  return selected;
+}
+
+async function ensureAssetSupported(asset) {
+  const supported = await readClient.readContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "supportedAssets", args: [asset] });
+  if (supported) return;
+  const supply = await readClient.readContract({ address: asset, abi: supplyAbi, functionName: "totalSupply" });
+  if (supply <= 0n) throw new Error("Token supply could not be validated");
+  const cap = supply / 1_000n || 1n;
+  let hash = await routeOperator.writeContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "setReserveCap", args: [asset, cap] });
+  await readClient.waitForTransactionReceipt({ hash });
+  hash = await routeOperator.writeContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "setAssetSupported", args: [asset, true] });
+  await readClient.waitForTransactionReceipt({ hash });
+}
+
+async function ensureRoute(tokenIn, tokenOut) {
+  if (!routeOperator) throw new Error("Automatic route activation is unavailable");
+  if (tokenIn.toLowerCase() !== WETH.toLowerCase() && tokenOut.toLowerCase() !== WETH.toLowerCase()) {
+    throw new Error("Shielded Swap currently settles arbitrary tokens through WETH");
+  }
+  const router = await readClient.readContract({ address: vaultAddress, abi: marketConfigAbi, functionName: "marketAdapter" });
+  let adapter = await activeRoute(router, tokenIn, tokenOut);
+  if (adapter !== ZERO) return { router, adapter, approved: true, activated: false };
+  const discovered = await discoverV3Adapter(tokenIn, tokenOut);
+  if (!discovered) throw new Error("No liquid canonical Uniswap V3 pool exists for this WETH pair");
+  await ensureAssetSupported(tokenIn);
+  await ensureAssetSupported(tokenOut);
+  let hash = await routeOperator.writeContract({ address: router, abi: routingAbi, functionName: "proposeRoute", args: [tokenIn, tokenOut, discovered.adapter] });
+  await readClient.waitForTransactionReceipt({ hash });
+  hash = await routeOperator.writeContract({ address: router, abi: routingAbi, functionName: "activateRoute", args: [tokenIn, tokenOut] });
+  await readClient.waitForTransactionReceipt({ hash });
+  adapter = await activeRoute(router, tokenIn, tokenOut);
+  if (adapter.toLowerCase() !== discovered.adapter.toLowerCase()) throw new Error("Route activation could not be confirmed");
+  return { router, adapter, approved: true, activated: true, fee: discovered.fee, pool: discovered.pool };
 }
 
 app.disable("x-powered-by");
@@ -100,10 +169,24 @@ app.get("/api/route/:tokenIn/:tokenOut", async (req, res) => {
   }
   try {
     const router = await readClient.readContract({ address: vaultAddress, abi: marketConfigAbi, functionName: "marketAdapter" });
-    const key = await readClient.readContract({ address: router, abi: routingAbi, functionName: "routeKey", args: [tokenIn, tokenOut] });
-    const adapter = await readClient.readContract({ address: router, abi: routingAbi, functionName: "routes", args: [key] });
-    return res.json({ tokenIn, tokenOut, router, adapter, approved: adapter !== "0x0000000000000000000000000000000000000000" });
+    const adapter = await activeRoute(router, tokenIn, tokenOut);
+    return res.json({ tokenIn, tokenOut, router, adapter, approved: adapter !== ZERO });
   } catch { return res.status(404).json({ error: "No approved execution route was found" }); }
+});
+
+const routeJobs = new Map();
+app.post("/api/route/:tokenIn/:tokenOut/ensure", async (req, res) => {
+  const { tokenIn, tokenOut } = req.params;
+  if (!vaultAddress || !/^0x[0-9a-fA-F]{40}$/.test(tokenIn) || !/^0x[0-9a-fA-F]{40}$/.test(tokenOut) || tokenIn.toLowerCase() === tokenOut.toLowerCase()) {
+    return res.status(400).json({ error: "Invalid route pair" });
+  }
+  const key = `${tokenIn.toLowerCase()}:${tokenOut.toLowerCase()}`;
+  try {
+    if (!routeJobs.has(key)) routeJobs.set(key, ensureRoute(tokenIn, tokenOut).finally(() => routeJobs.delete(key)));
+    return res.json({ tokenIn, tokenOut, ...(await routeJobs.get(key)) });
+  } catch (error) {
+    return res.status(422).json({ error: error.shortMessage || error.message || "No executable route was found" });
+  }
 });
 
 app.get("/api/tree/path/:index", (req, res) => {

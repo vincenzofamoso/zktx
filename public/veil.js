@@ -255,9 +255,10 @@ form.addEventListener("submit", async (event) => {
     try { receiveUnits = parseTokenAmount(receiveAmount.value, receiveTokenMeta.decimals); }
     catch (error) { result.textContent = error.message; return; }
     try {
-      const routeResponse = await fetch(`./api/route/${token.value}/${receiveToken.value}`);
+      result.textContent = "Checking RH liquidity and activating the swap route if needed...";
+      const routeResponse = await fetch(`./api/route/${token.value}/${receiveToken.value}/ensure`, { method: "POST" });
       const route = await routeResponse.json();
-      if (!routeResponse.ok || !route.approved) throw new Error("This exact swap direction does not yet have an approved live RH route");
+      if (!routeResponse.ok || !route.approved) throw new Error(route.error || "No executable RH liquidity route was found for this pair");
       if (!connected || !account) throw new Error("Connect your wallet before opening a market order");
       const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value));
       const order = await window.ZKTXWallet.openMarketOrderLive({

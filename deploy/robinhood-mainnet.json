@@ -32,6 +32,12 @@
     "venueAdapter": "0xd8c8291b0b32202dCe58540e956F33018D459F59",
     "routingAdapter": "0xA5e5C5C182e9C157Ea8d7F5b71b9c7e5b3Ff7fD8",
     "poolFee": 100,
+    "v3FeeAdapters": {
+      "100": { "address": "0xd8c8291b0b32202dCe58540e956F33018D459F59" },
+      "500": { "address": "0x1249E94E2BfA0BB84Ba27c84e79306055b9562EA", "deploymentTransaction": "0x1b65c7b1711b8bc8740c5f8058b1232008960826f3fdbdf75f033f072b64fffb" },
+      "3000": { "address": "0x3441067f5A3E4330B2662C693c3fb4781E8967D5", "deploymentTransaction": "0xd8db54566c7a188e7c3895f6d6227b42c87ff9dfbd0553e7514a84b77ad4abd7" },
+      "10000": { "address": "0x63da34029B8705b49a68dCc3442D7EC91E322B9D", "deploymentTransaction": "0xae993632f5580dfa9e483791695a3d77828ba622e3637f8e513d45ad478e4749" }
+    },
     "routes": [
       "WETH->USDG",
       "USDG->WETH"

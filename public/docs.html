@@ -86,7 +86,7 @@
             <article><b>Circuits</b><p>Prove note membership, ownership, correct nullifiers, asset and amount binding, conservation of value, and valid output commitments.</p></article>
             <article><b>Indexer</b><p>Reads vault events, rebuilds the commitment tree, records spent nullifiers, and supplies Merkle paths required to create proofs.</p></article>
             <article><b>Relayer</b><p>Simulates and broadcasts approved private transfers and withdrawals so users do not need a separate public gas-paying wallet for each action.</p></article>
-            <article><b>Market executor</b><p>Executes shielded intents in 3 to 7 public slices through a compatible approved RH route, immediately buys and burns ZKTX from the 1% protocol fee, then returns actual proceeds to private notes.</p></article>
+            <article><b>Market executor</b><p>Discovers liquid canonical RH V3 pools across standard fee tiers, activates the exact direction on first use, executes shielded intents in 3 to 7 public slices, and returns actual proceeds to private notes.</p></article>
           </div>
         </section>
 
@@ -129,7 +129,7 @@
           <p>The maker never shares the cancellation secret. A separate cancellation proof lets only the maker consume an unfilled order and recreate the original sell balance as a private refund note. Both fill and cancellation use the same nullifier, so only one can succeed.</p>
           <h3>Sliced RH market execution</h3><p>A market-order proof privately spends one shielded note while binding the public pair, input, minimum net output, deadline, and a secret settlement key. The keeper submits 3 to 7 variable slices, at most one per block, through the vault's approved execution adapter. Each public pool trade remains visible as ZKTX adapter activity; the mechanism obscures the originating wallet but cannot make AMM reserve changes invisible.</p>
           <p>The fee is fixed at 1.5%: 0.5% remains in the quote asset for execution costs and 1% immediately buys ZKTX and calls its native burn function. After the final slice, the user waits 30 seconds and proves two new notes: actual net proceeds and any unspent refund. The protocol never promises a fixed fill or carries market-maker inventory risk.</p>
-          <p>The execution layer is not PONS-exclusive. Existing adapters support PONS V2 bonding curves and their graduated Uniswap V4 pools, plus PONS V1 Uniswap V3 pools. Additional RH venues can be supported by reviewed adapters. Native ETH is wrapped at the vault boundary. The browser flow only becomes live when final proof artifacts, contracts, an approved route, relayer, and keeper are configured.</p>
+          <p>The execution layer is not PONS-exclusive. Any standard RH token with a liquid canonical Uniswap V3 pool against WETH can be discovered by contract address. ZKTX checks the standard fee tiers, activates the exact direction on first use, and fails before order creation when no executable pool exists. PONS V2 bonding curves and graduated V4 pools use separate reviewed adapters. Native ETH is wrapped at the vault boundary.</p>
         </section>
 
         <section id="proofs">
