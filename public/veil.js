@@ -32,7 +32,7 @@ const quoteAssets = { weth: WETH, usdg: USDG };
 let swapDirection = "buy";
 
 const copy = {
-  shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note—no ZEC or bridge required."],
+  shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note. No ZEC or bridge required."],
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
   swap: ["Swap without exposing your wallet", "Choose Buy or Sell. The vault executes through approved RH liquidity and returns proceeds as private notes."],
   withdraw: ["Unshield to a public wallet", "Convert a private note back into public tokens at the wallet you choose."],

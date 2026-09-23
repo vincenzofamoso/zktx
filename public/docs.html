@@ -8,15 +8,15 @@
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="ZKTX" />
     <meta property="og:url" content="https://zktx.tech/docs.html" />
-    <meta property="og:title" content="ZKTX — Zcash-style privacy for RH tokens" />
-    <meta property="og:description" content="Shield, transfer, and swap RH tokens with a Zcash-style note model—without ZEC or bridging." />
+    <meta property="og:title" content="ZKTX | Zcash-style privacy for RH tokens" />
+    <meta property="og:description" content="Shield, transfer, and swap RH tokens with a Zcash-style note model, without ZEC or bridging." />
     <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="ZKTX — shielded transactions on Robinhood Chain" />
+    <meta property="og:image:alt" content="ZKTX | shielded transactions on Robinhood Chain" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ZKTX — Zcash-style privacy for RH tokens" />
-    <meta name="twitter:description" content="Shield, transfer, and swap RH tokens with a Zcash-style note model—without ZEC or bridging." />
+    <meta name="twitter:title" content="ZKTX | Zcash-style privacy for RH tokens" />
+    <meta name="twitter:description" content="Shield, transfer, and swap RH tokens with a Zcash-style note model, without ZEC or bridging." />
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX Docs</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
@@ -45,7 +45,7 @@
         <header class="docs-hero">
           <p class="kicker">ZKTX DOCUMENTATION · ROBINHOOD CHAIN</p>
           <h1>Zcash-style privacy for Robinhood Chain tokens.</h1>
-          <p>ZKTX adapts the shielded-note model—commitments, nullifiers, Merkle membership and zero-knowledge proofs—to standard RH ERC-20 tokens. Users keep their existing token and wallet: no ZEC, bridge, wrapper purchase, or pre-swap is required.</p>
+          <p>ZKTX adapts the shielded-note model, using commitments, nullifiers, Merkle membership and zero-knowledge proofs for standard RH ERC-20 tokens. Users keep their existing token and wallet. No ZEC, bridge, wrapper purchase, or pre-swap is required.</p>
           <div class="notice warning"><b>Experimental mainnet pilot</b><span>The Shield interface now generates its proof in the browser, requests token approval and deposit signatures from the connected wallet, and stores the encrypted note only after confirmation. A deliberately tiny WETH/USDG mainnet lifecycle has passed, but the deployment still uses development proving keys and strict reserve caps; it must not secure material value. <a href="./case-study.html">Review the onchain evidence.</a></span></div>
         </header>
 
@@ -86,7 +86,7 @@
             <article><b>Circuits</b><p>Prove note membership, ownership, correct nullifiers, asset and amount binding, conservation of value, and valid output commitments.</p></article>
             <article><b>Indexer</b><p>Reads vault events, rebuilds the commitment tree, records spent nullifiers, and supplies Merkle paths required to create proofs.</p></article>
             <article><b>Relayer</b><p>Simulates and broadcasts approved private transfers and withdrawals so users do not need a separate public gas-paying wallet for each action.</p></article>
-            <article><b>Market executor</b><p>Executes shielded intents in 3–7 public slices through a compatible approved RH route, immediately buys and burns ZKTX from the 1% protocol fee, then returns actual proceeds to private notes.</p></article>
+            <article><b>Market executor</b><p>Executes shielded intents in 3 to 7 public slices through a compatible approved RH route, immediately buys and burns ZKTX from the 1% protocol fee, then returns actual proceeds to private notes.</p></article>
           </div>
         </section>
 
@@ -127,7 +127,7 @@
           <p class="kicker">07 · SWAPS</p><h2>Swap RH tokens as shielded notes</h2>
           <h3>Atomic private swaps</h3><p>A maker locks a shielded note into exact order terms: requested asset and amount, maker receive key, deadline, nonce, and a cancellation key. A taker can fill only those exact terms. One proof consumes the maker and taker notes, pays the maker and taker as new private notes, and returns any taker change.</p>
           <p>The maker never shares the cancellation secret. A separate cancellation proof lets only the maker consume an unfilled order and recreate the original sell balance as a private refund note. Both fill and cancellation use the same nullifier, so only one can succeed.</p>
-          <h3>Sliced RH market execution</h3><p>A market-order proof privately spends one shielded note while binding the public pair, input, minimum net output, deadline, and a secret settlement key. The keeper submits 3–7 variable slices, at most one per block, through the vault's approved execution adapter. Each public pool trade remains visible as ZKTX adapter activity; the mechanism obscures the originating wallet but cannot make AMM reserve changes invisible.</p>
+          <h3>Sliced RH market execution</h3><p>A market-order proof privately spends one shielded note while binding the public pair, input, minimum net output, deadline, and a secret settlement key. The keeper submits 3 to 7 variable slices, at most one per block, through the vault's approved execution adapter. Each public pool trade remains visible as ZKTX adapter activity; the mechanism obscures the originating wallet but cannot make AMM reserve changes invisible.</p>
           <p>The fee is fixed at 1.5%: 0.5% remains in the quote asset for execution costs and 1% immediately buys ZKTX and calls its native burn function. After the final slice, the user waits 30 seconds and proves two new notes: actual net proceeds and any unspent refund. The protocol never promises a fixed fill or carries market-maker inventory risk.</p>
           <p>The execution layer is not PONS-exclusive. Existing adapters support PONS V2 bonding curves and their graduated Uniswap V4 pools, plus PONS V1 Uniswap V3 pools. Additional RH venues can be supported by reviewed adapters. Native ETH is wrapped at the vault boundary. The browser flow only becomes live when final proof artifacts, contracts, an approved route, relayer, and keeper are configured.</p>
         </section>

@@ -8,17 +8,17 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ZKTX" />
     <meta property="og:url" content="https://zktx.tech/" />
-    <meta property="og:title" content="ZKTX — Zcash-style privacy for RH tokens" />
+    <meta property="og:title" content="ZKTX | Zcash-style privacy for RH tokens" />
     <meta property="og:description" content="User-funded RH market execution in randomized slices, with wallet identity shielded and proceeds settled into private notes." />
     <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="ZKTX — shielded transactions on Robinhood Chain" />
+    <meta property="og:image:alt" content="ZKTX | shielded transactions on Robinhood Chain" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ZKTX — Zcash-style privacy for RH tokens" />
+    <meta name="twitter:title" content="ZKTX | Zcash-style privacy for RH tokens" />
     <meta name="twitter:description" content="Trade through existing RH liquidity without exposing your wallet as the trader, then settle proceeds into private notes." />
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
-    <title>ZKTX — private token transactions</title>
+    <title>ZKTX | private token transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
     <link rel="stylesheet" href="./veil.css?v=5" />
     <link rel="stylesheet" href="./withdrawal.css" />
@@ -38,18 +38,18 @@
         <div>
           <p class="kicker">ZCASH-STYLE PRIVACY · NATIVE RH TOKENS</p>
           <h1>Take your token<br /><em>off the timeline.</em></h1>
-          <p class="lede">Shield a Robinhood Chain token, then route a buy or sell through compatible RH liquidity without exposing your wallet as the trader. The public pool still shows ZKTX vault slices—not an invisible AMM trade.</p>
+          <p class="lede">Shield a Robinhood Chain token, then route a buy or sell through compatible RH liquidity without exposing your wallet as the trader. The public pool still shows ZKTX vault slices, not an invisible AMM trade.</p>
           <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Experimental mainnet pilot</span></div>
         </div>
         <div class="orb" aria-hidden="true"><img class="hero-logo" src="./assets/zktx-mark-v2.png" alt="" /></div>
       </section>
 
       <section class="usp-grid" aria-label="Why ZKTX">
-        <article><span>ZERO FRICTION</span><h3>Keep your tokens. Skip the bridge.</h3><p>Shield standard Robinhood Chain tokens and trade directly—no ZEC, wrapped privacy asset, or new wallet required.</p></article>
+        <article><span>ZERO FRICTION</span><h3>Keep your tokens. Skip the bridge.</h3><p>Shield standard Robinhood Chain tokens and trade directly. No ZEC, wrapped privacy asset, or new wallet required.</p></article>
         <article><span>REAL LIQUIDITY</span><h3>Trade against the market</h3><p>Tap the token's existing Robinhood Chain liquidity instead of waiting for an OTC match or entering a thin secondary pool.</p></article>
-        <article><span>WALLET SHIELDED</span><h3>Your wallet stays off the chart</h3><p>The public pool sees the ZKTX vault executing—not the wallet that created the shielded intent.</p></article>
+        <article><span>WALLET SHIELDED</span><h3>Your wallet stays off the chart</h3><p>The public pool sees the ZKTX vault executing, not the wallet that created the shielded intent.</p></article>
         <article><span>PRIVATE SETTLEMENT</span><h3>Your proceeds stay shielded</h3><p>Actual execution proceeds return as private notes, ready to send privately or withdraw when you choose.</p></article>
-        <article><span>LOWER SIGNAL</span><h3>One intent. Multiple slices.</h3><p>Your order executes across 3–7 variable blocks, making simple wallet-to-trade and single-candle matching harder.</p></article>
+        <article><span>LOWER SIGNAL</span><h3>One intent. Multiple slices.</h3><p>Your order executes across 3 to 7 variable blocks, making simple wallet-to-trade and single-candle matching harder.</p></article>
         <article><span>ALIGNED VALUE</span><h3>Every trade buys and burns</h3><p>One percent of every market execution automatically buys ZKTX and permanently removes it from supply.</p></article>
       </section>
 
@@ -85,13 +85,13 @@
             <div id="swap-fields" hidden>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
               <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
-              <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell, select a supported settlement asset, and enter the token contract. ZKTX recognizes the token on RH and uses an approved liquidity route in 3–7 slices. Actual proceeds return as a private note.</span></div>
+              <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell, select a supported settlement asset, and enter the token contract. ZKTX recognizes the token on RH and uses an approved liquidity route in 3 to 7 slices. Actual proceeds return as a private note.</span></div>
               <label>Pending order to settle<select id="pending-market-order"><option value="">No pending local orders</option></select></label>
               <button id="settle-market" class="secondary-action" type="button">Settle completed order</button>
             </div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
-              <label>Destination wallets<textarea id="destinations" rows="3" placeholder="One EVM address per line · 2–4 different wallets"></textarea></label>
+              <label>Destination wallets<textarea id="destinations" rows="3" placeholder="One EVM address per line · 2 to 4 different wallets"></textarea></label>
               <label>Split sizes, in normal token amounts<input id="denominations" inputmode="decimal" placeholder="Example: 5, 2, 1" /></label>
               <small>Any remainder stays shielded as private change. Execution times are independently randomized.</small>
             </div>

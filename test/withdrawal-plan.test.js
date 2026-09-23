@@ -13,5 +13,5 @@ test("planner uses standard units, multiple recipients, delays, and private chan
 });
 
 test("planner rejects a single recipient", () => {
-  assert.throws(() => planWithdrawals({ total: 10n, destinations: destinations.slice(0, 1), denominations: [1n] }), /2–4/);
+  assert.throws(() => planWithdrawals({ total: 10n, destinations: destinations.slice(0, 1), denominations: [1n] }), /2 to 4/);
 });

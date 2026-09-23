@@ -27,7 +27,7 @@ The current circuits implement shielding, private transfers with change, withdra
 - Withdrawals prove membership and bind the public asset, recipient, amount, chain, and vault.
 - RFQ swaps consume maker and taker notes atomically, enforce exact committed order terms and deadlines, create private outputs for both parties, and return private taker change.
 - Order cancellation requires the maker's separate cancellation secret and races safely against settlement through the same order nullifier.
-- Public-market orders consume a private input note, execute in a protocol-selected 3–7 slices with at most one slice per block, and settle actual proceeds plus any unspent refund into private notes after a 30-second delay.
+- Public-market orders consume a private input note, execute in a protocol-selected 3 to 7 slices with at most one slice per block, and settle actual proceeds plus any unspent refund into private notes after a 30-second delay.
 - The market fee is fixed at 150 basis points. Fifty basis points accrue in the configured quote asset as an execution reserve and 100 basis points buy ZKTX atomically during every slice and call its native `burn(uint256)` function.
 - Fee arithmetic is cumulative across slices, so it matches the normal whole-order basis-point calculation instead of rounding down independently on every slice.
 - The Solidity vault enforces supported assets, reserves, replay protection, pause control, and proof verification.

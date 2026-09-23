@@ -9,7 +9,7 @@ The current milestone contains:
 - A responsive black-and-yellow product interface
 - A domain-bound shielded-vault contract with separate deposit, transfer, withdrawal, RFQ-swap, order-cancellation, market-order, and market-settlement verifiers
 - Circom deposit, transfer, withdrawal, RFQ-swap, order-cancellation, market-order, and market-settlement circuits with a Poseidon Merkle tree
-- Shielded public-market intents with 3–7 execution slices, one slice per block, and private settlement notes
+- Shielded public-market intents with 3 to 7 execution slices, one slice per block, and private settlement notes
 - A fixed 1.5% market fee: 0.5% execution reserve plus an atomic 1% ZKTX buyback and native token burn
 - An adapter-based RH execution layer, currently including PONS V2 bonding curves, graduated Uniswap V4 pools, PONS V1 Uniswap V3 pools, and wrapped/native conversion
 - Browser proof flows for opening a relayed market order and settling actual proceeds into private notes
