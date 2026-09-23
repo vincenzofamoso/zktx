@@ -21584,7 +21584,7 @@ function secureRandom() {
 function planWithdrawals({ total, destinations, denominations, minDelayMinutes = 30, maxDelayMinutes = 24 * 60, now = Date.now(), random = secureRandom }) {
   const value = field(total);
   const recipients = [...new Set(destinations.map((item) => item.trim()))];
-  if (recipients.length < 2 || recipients.length > 4) throw new Error("Provide 2\u20134 different destination wallets");
+  if (recipients.length < 2 || recipients.length > 4) throw new Error("Provide 2 to 4 different destination wallets");
   if (recipients.some((item) => !/^0x[0-9a-fA-F]{40}$/.test(item))) throw new Error("Every destination must be a valid EVM address");
   if (!Number.isInteger(minDelayMinutes) || !Number.isInteger(maxDelayMinutes) || minDelayMinutes < 1 || maxDelayMinutes <= minDelayMinutes) throw new Error("Invalid delay window");
   const units = [...new Set(denominations.map(field).filter((item) => item > 0n))].sort((a, b) => a > b ? -1 : 1);
