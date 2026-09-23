@@ -82,6 +82,7 @@ export async function privatePortfolio(password) {
     if (record.spentBy) continue;
     try {
       const note = await decryptNote(record.encrypted, password);
+      if (note.note.amount === 0n) continue;
       entries.push({
         id: record.id,
         commitment: record.commitment,
@@ -538,7 +539,10 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
   if (!orderResponse.ok) throw new Error(order.error || "Could not load the market order");
   if (order.settled) {
     if (!record.preparedOutputs?.length) throw new Error("This order is already settled onchain");
-    for (const prepared of record.preparedOutputs) commitEncryptedNote(prepared);
+    for (const prepared of record.preparedOutputs) {
+      const preparedNote = await decryptNote(prepared.encrypted, password);
+      if (preparedNote.note.amount > 0n) commitEncryptedNote(prepared);
+    }
     record.settled = true;
     delete record.preparedOutputs;
     saveMarketOrder(record);
@@ -579,9 +583,9 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
   const refundPath = tree.proof(refundIndex);
   tree.insert(refund.commitment);
   const outputRecord = await prepareEncryptedNote(output, password);
-  const refundRecord = await prepareEncryptedNote(refund, password);
+  const refundRecord = refundAmount > 0n ? await prepareEncryptedNote(refund, password) : null;
   // Preserve recoverable encrypted outputs before broadcasting an irreversible settlement.
-  record.preparedOutputs = [outputRecord, refundRecord];
+  record.preparedOutputs = refundRecord ? [outputRecord, refundRecord] : [outputRecord];
   saveMarketOrder(record);
 
   onProgress("Building the market-settlement proof…");
@@ -623,7 +627,7 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
   saveMarketOrder(record);
   await waitForReceipt(transactionHash);
   commitEncryptedNote(outputRecord);
-  commitEncryptedNote(refundRecord);
+  if (refundRecord) commitEncryptedNote(refundRecord);
   record.settled = true;
   delete record.preparedOutputs;
   saveMarketOrder(record);

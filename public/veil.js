@@ -118,8 +118,21 @@ async function showPortfolio() {
       const metadata = response.ok ? await response.json() : { symbol: `${note.asset.slice(0, 6)}…`, decimals: 0 };
       const row = document.createElement("div"); row.className = "portfolio-item";
       const asset = document.createElement("span"); asset.textContent = metadata.symbol;
-      const balance = document.createElement("span"); balance.textContent = formatTokenAmount(note.amount, metadata.decimals);
-      row.append(asset, balance); portfolioList.append(row);
+      const formatted = formatTokenAmount(note.amount, metadata.decimals);
+      const balance = document.createElement("span"); balance.textContent = formatted;
+      const unshield = document.createElement("button");
+      unshield.type = "button";
+      unshield.className = "portfolio-withdraw";
+      unshield.textContent = "Unshield to wallet";
+      unshield.addEventListener("click", () => {
+        selectTab(document.querySelector('.tabs button[data-tab="withdraw"]'));
+        token.value = note.asset;
+        amount.value = formatted;
+        token.dispatchEvent(new Event("change"));
+        destinations.focus();
+        result.textContent = `Enter the destination wallet, then confirm Unshield tokens to withdraw this ${metadata.symbol} note.`;
+      });
+      row.append(asset, balance, unshield); portfolioList.append(row);
     }
     if (!notes.length) portfolioList.textContent = "No notes unlocked. Check the password or shield a token first.";
     portfolioList.hidden = false; portfolioToggle.textContent = "Refresh portfolio";
@@ -150,12 +163,12 @@ function refreshLocalNotes() {
   pendingMarketOrder.replaceChildren();
   const empty = document.createElement("option");
   empty.value = "";
-  empty.textContent = pending.length ? "Select a pending order" : "No pending local orders";
+  empty.textContent = pending.length ? `${pending.length} completed swap${pending.length === 1 ? "" : "s"} waiting` : "No pending local orders";
   pendingMarketOrder.append(empty);
   for (const order of pending) {
     const option = document.createElement("option");
     option.value = order.orderId;
-    option.textContent = `${order.orderId.slice(0, 10)}… · ${new Date(order.createdAt).toLocaleString()}`;
+    option.textContent = `Swap ${pending.indexOf(order) + 1} of ${pending.length} · ${new Date(order.createdAt).toLocaleString()}`;
     pendingMarketOrder.append(option);
   }
   marketSettlement.hidden = pending.length === 0;
