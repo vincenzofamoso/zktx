@@ -73,6 +73,7 @@
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> Capped experimental mainnet</b></div>
             <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your unspent shielded notes, decrypted only on this device.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div></section>
+            <label>Private-note password<input id="note-password" type="password" autocomplete="new-password" placeholder="Enter the password used when shielding" /></label>
             <section id="market-settlement" class="settlement-panel" hidden>
               <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Your swap is ready to finish</b><small>Settle the completed market order to add the purchased tokens to your private portfolio.</small></div></div>
               <label>Completed swap<select id="pending-market-order"><option value="">No completed swaps found</option></select></label>
@@ -93,7 +94,6 @@
               <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell and paste any tradable RH token contract. ZKTX finds an executable direct or aggregated route, then executes in 3 to 7 slices. Actual proceeds return as a private note.</span></div>
               <p id="swap-prerequisite" class="field-note">Before swapping, use Shield to create a private note for the WETH or USDG you want to spend.</p>
             </div>
-            <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
               <label>Destination wallet<textarea id="destinations" rows="1" placeholder="0x… receiving EVM wallet"></textarea></label>
               <input id="denominations" type="hidden" />
