@@ -1,7 +1,11 @@
 const explorer='https://robinhoodchain.blockscout.com';
 const short=value=>`${value.slice(0,8)}…${value.slice(-6)}`;
 const data=await fetch('./case-study-data.json',{cache:'no-store'}).then(response=>{if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.json();});
-const contractLabels={vault:'Shielded vault',tokenA:'E2E token A',tokenB:'E2E token B',depositVerifier:'Deposit verifier',transferVerifier:'Transfer verifier',withdrawVerifier:'Withdrawal verifier',swapVerifier:'RFQ swap verifier',cancelOrderVerifier:'Cancellation verifier'};
+const contractLabels={vault:'Shielded vault',tokenA:data.assets?.tokenA||'E2E token A',tokenB:data.assets?.tokenB||'E2E token B',depositVerifier:'Deposit verifier',transferVerifier:'Transfer verifier',withdrawVerifier:'Withdrawal verifier',swapVerifier:'RFQ swap verifier',cancelOrderVerifier:'Cancellation verifier'};
+document.querySelector('#transaction-count').textContent=data.transactions.length;
+document.querySelector('#note-count').textContent=data.finalState.noteCount;
+document.querySelector('#asset-count').textContent=Object.keys(data.assets||{}).length;
+document.querySelector('#check-count').textContent=`${data.checks.filter(check=>check.passed).length}/${data.checks.length}`;
 document.querySelector('#contracts').innerHTML=Object.entries(data.contracts).map(([key,address])=>`<article><b>${contractLabels[key]||key}</b><code title="${address}">${address}</code><p><a href="${explorer}/address/${address}" target="_blank" rel="noopener">Contract ↗</a>${data.contractTransactions?.[key]?` · <a href="${explorer}/tx/${data.contractTransactions[key]}" target="_blank" rel="noopener">Deployment tx ↗</a>`:''}</p></article>`).join('');
 document.querySelector('#transactions').innerHTML=data.transactions.map((tx,index)=>`<article class="tx"><span class="n">${String(index+1).padStart(2,'0')}</span><div><b>${tx.label}</b><small>Block ${Number(tx.blockNumber).toLocaleString()} · ${Number(tx.gasUsed).toLocaleString()} gas</small></div><span class="role">${tx.role.replaceAll('_',' ')}</span><a href="${explorer}/tx/${tx.hash}" target="_blank" rel="noopener" title="${tx.hash}">${short(tx.hash)} ↗</a></article>`).join('');
 document.querySelector('#checks').innerHTML=data.checks.map(check=>`<article class="check"><b>✓ PASSED</b><p>${check.name}</p></article>`).join('');

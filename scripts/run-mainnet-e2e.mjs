@@ -29,15 +29,27 @@ const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
 const stored = JSON.parse(await fs.readFile(walletFile, "utf8"));
 const accounts = Object.fromEntries(stored.wallets.map(({ role, private_key }) => [role, privateKeyToAccount(private_key)]));
 const clients = Object.fromEntries(Object.entries(accounts).map(([role, account]) => [role, createWalletClient({ account, chain, transport: http(rpcUrl) })]));
-const tree = new IncrementalMerkleTree(20);
+const stateFile = process.env.ZKTX_STATE_FILE || path.join(root, "data/state.json");
+const indexedState = JSON.parse(await fs.readFile(stateFile, "utf8"));
+const tree = new IncrementalMerkleTree(20, indexedState.leaves.map(BigInt));
 const transactions = [];
 const checks = [];
 const chainId = 4663n;
 const vault = BigInt(vaultAddress);
-const unit = 10n ** 18n;
+// A "scenario unit" is deliberately configurable per asset. This lets the
+// same lifecycle test exercise tokens with different decimals (for example,
+// 18-decimal WETH and 6-decimal USDG) without moving whole-token balances.
+const unitA = BigInt(process.env.ZKTX_TOKEN_A_UNIT || 10n ** 18n);
+const unitB = BigInt(process.env.ZKTX_TOKEN_B_UNIT || 10n ** 18n);
+const symbolA = process.env.ZKTX_TOKEN_A_SYMBOL || "token A";
+const symbolB = process.env.ZKTX_TOKEN_B_SYMBOL || "token B";
 
 const vaultAbi = parseAbi([
   "function depositVerifier() view returns (address)",
+  "function transferVerifier() view returns (address)",
+  "function withdrawVerifier() view returns (address)",
+  "function swapVerifier() view returns (address)",
+  "function cancelOrderVerifier() view returns (address)",
   "function currentRoot() view returns (bytes32)",
   "function noteCount() view returns (uint256)",
   "function publicReserves(address) view returns (uint256)",
@@ -147,18 +159,18 @@ const startingBalances = {
   receiverA: await publicClient.readContract({ address: assetA, abi: tokenAbi, functionName: "balanceOf", args: [accounts.fresh_receiver.address] }),
 };
 
-await approve("alice", assetA, 100n * unit, "Alice approves token A");
-await approve("bob", assetB, 100n * unit, "Bob approves token B");
+await approve("alice", assetA, 100n * unitA, "Alice approves token A");
+await approve("bob", assetB, 100n * unitB, "Bob approves token B");
 
-const aliceInput = await deposit("alice", assetA, 10n * unit,
-  createNote({ chainId, vaultAddress, asset: assetA, amount: 10n * unit }), "Alice shields 10 token A");
-await deposit("bob", assetB, 20n * unit,
-  createNote({ chainId, vaultAddress, asset: assetB, amount: 20n * unit }), "Bob shields 20 token B");
+const aliceInput = await deposit("alice", assetA, 10n * unitA,
+  createNote({ chainId, vaultAddress, asset: assetA, amount: 10n * unitA }), "Alice shields 10 token-A test units");
+await deposit("bob", assetB, 20n * unitB,
+  createNote({ chainId, vaultAddress, asset: assetB, amount: 20n * unitB }), "Bob shields 20 token-B test units");
 
 const oldTransferRoot = tree.root();
 const inputPath = tree.proof(aliceInput.index);
-const aliceChange = createNote({ chainId, vaultAddress, asset: assetA, amount: 6n * unit });
-const receiverNote = createNote({ chainId, vaultAddress, asset: assetA, amount: 4n * unit });
+const aliceChange = createNote({ chainId, vaultAddress, asset: assetA, amount: 6n * unitA });
+const receiverNote = createNote({ chainId, vaultAddress, asset: assetA, amount: 4n * unitA });
 const insertionOne = tree.proof(tree.leaves.length); tree.insert(aliceChange.commitment); aliceChange.index = tree.leaves.length - 1;
 const insertionTwo = tree.proof(tree.leaves.length); tree.insert(receiverNote.commitment); receiverNote.index = tree.leaves.length - 1;
 const transferNullifier = noteNullifier(aliceInput.note, aliceInput.ownerSecret);
@@ -192,19 +204,19 @@ await send("relayer", "Relayed withdrawal to fresh receiver", vaultAddress, vaul
 const deadline = BigInt(Math.floor(Date.now() / 1000) + 7200);
 const cancelSecret = 901n, orderNonce = 902n, makerBlinding = 903n;
 const cancelPublicKey = poseidon1([cancelSecret]);
-const sellAmount = 5n * unit, buyAmount = 3n * unit;
+const sellAmount = 5n * unitA, buyAmount = 3n * unitB;
 const makerReceive = createNote({ chainId, vaultAddress, asset: assetB, amount: buyAmount });
 const orderOwner = poseidon6([BigInt(assetB), buyAmount, makerReceive.note.ownerPublicKey, deadline, orderNonce, cancelPublicKey]);
 const makerOrderNote = { chainId, vaultAddress, asset: assetA, amount: sellAmount, ownerPublicKey: orderOwner, blinding: makerBlinding };
 const makerOrder = { note: makerOrderNote, ownerSecret: orderOwner, commitment: noteCommitment(makerOrderNote) };
 await deposit("alice", assetA, sellAmount, makerOrder, "Alice shields private RFQ order");
-const takerInput = await deposit("bob", assetB, 7n * unit,
-  createNote({ chainId, vaultAddress, asset: assetB, amount: 7n * unit }), "Bob shields RFQ liquidity");
+const takerInput = await deposit("bob", assetB, 7n * unitB,
+  createNote({ chainId, vaultAddress, asset: assetB, amount: 7n * unitB }), "Bob shields RFQ liquidity");
 
 const oldSwapRoot = tree.root();
 const makerPath = tree.proof(makerOrder.index), takerPath = tree.proof(takerInput.index);
 const takerReceive = createNote({ chainId, vaultAddress, asset: assetA, amount: sellAmount });
-const change = createNote({ chainId, vaultAddress, asset: assetB, amount: 4n * unit });
+const change = createNote({ chainId, vaultAddress, asset: assetB, amount: 4n * unitB });
 const makerInsertion = tree.proof(tree.leaves.length); tree.insert(makerReceive.commitment); makerReceive.index = tree.leaves.length - 1;
 const takerInsertion = tree.proof(tree.leaves.length); tree.insert(takerReceive.commitment); takerReceive.index = tree.leaves.length - 1;
 const changeInsertion = tree.proof(tree.leaves.length); tree.insert(change.commitment); change.index = tree.leaves.length - 1;
@@ -233,19 +245,19 @@ await send("relayer", "Relayed private RFQ swap", vaultAddress, vaultAbi, "settl
 
 const cancelDeadline = deadline + 3600n, cancelSecretTwo = 1901n, orderNonceTwo = 1902n;
 const cancelPublicTwo = poseidon1([cancelSecretTwo]);
-const cancelReceive = createNote({ chainId, vaultAddress, asset: assetB, amount: 1n * unit });
-const cancelOwner = poseidon6([BigInt(assetB), 1n * unit, cancelReceive.note.ownerPublicKey, cancelDeadline, orderNonceTwo, cancelPublicTwo]);
-const cancellableNote = { chainId, vaultAddress, asset: assetA, amount: 1n * unit, ownerPublicKey: cancelOwner, blinding: 1903n };
+const cancelReceive = createNote({ chainId, vaultAddress, asset: assetB, amount: 1n * unitB });
+const cancelOwner = poseidon6([BigInt(assetB), 1n * unitB, cancelReceive.note.ownerPublicKey, cancelDeadline, orderNonceTwo, cancelPublicTwo]);
+const cancellableNote = { chainId, vaultAddress, asset: assetA, amount: 1n * unitA, ownerPublicKey: cancelOwner, blinding: 1903n };
 const cancellable = { note: cancellableNote, ownerSecret: cancelOwner, commitment: noteCommitment(cancellableNote) };
-await deposit("alice", assetA, 1n * unit, cancellable, "Alice shields cancellable RFQ order");
+await deposit("alice", assetA, 1n * unitA, cancellable, "Alice shields cancellable RFQ order");
 const oldCancelRoot = tree.root(), cancelPath = tree.proof(cancellable.index);
-const refund = createNote({ chainId, vaultAddress, asset: assetA, amount: 1n * unit });
+const refund = createNote({ chainId, vaultAddress, asset: assetA, amount: 1n * unitA });
 const refundInsertion = tree.proof(tree.leaves.length); tree.insert(refund.commitment); refund.index = tree.leaves.length - 1;
 const orderNullifier = poseidon4([cancellable.commitment, cancelOwner, chainId, vault]);
 const cancelProof = await prove("cancel-order", {
   oldRoot: oldCancelRoot, newRoot: tree.root(), orderNullifier, refundCommitment: refund.commitment, refundIndex: refund.index,
-  chainId, vaultAddress: vault, cancelSecret: cancelSecretTwo, orderNonce: orderNonceTwo, sellAsset: BigInt(assetA), sellAmount: 1n * unit,
-  buyAsset: BigInt(assetB), buyAmount: 1n * unit, makerReceiveOwner: cancelReceive.note.ownerPublicKey, deadline: cancelDeadline,
+  chainId, vaultAddress: vault, cancelSecret: cancelSecretTwo, orderNonce: orderNonceTwo, sellAsset: BigInt(assetA), sellAmount: 1n * unitA,
+  buyAsset: BigInt(assetB), buyAmount: 1n * unitB, makerReceiveOwner: cancelReceive.note.ownerPublicKey, deadline: cancelDeadline,
   makerOrderBlinding: cancellableNote.blinding, makerPathElements: cancelPath.pathElements, makerPathIndices: cancelPath.pathIndices,
   refundOwner: refund.note.ownerPublicKey, refundBlinding: refund.note.blinding,
   insertionElements: refundInsertion.pathElements, insertionIndices: refundInsertion.pathIndices,
@@ -263,16 +275,22 @@ try {
 
 const finalRoot = await publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "currentRoot" });
 const noteCount = await publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "noteCount" });
+const verifierEntries = await Promise.all(["depositVerifier", "transferVerifier", "withdrawVerifier", "swapVerifier", "cancelOrderVerifier"].map(async functionName => [
+  functionName,
+  await publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName }),
+]));
 const reserveA = await publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "publicReserves", args: [assetA] });
 const reserveB = await publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "publicReserves", args: [assetB] });
 const receiverBalance = await publicClient.readContract({ address: assetA, abi: tokenAbi, functionName: "balanceOf", args: [accounts.fresh_receiver.address] });
 checks.push({ name: "onchain root equals locally derived root", passed: finalRoot.toLowerCase() === hex32(tree.root()).toLowerCase() });
-checks.push({ name: "fresh receiver obtained withdrawn token A", passed: receiverBalance - startingBalances.receiverA === 4n * unit });
+checks.push({ name: "fresh receiver obtained withdrawn token A", passed: receiverBalance - startingBalances.receiverA === 4n * unitA });
 
 const report = {
   generatedAt: new Date().toISOString(), network: "Robinhood Chain", chainId: 4663,
-  warning: "Capped E2E run using development proving keys and valueless test assets; not a production ceremony or audit.",
-  contracts: { vault: vaultAddress, tokenA: assetA, tokenB: assetB },
+  warning: "Capped mainnet E2E run using development proving keys and deliberately tiny real-asset amounts; not a production ceremony or audit.",
+  contracts: { vault: vaultAddress, tokenA: assetA, tokenB: assetB, ...Object.fromEntries(verifierEntries) },
+  assets: { tokenA: symbolA, tokenB: symbolB },
+  scenarioUnits: { tokenA: unitA, tokenB: unitB },
   participants: Object.fromEntries(Object.entries(accounts).map(([role, account]) => [role, account.address])),
   transactions, checks, finalState: { root: finalRoot, localRoot: hex32(tree.root()), noteCount, reserveA, reserveB, receiverBalance },
 };

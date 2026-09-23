@@ -46,7 +46,7 @@
           <p class="kicker">ZKTX DOCUMENTATION · ROBINHOOD CHAIN</p>
           <h1>Zcash-style privacy for Robinhood Chain tokens.</h1>
           <p>ZKTX adapts the shielded-note model—commitments, nullifiers, Merkle membership and zero-knowledge proofs—to standard RH ERC-20 tokens. Users keep their existing token and wallet: no ZEC, bridge, wrapper purchase, or pre-swap is required.</p>
-          <div class="notice warning"><b>Experimental mainnet pilot</b><span>The Shield interface now generates its proof in the browser, requests token approval and deposit signatures from the connected wallet, and stores the encrypted note only after confirmation. It is capped to valueless test assets and uses development proving keys; it must never secure valuable funds. <a href="./case-study.html">Review the onchain evidence.</a></span></div>
+          <div class="notice warning"><b>Experimental mainnet pilot</b><span>The Shield interface now generates its proof in the browser, requests token approval and deposit signatures from the connected wallet, and stores the encrypted note only after confirmation. A deliberately tiny WETH/USDG mainnet lifecycle has passed, but the deployment still uses development proving keys and strict reserve caps; it must not secure material value. <a href="./case-study.html">Review the onchain evidence.</a></span></div>
         </header>
 
         <section id="status">
@@ -173,6 +173,7 @@
         <section id="operations">
           <p class="kicker">13 · OPERATIONS</p><h2>Capped mainnet pilot</h2>
           <ol class="steps"><li><b>Configure</b><p>Set the final token contract, small reserve cap, owner, audited verifier addresses, deployment block, RPC endpoint, and dedicated relayer.</p></li><li><b>Deploy paused</b><p>Deploy verifiers and the vault, verify bytecode, register the token and cap, then reconcile the genesis root before enabling deposits.</p></li><li><b>Canary testing</b><p>Perform small deposit, transfer, split withdrawal, delay, and recovery tests. Compare the onchain root with the independent indexer after every step.</p></li><li><b>Monitor</b><p>Alert on root divergence, failed simulations, unusual relay volume, cap pressure, RPC disagreement, and token reserve discrepancies.</p></li><li><b>Expand carefully</b><p>Raise caps only after audits, a production ceremony, stable reconciliation, and a published incident-response process.</p></li></ol>
+          <h3>September 23 WETH/USDG canary</h3><p>The live Robinhood deployment completed real WETH and USDG deposits, a relayed private transfer, withdrawal to a fresh wallet, a private WETH/USDG RFQ settlement, order cancellation, and replay-rejection check. The final onchain commitment root matched the independently computed root, with 23 commitments indexed. Test amounts were intentionally tiny and caps remain restrictive.</p>
         </section>
 
         <section id="limitations">

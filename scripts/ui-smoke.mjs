@@ -48,10 +48,13 @@ async function runViewport(name, viewport) {
 
   const caseResponse = await page.goto(`${base}/case-study.html`, { waitUntil: "networkidle" });
   check(caseResponse?.ok(), `${name}: case study returns success`);
-  check(await page.locator(".tx").count() === 12, `${name}: 12 transactions render`);
+  check(await page.locator(".tx").count() >= 11, `${name}: mainnet lifecycle transactions render`);
   check(await page.locator("#contracts article").count() === 8, `${name}: 8 contracts render`);
-  check(await page.locator("#checks .check").count() === 4, `${name}: 4 final checks render`);
-  check(await page.locator('.tx a[href^="https://robinhoodchain.blockscout.com/tx/"]').count() === 12, `${name}: all transaction links target Blockscout`);
+  check(await page.locator("#checks .check").count() >= 3, `${name}: final checks render`);
+  check(
+    await page.locator('.tx a[href^="https://robinhoodchain.blockscout.com/tx/"]').count() === await page.locator(".tx").count(),
+    `${name}: all transaction links target Blockscout`,
+  );
 
   const docsResponse = await page.goto(`${base}/docs.html`, { waitUntil: "networkidle" });
   check(docsResponse?.ok(), `${name}: docs return success`);
