@@ -113,7 +113,7 @@ try {
   if (response.ok) protocol = await response.json();
 } catch { /* Static preview has no API. */ }
 refreshLocalNotes();
-document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => {
+function selectTab(button) {
   document.querySelector(".tabs .selected")?.classList.remove("selected");
   button.classList.add("selected");
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
@@ -122,7 +122,23 @@ document.querySelectorAll(".tabs button").forEach((button) => button.addEventLis
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
   submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Submit shielded market trade" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
-}));
+}
+document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => selectTab(button)));
+
+// Telegram and other trusted entry points can hand off a reviewed action without
+// placing passwords, private notes, proofs, or wallet secrets in the URL.
+const handoff = new URL(location.href).searchParams;
+const requestedTab = handoff.get("tab");
+const requestedButton = Object.hasOwn(copy, requestedTab) ? document.querySelector(`.tabs button[data-tab="${requestedTab}"]`) : null;
+if (requestedButton) selectTab(requestedButton);
+if (handoff.get("token")) token.value = handoff.get("token");
+if (handoff.get("amount")) amount.value = handoff.get("amount");
+if (handoff.get("receiveToken")) receiveToken.value = handoff.get("receiveToken");
+if (handoff.get("minimum")) receiveAmount.value = handoff.get("minimum");
+if (handoff.get("deadline") && [...quoteLifetime.options].some((option) => option.value === handoff.get("deadline"))) quoteLifetime.value = handoff.get("deadline");
+if (handoff.get("recipient")) destinations.value = handoff.get("recipient");
+if (token.value) token.dispatchEvent(new Event("change"));
+if (receiveToken.value) receiveToken.dispatchEvent(new Event("change"));
 
 connect.addEventListener("click", async () => {
   if (!window.ethereum) {

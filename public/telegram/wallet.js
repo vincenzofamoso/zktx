@@ -4734,9 +4734,8 @@ async function ready(account) {
       button.disabled = true;
       try {
         status("Signing locally\u2026");
-        const signature = await activeAccount.signMessage({ message });
-        await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/authorize`, { method: "POST", body: JSON.stringify({ signature }) });
-        status("Authorized. No transaction was broadcast while the public protocol remains gated.");
+        const response = await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/authorize`, { method: "POST", body: JSON.stringify({ signature: await activeAccount.signMessage({ message }) }) });
+        status(response.status === "authorized_ready" ? "Authorized. Return to Telegram and continue to proof generation." : "Authorized. Execution will remain unavailable until the relayer and PONS keeper are online.");
       } catch (error) {
         status(error.message || "Authorization failed");
         button.disabled = false;
