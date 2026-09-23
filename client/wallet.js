@@ -75,6 +75,25 @@ export function storedMarketOrders() {
   try { return JSON.parse(localStorage.getItem(MARKET_STORE_KEY) || "[]"); } catch { return []; }
 }
 
+export async function privatePortfolio(password) {
+  const entries = [];
+  for (const record of storedNotes()) {
+    if (record.spentBy) continue;
+    try {
+      const note = await decryptNote(record.encrypted, password);
+      entries.push({
+        id: record.id,
+        commitment: record.commitment,
+        createdAt: record.createdAt,
+        asset: note.note.asset,
+        amount: note.note.amount.toString(),
+        index: note.index,
+      });
+    } catch { /* A different password or corrupt record must not expose other notes. */ }
+  }
+  return entries;
+}
+
 export async function createEncryptedNote(input, password) {
   const privateNote = createNote(input);
   return storeEncryptedNote(privateNote, password);
@@ -497,6 +516,7 @@ window.ZKTXWallet = {
   decryptNote,
   storedNotes,
   storedMarketOrders,
+  privatePortfolio,
   clearStoredNotes,
   planWithdrawals,
 };

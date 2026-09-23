@@ -19,6 +19,8 @@ const rpcUrl = process.env.RH_RPC_URL || null;
 const readRpcUrl = rpcUrl || "https://rpc.mainnet.chain.robinhood.com";
 const readClient = createPublicClient({ transport: http(readRpcUrl, { retryCount: 1 }) });
 const tokenAbi = parseAbi(["function name() view returns (string)", "function symbol() view returns (string)", "function decimals() view returns (uint8)"]);
+const marketConfigAbi = parseAbi(["function marketAdapter() view returns (address)"]);
+const routingAbi = parseAbi(["function routeKey(address,address) pure returns (bytes32)", "function routes(bytes32) view returns (address)"]);
 const tokenCache = new Map();
 const store = new StateStore(process.env.ZKTX_STATE_FILE || path.join(root, "data", "state.json"));
 await store.load();
@@ -89,6 +91,19 @@ app.get("/api/token/:address", async (req, res) => {
   } catch {
     return res.status(404).json({ error: "Token metadata could not be read on Robinhood Chain" });
   }
+});
+
+app.get("/api/route/:tokenIn/:tokenOut", async (req, res) => {
+  const { tokenIn, tokenOut } = req.params;
+  if (!vaultAddress || !/^0x[0-9a-fA-F]{40}$/.test(tokenIn) || !/^0x[0-9a-fA-F]{40}$/.test(tokenOut) || tokenIn.toLowerCase() === tokenOut.toLowerCase()) {
+    return res.status(400).json({ error: "Invalid route pair" });
+  }
+  try {
+    const router = await readClient.readContract({ address: vaultAddress, abi: marketConfigAbi, functionName: "marketAdapter" });
+    const key = await readClient.readContract({ address: router, abi: routingAbi, functionName: "routeKey", args: [tokenIn, tokenOut] });
+    const adapter = await readClient.readContract({ address: router, abi: routingAbi, functionName: "routes", args: [key] });
+    return res.json({ tokenIn, tokenOut, router, adapter, approved: adapter !== "0x0000000000000000000000000000000000000000" });
+  } catch { return res.status(404).json({ error: "No approved execution route was found" }); }
 });
 
 app.get("/api/tree/path/:index", (req, res) => {

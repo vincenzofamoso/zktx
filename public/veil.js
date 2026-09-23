@@ -23,12 +23,18 @@ const receiveAmountUnits = document.querySelector("#receive-amount-units");
 const quoteLifetime = document.querySelector("#quote-lifetime");
 const pendingMarketOrder = document.querySelector("#pending-market-order");
 const settleMarket = document.querySelector("#settle-market");
+const portfolioToggle = document.querySelector("#portfolio-toggle");
+const portfolioList = document.querySelector("#portfolio-list");
+const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
+const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
+const quoteAssets = { weth: WETH, usdg: USDG };
+let swapDirection = "buy";
 
 const copy = {
   shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note—no ZEC or bridge required."],
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
-  swap: ["Execute a shielded market trade", "The relayer hides your wallet; an approved RH route executes public slices and settles proceeds back into private notes."],
-  withdraw: ["Return to a public wallet", "The withdrawal destination and amount become public at the boundary."],
+  swap: ["Swap without exposing your wallet", "Choose Buy or Sell. The vault executes through approved RH liquidity and returns proceeds as private notes."],
+  withdraw: ["Unshield to a public wallet", "Convert a private note back into public tokens at the wallet you choose."],
 };
 
 let connected = false;
@@ -85,10 +91,53 @@ function showConversion(input, metadata, output) {
   }
 }
 
+function formatTokenAmount(value, decimals) {
+  if (!decimals) return BigInt(value).toString();
+  const padded = BigInt(value).toString().padStart(decimals + 1, "0");
+  const whole = padded.slice(0, -decimals) || "0";
+  const fraction = decimals ? padded.slice(-decimals).replace(/0+$/, "") : "";
+  return fraction ? `${whole}.${fraction}` : whole;
+}
+
 token.addEventListener("change", async () => { payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta); showConversion(amount, payTokenMeta, amountUnits); });
 receiveToken.addEventListener("change", async () => { receiveTokenMeta = await readTokenMetadata(receiveToken, receiveTokenMetaText, receiveTokenMeta); showConversion(receiveAmount, receiveTokenMeta, receiveAmountUnits); });
 amount.addEventListener("input", () => showConversion(amount, payTokenMeta, amountUnits));
 receiveAmount.addEventListener("input", () => showConversion(receiveAmount, receiveTokenMeta, receiveAmountUnits));
+
+async function showPortfolio() {
+  if (password.value.length < 10) { result.textContent = "Enter your private-note password first to decrypt the portfolio locally."; password.focus(); return; }
+  portfolioToggle.disabled = true;
+  try {
+    const notes = await window.ZKTXWallet.privatePortfolio(password.value);
+    portfolioList.replaceChildren();
+    for (const note of notes) {
+      const response = await fetch(`./api/token/${note.asset}`);
+      const metadata = response.ok ? await response.json() : { symbol: `${note.asset.slice(0, 6)}…`, decimals: 0 };
+      const row = document.createElement("div"); row.className = "portfolio-item";
+      const asset = document.createElement("span"); asset.textContent = metadata.symbol;
+      const balance = document.createElement("span"); balance.textContent = formatTokenAmount(note.amount, metadata.decimals);
+      row.append(asset, balance); portfolioList.append(row);
+    }
+    if (!notes.length) portfolioList.textContent = "No notes unlocked. Check the password or shield a token first.";
+    portfolioList.hidden = false; portfolioToggle.textContent = "Refresh portfolio";
+  } finally { portfolioToggle.disabled = false; }
+}
+portfolioToggle.addEventListener("click", () => void showPortfolio());
+
+function applySwapDirection() {
+  const quote = document.querySelector(".quote-assets button.selected")?.dataset.quote;
+  if (!quote) return;
+  const address = quoteAssets[quote];
+  if (swapDirection === "buy") { token.value = address; token.disabled = true; receiveToken.disabled = false; tokenLabel.textContent = "You pay with"; }
+  else { receiveToken.value = address; receiveToken.disabled = true; token.disabled = false; tokenLabel.textContent = "Token you sell"; }
+  token.dispatchEvent(new Event("change")); receiveToken.dispatchEvent(new Event("change"));
+}
+document.querySelectorAll(".swap-direction button").forEach((button) => button.addEventListener("click", () => {
+  document.querySelector(".swap-direction .selected")?.classList.remove("selected"); button.classList.add("selected"); swapDirection = button.dataset.direction; applySwapDirection();
+}));
+document.querySelectorAll(".quote-assets button").forEach((button) => button.addEventListener("click", () => {
+  document.querySelector(".quote-assets .selected")?.classList.remove("selected"); button.classList.add("selected"); applySwapDirection();
+}));
 
 function refreshLocalNotes() {
   const records = window.ZKTXWallet?.storedNotes() || [];
@@ -119,9 +168,14 @@ function selectTab(button) {
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
   planner.hidden = button.dataset.tab !== "withdraw";
   swapFields.hidden = button.dataset.tab !== "swap";
+  token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
-  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Submit shielded market trade" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
+  submit.textContent = button.dataset.tab === "withdraw" ? "Unshield tokens" : button.dataset.tab === "swap" ? "Submit Shielded Swap" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
+  if (button.dataset.tab === "swap") {
+    if (!document.querySelector(".quote-assets .selected")) document.querySelector('.quote-assets button[data-quote="weth"]').classList.add("selected");
+    applySwapDirection();
+  }
 }
 document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => selectTab(button)));
 
@@ -199,6 +253,9 @@ form.addEventListener("submit", async (event) => {
     try { receiveUnits = parseTokenAmount(receiveAmount.value, receiveTokenMeta.decimals); }
     catch (error) { result.textContent = error.message; return; }
     try {
+      const routeResponse = await fetch(`./api/route/${token.value}/${receiveToken.value}`);
+      const route = await routeResponse.json();
+      if (!routeResponse.ok || !route.approved) throw new Error("This exact swap direction does not yet have an approved live RH route");
       if (!connected || !account) throw new Error("Connect your wallet before opening a market order");
       const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value));
       const order = await window.ZKTXWallet.openMarketOrderLive({

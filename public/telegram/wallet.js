@@ -21623,6 +21623,7 @@ __export(wallet_exports, {
   encryptNote: () => encryptNote,
   openMarketOrderLive: () => openMarketOrderLive,
   prepareEncryptedNote: () => prepareEncryptedNote,
+  privatePortfolio: () => privatePortfolio,
   settleMarketOrderLive: () => settleMarketOrderLive,
   shieldLive: () => shieldLive,
   storeEncryptedNote: () => storeEncryptedNote,
@@ -21681,6 +21682,25 @@ function storedMarketOrders() {
   } catch {
     return [];
   }
+}
+async function privatePortfolio(password) {
+  const entries = [];
+  for (const record of storedNotes()) {
+    if (record.spentBy) continue;
+    try {
+      const note = await decryptNote(record.encrypted, password);
+      entries.push({
+        id: record.id,
+        commitment: record.commitment,
+        createdAt: record.createdAt,
+        asset: note.note.asset,
+        amount: note.note.amount.toString(),
+        index: note.index
+      });
+    } catch {
+    }
+  }
+  return entries;
 }
 async function createEncryptedNote(input, password) {
   const privateNote = createNote(input);
@@ -22091,6 +22111,7 @@ var init_wallet2 = __esm({
       decryptNote,
       storedNotes,
       storedMarketOrders,
+      privatePortfolio,
       clearStoredNotes,
       planWithdrawals
     };

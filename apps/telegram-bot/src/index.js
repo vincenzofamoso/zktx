@@ -35,7 +35,7 @@ const signerLink = (query) => `${signerUrl}?v=4&${query}`;
 const signerButton = (label, query) => new InlineKeyboard().webApp(label, signerLink(query));
 
 function homeKeyboard(userId) {
-  const keyboard = new InlineKeyboard().text("Shield", "flow:shield").text("Private send", "flow:send").row().text("Shielded market trade", "flow:market").text("Withdraw", "flow:withdraw").row().text("How it works", "how").text("Fees + burn", "fees").row();
+  const keyboard = new InlineKeyboard().text("Shield", "flow:shield").text("Unshield", "flow:withdraw").row().text("Private send", "flow:send").text("Shielded Swap", "flow:market").row().text("How it works", "how").text("Fees + burn", "fees").row();
   if (store.vaults[String(userId)]) keyboard.webApp("Wallet", signerLink("action=wallet")).text("Balance", "balance");
   else keyboard.webApp("Import wallet", signerLink("action=import"));
   return keyboard;
@@ -57,7 +57,7 @@ function startDraft(ctx, type) {
 }
 
 function jobMessage(job) {
-  const lines = [`Action: ${job.type}`, `Wallet: ${job.wallet}`, ...(job.token ? [`Pay token: ${job.token}`] : []), ...(job.receiveToken ? [`Receive token: ${job.receiveToken}`] : []), ...(job.amount ? [`Amount: ${job.amount}`] : []), ...(job.receiveAmount ? [`Minimum net received: ${job.receiveAmount}`] : []), ...(job.deadlineSeconds ? [`Execution deadline: ${job.deadlineSeconds} seconds`] : []), ...(job.recipient ? [`Destination: ${job.recipient}`] : [])];
+  const lines = [`Action: ${job.type === "market" ? "shielded swap" : job.type === "withdraw" ? "unshield" : job.type}`, `Wallet: ${job.wallet}`, ...(job.token ? [`Pay token: ${job.token}`] : []), ...(job.receiveToken ? [`Receive token: ${job.receiveToken}`] : []), ...(job.amount ? [`Amount: ${job.amount}`] : []), ...(job.receiveAmount ? [`Minimum received: ${job.receiveAmount}`] : []), ...(job.deadlineSeconds ? [`Execution deadline: ${job.deadlineSeconds} seconds`] : []), ...(job.recipient ? [`Destination: ${job.recipient}`] : [])];
   return `ZKTX Telegram authorization\nJob: ${job.id}\n${lines.join("\n")}\nExpires: ${job.expiresAt}`;
 }
 
@@ -170,5 +170,5 @@ app.post("/api/v1/jobs/:id/complete", async (req, res) => {
 });
 app.listen(port, "127.0.0.1", () => console.log(`ZKTX Telegram API listening on ${port}`));
 bot.catch(({ error }) => console.error("ZKTX bot", error?.message || error));
-await bot.api.setMyCommands([{ command: "trade", description: "Prepare a shielded RH market trade" }, { command: "shield", description: "Shield an RH token" }, { command: "send", description: "Prepare a private transfer" }, { command: "withdraw", description: "Withdraw to a public wallet" }, { command: "balance", description: "Open private balance" }, { command: "wallet", description: "Manage trusted-device wallet" }, { command: "how", description: "How ZKTX protects a trade" }, { command: "fees", description: "Fees and ZKTX buyback/burn" }, { command: "status", description: "Protocol readiness and recent actions" }, { command: "cancel", description: "Cancel current action" }]);
+await bot.api.setMyCommands([{ command: "trade", description: "Prepare a Shielded Swap" }, { command: "shield", description: "Shield an RH token" }, { command: "send", description: "Prepare a private transfer" }, { command: "withdraw", description: "Unshield to a public wallet" }, { command: "balance", description: "Open private portfolio" }, { command: "wallet", description: "Manage trusted-device wallet" }, { command: "how", description: "How ZKTX protects a swap" }, { command: "fees", description: "Fees and ZKTX buyback/burn" }, { command: "status", description: "Protocol readiness and recent actions" }, { command: "cancel", description: "Cancel current action" }]);
 await bot.start({ allowed_updates: ["message", "callback_query"] });
