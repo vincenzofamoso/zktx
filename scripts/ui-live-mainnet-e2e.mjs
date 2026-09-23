@@ -6,7 +6,8 @@ import { privateKeyToAccount } from "viem/accounts";
 const base = process.env.ZKTX_URL || "https://zktx.tech";
 const rpcUrl = process.env.RH_RPC_URL || "https://rpc.mainnet.chain.robinhood.com";
 const walletFile = process.env.ZKTX_E2E_WALLETS || "/home/ops/.zktx-secrets/mainnet-e2e-wallets.json";
-const token = process.env.ZKTX_TOKEN_A || "0x308FFbDb97f4EDda9345D8376a63c60B9917E29b";
+const token = process.env.ZKTX_TOKEN_A || "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
+const amount = process.env.ZKTX_E2E_AMOUNT || "0.000001";
 const stored = JSON.parse(await fs.readFile(walletFile, "utf8"));
 const selected = stored.wallets.find((wallet) => wallet.role === "alice");
 if (!selected) throw new Error("Alice test wallet is missing");
@@ -44,9 +45,9 @@ try {
   console.log("LIVE-UI wallet connected");
   await page.locator("#token").fill(token);
   await page.locator("#token").dispatchEvent("change");
-  await page.waitForFunction(() => document.querySelector("#token-meta")?.textContent.includes("ZKTA"));
+  await page.waitForFunction(() => document.querySelector("#token-meta")?.classList.contains("loaded"));
   console.log("LIVE-UI token metadata loaded");
-  await page.locator("#amount").fill("0.001");
+  await page.locator("#amount").fill(amount);
   await page.locator("#note-password").fill("mainnet-browser-e2e-password");
   await page.locator("#veil-form").evaluate((form) => form.requestSubmit());
   console.log("LIVE-UI proof and transaction flow started");
@@ -54,7 +55,7 @@ try {
   const result = await page.locator("#form-result").textContent();
   const href = await page.locator("#form-result a").getAttribute("href");
   if (!href?.includes("/tx/0x")) throw new Error("Confirmed UI did not expose a transaction link");
-  if (!(await page.locator("#local-notes").textContent()).startsWith("1 encrypted note")) throw new Error("Confirmed note was not encrypted locally");
+  if (!(await page.locator("#local-notes").textContent()).startsWith("1 spendable encrypted note")) throw new Error("Confirmed note was not encrypted locally");
   if (errors.length) throw new Error(`Browser errors: ${errors.join(" | ")}`);
   console.log(JSON.stringify({ ok: true, account: account.address, result, transaction: href.split("/tx/")[1] }, null, 2));
 } catch (error) {

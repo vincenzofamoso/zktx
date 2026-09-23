@@ -140,17 +140,17 @@ async function rpc(method, params) {
   return window.ethereum.request({ method, params });
 }
 
-async function waitForReceipt(hash, timeoutMs = 180_000) {
+async function waitForReceipt(hash, timeoutMs = 180_000, stage = "Transaction") {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     const receipt = await rpc("eth_getTransactionReceipt", [hash]);
     if (receipt) {
-      if (BigInt(receipt.status) !== 1n) throw new Error(`Transaction reverted: ${hash}`);
+      if (BigInt(receipt.status) !== 1n) throw new Error(`${stage} reverted on Robinhood Chain: ${hash}`);
       return receipt;
     }
     await new Promise((resolve) => setTimeout(resolve, 2_000));
   }
-  throw new Error(`Transaction was not confirmed in time: ${hash}`);
+  throw new Error(`${stage} was not confirmed on Robinhood Chain: ${hash}`);
 }
 
 async function ethCall(to, data) {
@@ -262,7 +262,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
     from: account, to: asset,
     data: encodeFunctionData({ abi: tokenAbi, functionName: "approve", args: [vaultAddress, amount] }),
   }]);
-  await waitForReceipt(approvalHash);
+  await waitForReceipt(approvalHash, 180_000, "Token approval");
 
   // Re-read immediately before broadcast; another deposit may have advanced the tree while the proof was built.
   const fresh = await (await fetch(apiUrl("/api/status"), { cache: "no-store" })).json();
@@ -274,7 +274,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
     from: account, to: vaultAddress,
     data: encodeFunctionData({ abi: vaultAbi, functionName: "deposit", args: [proof, asset, amount, hex32(created.commitment), hex32(newRoot)] }),
   }]);
-  const receipt = await waitForReceipt(depositHash);
+  const receipt = await waitForReceipt(depositHash, 180_000, "Shield deposit");
   const record = commitEncryptedNote(preparedRecord);
   return { record, approvalHash, depositHash, receipt };
 }

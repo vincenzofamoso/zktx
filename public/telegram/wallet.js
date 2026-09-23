@@ -21732,17 +21732,17 @@ async function rpc(method, params2) {
   if (!window.ethereum) throw new Error("Install MetaMask or another EVM wallet");
   return window.ethereum.request({ method, params: params2 });
 }
-async function waitForReceipt(hash3, timeoutMs = 18e4) {
+async function waitForReceipt(hash3, timeoutMs = 18e4, stage = "Transaction") {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     const receipt = await rpc("eth_getTransactionReceipt", [hash3]);
     if (receipt) {
-      if (BigInt(receipt.status) !== 1n) throw new Error(`Transaction reverted: ${hash3}`);
+      if (BigInt(receipt.status) !== 1n) throw new Error(`${stage} reverted on Robinhood Chain: ${hash3}`);
       return receipt;
     }
     await new Promise((resolve) => setTimeout(resolve, 2e3));
   }
-  throw new Error(`Transaction was not confirmed in time: ${hash3}`);
+  throw new Error(`${stage} was not confirmed on Robinhood Chain: ${hash3}`);
 }
 async function ethCall(to, data) {
   return rpc("eth_call", [{ to, data }, "latest"]);
@@ -21850,7 +21850,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
     to: asset,
     data: encodeFunctionData({ abi: tokenAbi, functionName: "approve", args: [vaultAddress, amount] })
   }]);
-  await waitForReceipt(approvalHash);
+  await waitForReceipt(approvalHash, 18e4, "Token approval");
   const fresh = await (await fetch(apiUrl("/api/status"), { cache: "no-store" })).json();
   if (Number(fresh.state.leafCount) !== index2 || BigInt(fresh.state.root) !== BigInt(path.root)) {
     throw new Error("The pool changed while your proof was being prepared. Your approval is safe; submit again to rebuild the proof.");
@@ -21861,7 +21861,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
     to: vaultAddress,
     data: encodeFunctionData({ abi: vaultAbi, functionName: "deposit", args: [proof, asset, amount, hex32(created.commitment), hex32(newRoot)] })
   }]);
-  const receipt = await waitForReceipt(depositHash);
+  const receipt = await waitForReceipt(depositHash, 18e4, "Shield deposit");
   const record = commitEncryptedNote(preparedRecord);
   return { record, approvalHash, depositHash, receipt };
 }
