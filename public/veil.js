@@ -21,11 +21,13 @@ const receiveAmount = document.querySelector("#receive-amount");
 const receiveTokenMetaText = document.querySelector("#receive-token-meta");
 const receiveAmountUnits = document.querySelector("#receive-amount-units");
 const quoteLifetime = document.querySelector("#quote-lifetime");
+const pendingMarketOrder = document.querySelector("#pending-market-order");
+const settleMarket = document.querySelector("#settle-market");
 
 const copy = {
   shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note—no ZEC or bridge required."],
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
-  swap: ["Swap inside the pool", "The proof conserves both assets without publishing the user's order."],
+  swap: ["Execute a shielded PONS market trade", "The relayer hides your wallet; public slices execute promptly and settle back into private notes."],
   withdraw: ["Return to a public wallet", "The withdrawal destination and amount become public at the boundary."],
 };
 
@@ -89,8 +91,21 @@ amount.addEventListener("input", () => showConversion(amount, payTokenMeta, amou
 receiveAmount.addEventListener("input", () => showConversion(receiveAmount, receiveTokenMeta, receiveAmountUnits));
 
 function refreshLocalNotes() {
-  const count = window.ZKTXWallet?.storedNotes().length || 0;
-  localNotes.textContent = `${count} encrypted note${count === 1 ? "" : "s"} stored only in this browser.`;
+  const records = window.ZKTXWallet?.storedNotes() || [];
+  const count = records.filter((record) => !record.spentBy).length;
+  const pending = (window.ZKTXWallet?.storedMarketOrders() || []).filter((record) => !record.settled);
+  localNotes.textContent = `${count} spendable encrypted note${count === 1 ? "" : "s"} and ${pending.length} pending market order${pending.length === 1 ? "" : "s"} stored only in this browser.`;
+  pendingMarketOrder.replaceChildren();
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = pending.length ? "Select a pending order" : "No pending local orders";
+  pendingMarketOrder.append(empty);
+  for (const order of pending) {
+    const option = document.createElement("option");
+    option.value = order.orderId;
+    option.textContent = `${order.orderId.slice(0, 10)}… · ${new Date(order.createdAt).toLocaleString()}`;
+    pendingMarketOrder.append(option);
+  }
 }
 
 try {
@@ -106,7 +121,7 @@ document.querySelectorAll(".tabs button").forEach((button) => button.addEventLis
   swapFields.hidden = button.dataset.tab !== "swap";
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
-  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Build private RFQ quote" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
+  submit.textContent = button.dataset.tab === "withdraw" ? "Build private withdrawal plan" : button.dataset.tab === "swap" ? "Submit shielded market trade" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
 }));
 
 connect.addEventListener("click", async () => {
@@ -167,8 +182,23 @@ form.addEventListener("submit", async (event) => {
     let receiveUnits;
     try { receiveUnits = parseTokenAmount(receiveAmount.value, receiveTokenMeta.decimals); }
     catch (error) { result.textContent = error.message; return; }
-    const expires = new Date(Date.now() + Number(quoteLifetime.value) * 1000);
-    result.textContent = `Private RFQ preview: offer ${amount.value} ${payTokenMeta.symbol} (${payUnits} base units) for at least ${receiveAmount.value} ${receiveTokenMeta.symbol} (${receiveUnits} base units); expires ${expires.toLocaleString()}. No transaction was sent.`;
+    try {
+      if (!connected || !account) throw new Error("Connect your wallet before opening a market order");
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value));
+      const order = await window.ZKTXWallet.openMarketOrderLive({
+        chainId: protocol.chainId,
+        vaultAddress: protocol.vaultAddress,
+        assetIn: token.value,
+        amountIn: payUnits,
+        assetOut: receiveToken.value,
+        minimumAmountOut: receiveUnits,
+        deadline,
+        password: password.value,
+        onProgress: (message) => { result.textContent = message; },
+      });
+      refreshLocalNotes();
+      result.innerHTML = `Market order relayed. The keeper will execute its slices promptly. <a href="https://robinhoodchain.blockscout.com/tx/${order.transactionHash}" target="_blank" rel="noopener">View vault transaction ↗</a>`;
+    } catch (error) { result.textContent = error?.message || "Could not open the shielded market order."; }
     return;
   }
   if (selected !== "shield") {
@@ -192,4 +222,20 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     result.textContent = error?.message || "Could not create the encrypted note.";
   }
+});
+
+settleMarket.addEventListener("click", async () => {
+  try {
+    if (!connected || !account) throw new Error("Connect your wallet before settling");
+    if (!pendingMarketOrder.value) throw new Error("Select a pending local market order");
+    const settled = await window.ZKTXWallet.settleMarketOrderLive({
+      orderId: pendingMarketOrder.value,
+      password: password.value,
+      onProgress: (message) => { result.textContent = message; },
+    });
+    refreshLocalNotes();
+    result.innerHTML = settled.transactionHash
+      ? `Actual proceeds returned to private notes. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
+      : "Recovered the already-settled private notes into this browser.";
+  } catch (error) { result.textContent = error?.message || "Could not settle the market order."; }
 });

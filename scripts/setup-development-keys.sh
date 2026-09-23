@@ -25,9 +25,11 @@ if [[ ! -f "$output/pot17_final.ptau" ]]; then
   mv "$output/pot17_final.ptau.tmp" "$output/pot17_final.ptau"
 fi
 
-for circuit in deposit transfer withdraw swap cancel-order; do
+for circuit in deposit transfer withdraw swap cancel-order market-order market-settlement; do
   case "$circuit" in
     cancel-order) verifier_name="CancelOrderVerifier" ;;
+    market-order) verifier_name="MarketOrderVerifier" ;;
+    market-settlement) verifier_name="MarketSettlementVerifier" ;;
     *) verifier_name="${circuit^}Verifier" ;;
   esac
   entropy="$(openssl rand -hex 64)"
@@ -39,6 +41,11 @@ for circuit in deposit transfer withdraw swap cancel-order; do
   npx snarkjs zkey export verificationkey "$output/${circuit}_final.zkey" "$output/${circuit}_verification_key.json"
   npx snarkjs zkey export solidityverifier "$output/${circuit}_final.zkey" "$root/contracts/generated/${verifier_name}.sol"
   sed -i "s/contract Groth16Verifier/contract ${verifier_name}/" "$root/contracts/generated/${verifier_name}.sol"
+  if [[ "$circuit" == "deposit" || "$circuit" == "market-order" || "$circuit" == "market-settlement" ]]; then
+    mkdir -p "$root/public/proving"
+    cp "$root/build/circuits/${circuit}_js/${circuit}.wasm" "$root/public/proving/${circuit}.wasm"
+    cp "$output/${circuit}_final.zkey" "$root/public/proving/${circuit}_final.zkey"
+  fi
 done
 
 echo "Development keys generated. They are ignored by git and MUST NOT secure real funds."

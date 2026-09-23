@@ -45,3 +45,21 @@ interface ICancelOrderVerifier {
         uint256[7] calldata publicSignals
     ) external view returns (bool);
 }
+
+interface IMarketOrderVerifier {
+    function verifyProof(
+        uint256[2] calldata a,
+        uint256[2][2] calldata b,
+        uint256[2] calldata c,
+        uint256[10] calldata publicSignals
+    ) external view returns (bool);
+}
+
+interface IMarketSettlementVerifier {
+    function verifyProof(
+        uint256[2] calldata a,
+        uint256[2][2] calldata b,
+        uint256[2] calldata c,
+        uint256[14] calldata publicSignals
+    ) external view returns (bool);
+}

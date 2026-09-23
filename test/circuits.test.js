@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
-import { poseidon1, poseidon4, poseidon6 } from "poseidon-lite";
+import { poseidon1, poseidon3, poseidon4, poseidon6 } from "poseidon-lite";
 import { IncrementalMerkleTree } from "../src/merkle-tree.js";
 import { createNote, noteCommitment, noteNullifier, SNARK_FIELD } from "../src/notes.js";
 
@@ -145,4 +145,97 @@ test("private RFQ swap circuit exchanges two shielded assets and returns change"
     insertionIndices: refundInsertion.pathIndices,
   });
   assert.ok(cancelWitness.length > 1);
+});
+
+test("market order and settlement circuits bind execution terms to private result notes", async () => {
+  const chainId = 4663n;
+  const vault = BigInt(vaultAddress);
+  const input = createNote({
+    chainId,
+    vaultAddress,
+    asset,
+    amount: 500n,
+    ownerSecret: 1501n,
+    blinding: 1502n,
+  });
+  const tree = new IncrementalMerkleTree(20, [input.commitment]);
+  const inputPath = tree.proof(0);
+  const nullifier = noteNullifier(input.note, input.ownerSecret);
+  const outputOwnerSecret = 1601n;
+  const outputBlinding = 1602n;
+  const refundBlinding = 1603n;
+  const output = createNote({
+    chainId,
+    vaultAddress,
+    asset: secondAsset,
+    amount: 450n,
+    ownerSecret: outputOwnerSecret,
+    blinding: outputBlinding,
+  });
+  const refund = createNote({
+    chainId,
+    vaultAddress,
+    asset,
+    amount: 50n,
+    ownerSecret: outputOwnerSecret,
+    blinding: refundBlinding,
+  });
+  const settlementKey = poseidon3([
+    output.note.ownerPublicKey,
+    outputBlinding,
+    refundBlinding,
+  ]);
+  const deadline = 2_000_000_000n;
+
+  const orderWitness = await witness("market-order", {
+    root: tree.root(),
+    nullifier,
+    assetIn: BigInt(asset),
+    amountIn: input.note.amount,
+    assetOut: BigInt(secondAsset),
+    minimumAmountOut: 400n,
+    settlementKey,
+    deadline,
+    chainId,
+    vaultAddress: vault,
+    ownerSecret: input.ownerSecret,
+    inputBlinding: input.note.blinding,
+    inputPathElements: inputPath.pathElements,
+    inputPathIndices: inputPath.pathIndices,
+    outputOwnerPublicKey: output.note.ownerPublicKey,
+    outputBlinding,
+    refundBlinding,
+    distinctAssetInverse: inverse(BigInt(asset) - BigInt(secondAsset)),
+  });
+  assert.ok(orderWitness.length > 1);
+
+  const oldRoot = tree.root();
+  const outputInsertion = tree.proof(1);
+  tree.insert(output.commitment);
+  const refundInsertion = tree.proof(2);
+  tree.insert(refund.commitment);
+  const settlementWitness = await witness("market-settlement", {
+    oldRoot,
+    newRoot: tree.root(),
+    outputCommitment: output.commitment,
+    refundCommitment: refund.commitment,
+    outputIndex: 1,
+    refundIndex: 2,
+    settlementKey,
+    assetOut: BigInt(secondAsset),
+    netAmountOut: output.note.amount,
+    assetIn: BigInt(asset),
+    refundAmount: refund.note.amount,
+    chainId,
+    vaultAddress: vault,
+    orderNullifier: nullifier,
+    outputOwnerPublicKey: output.note.ownerPublicKey,
+    outputBlinding,
+    refundBlinding,
+    outputInsertionElements: outputInsertion.pathElements,
+    outputInsertionIndices: outputInsertion.pathIndices,
+    refundInsertionElements: refundInsertion.pathElements,
+    refundInsertionIndices: refundInsertion.pathIndices,
+  });
+  assert.ok(settlementWitness.length > 1);
 });

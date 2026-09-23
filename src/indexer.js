@@ -32,6 +32,13 @@ export function createIndexer({ rpcUrl, vaultAddress, store, startBlock = 0n }) 
           await store.recordNullifier(BigInt(log.args.orderNullifier), log.blockNumber);
           await store.recordCommitment(BigInt(log.args.refundCommitment), log.blockNumber);
         }
+        if (log.eventName === "MarketOrderOpened") {
+          await store.recordNullifier(BigInt(log.args.orderId), log.blockNumber);
+        }
+        if (log.eventName === "MarketOrderSettled") {
+          await store.recordCommitment(BigInt(log.args.outputCommitment), log.blockNumber);
+          await store.recordCommitment(BigInt(log.args.refundCommitment), log.blockNumber);
+        }
       }
       store.state.lastBlock = Number(latest);
       await store.save();

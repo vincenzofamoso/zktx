@@ -1,4 +1,4 @@
-import { poseidon1, poseidon4, poseidon6 } from "poseidon-lite";
+import { poseidon1, poseidon3, poseidon4, poseidon6 } from "poseidon-lite";
 
 export const SNARK_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
@@ -43,6 +43,10 @@ export function noteNullifier(note, ownerSecret) {
     field(note.chainId),
     addressField(note.vaultAddress),
   ]);
+}
+
+export function marketSettlementKey(ownerPublicKeyValue, outputBlinding, refundBlinding) {
+  return poseidon3([field(ownerPublicKeyValue), field(outputBlinding), field(refundBlinding)]);
 }
 
 export function createNote({ chainId, vaultAddress, asset, amount, ownerSecret = randomField(), blinding = randomField() }) {

@@ -52,8 +52,8 @@
         <section id="status">
           <p class="kicker">01 · STATUS</p><h2>What works today</h2>
           <div class="status-grid">
-            <div><b>Implemented</b><ul><li>Zcash-style private notes and one-time nullifiers</li><li>Poseidon incremental Merkle commitment tree</li><li>Deposit, private-transfer, withdrawal, swap, and cancellation circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note storage</li><li>Persistent event indexer</li><li>Simulation-first gas-paying relayer</li><li>Multi-destination withdrawal planner</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
-            <div><b>Still gated</b><ul><li>Independent security audits</li><li>Final production token configuration</li><li>Production vault and verifier deployment</li><li>Funded production relayer</li><li>Browser transfer, withdrawal, and RFQ proof workflows</li><li>Batched PONS matching and settlement</li></ul></div>
+            <div><b>Implemented</b><ul><li>Zcash-style private notes and one-time nullifiers</li><li>Poseidon incremental Merkle commitment tree</li><li>Deposit, private-transfer, withdrawal, RFQ, market-order, and market-settlement circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note and settlement-secret storage</li><li>PONS V2 bonding-curve and graduated V4 routing</li><li>Simulation-first relayer and market keeper</li><li>Browser market-order and settlement proof workflows</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
+            <div><b>Still gated</b><ul><li>Final production Groth16 keys and verifiers</li><li>Final ZKTX and quote-token configuration</li><li>Production vault and adapter deployment</li><li>Funded production relayer and keeper</li><li>Browser transfer, withdrawal, and RFQ settlement workflows</li><li>Operational monitoring and incident controls</li></ul></div>
           </div>
         </section>
 
@@ -86,7 +86,7 @@
             <article><b>Circuits</b><p>Prove note membership, ownership, correct nullifiers, asset and amount binding, conservation of value, and valid output commitments.</p></article>
             <article><b>Indexer</b><p>Reads vault events, rebuilds the commitment tree, records spent nullifiers, and supplies Merkle paths required to create proofs.</p></article>
             <article><b>Relayer</b><p>Simulates and broadcasts approved private transfers and withdrawals so users do not need a separate public gas-paying wallet for each action.</p></article>
-            <article><b>Swap services</b><p>Implemented RFQ settlement and maker cancellation proofs, plus a planned privacy-aware batching path against the public PONS market.</p></article>
+            <article><b>Market executor</b><p>Executes shielded intents in 3–7 public PONS slices, immediately buys and burns ZKTX from the 1% protocol fee, then returns actual proceeds to private notes.</p></article>
           </div>
         </section>
 
@@ -127,8 +127,9 @@
           <p class="kicker">07 · SWAPS</p><h2>Swap RH tokens as shielded notes</h2>
           <h3>Atomic private swaps</h3><p>A maker locks a shielded note into exact order terms: requested asset and amount, maker receive key, deadline, nonce, and a cancellation key. A taker can fill only those exact terms. One proof consumes the maker and taker notes, pays the maker and taker as new private notes, and returns any taker change.</p>
           <p>The maker never shares the cancellation secret. A separate cancellation proof lets only the maker consume an unfilled order and recreate the original sell balance as a private refund note. Both fill and cancellation use the same nullifier, so only one can succeed.</p>
-          <h3>Batched PONS execution</h3><p>Private orders are combined and settled through larger public trades against PONS. The external PONS trade remains visible. A production batch must enforce asset conservation, limits, deadlines, maximum slippage, matcher authorization, and fair allocation in the proof system.</p>
-          <p>The RFQ swap and cancellation circuits, vault entry points, relayer routes, and tests are implemented in the prototype. Browser shielding is live for capped pilot assets; the browser still builds RFQ quote previews only, and private-swap settlement remains gated. Batched PONS execution remains planned.</p>
+          <h3>Sliced PONS market execution</h3><p>A market-order proof privately spends one shielded note while binding the public pair, input, minimum net output, deadline, and a secret settlement key. The keeper submits 3–7 variable slices, at most one per block. Each public pool trade remains visible as ZKTX adapter activity; the mechanism obscures the originating wallet but cannot make AMM reserve changes invisible.</p>
+          <p>The fee is fixed at 1.5%: 0.5% remains in the quote asset for execution costs and 1% immediately buys ZKTX and calls its native burn function. After the final slice, the user waits 30 seconds and proves two new notes: actual net proceeds and any unspent refund. The protocol never promises a fixed fill or carries market-maker inventory risk.</p>
+          <p>PONS V2 orders route through the launch's bonding curve before graduation and its official-hook Uniswap V4 pool afterward. Native-ETH launches are wrapped at the vault boundary. The browser flow is implemented but only becomes live when final proof artifacts, contracts, relayer, and keeper are configured.</p>
         </section>
 
         <section id="proofs">
@@ -140,6 +141,8 @@
             <tr><td>Withdrawal</td><td>Root, nullifier, asset, recipient, amount, chain, vault</td><td>Owner secret, blinding, membership path</td></tr>
             <tr><td>RFQ swap</td><td>Roots, nullifiers, output commitments, indices, chain, vault, deadline</td><td>Both input notes, membership paths, exact order terms, output owners and blindings</td></tr>
             <tr><td>Cancel order</td><td>Roots, order nullifier, refund commitment and index, chain, vault</td><td>Cancel secret, order terms, maker note and membership path</td></tr>
+            <tr><td>Market order</td><td>Root, nullifier, pair, input, minimum output, deadline, settlement key, chain, vault</td><td>Input note and membership path, output owner and blindings</td></tr>
+            <tr><td>Market settlement</td><td>Roots, output/refund commitments and amounts, indices, order, chain, vault</td><td>Settlement-key preimage and insertion paths</td></tr>
           </tbody></table>
           <p>Development proofs have been generated and verified end to end. Those development keys are server-local and excluded from source control.</p>
         </section>
@@ -153,7 +156,7 @@
         <section id="services">
           <p class="kicker">10 · SERVICES</p><h2>Indexer and platform-funded relayer</h2>
           <p>The indexer reconstructs the commitment tree exclusively from verified vault events. It persists commitments, nullifiers, the last indexed block, leaf count, and current locally derived root.</p>
-          <p>The relayer accepts strictly validated transfer or withdrawal payloads, simulates the contract call, applies per-IP limits, and broadcasts only if simulation succeeds. Its signing key is loaded from server configuration and is never sent to the browser.</p>
+          <p>The relayer accepts strictly validated private-action payloads, simulates the contract call, applies per-IP limits, and broadcasts only if simulation succeeds. Its signing key is loaded from server configuration and is never sent to the browser. The keeper separately simulates each exact slice, derives a protected buyback minimum from the simulated burn amount, and broadcasts only successful slices.</p>
           <p>Platform-funded gas improves usability and avoids forcing the recipient to acquire RH gas before withdrawing. It also creates abuse and availability risks, so production requires quotas, monitoring, multiple relayers, and a defined shutdown policy.</p>
         </section>
 
@@ -166,19 +169,19 @@
         <section id="security">
           <p class="kicker">12 · SECURITY</p><h2>Threat model</h2>
           <div class="card-grid"><article><b>Protected against</b><p>Commitment forgery, unbalanced private transfers, cross-vault replay, cross-chain replay, double spending, unsupported assets, reserve-cap overflow, and invalid proof submission.</p></article><article><b>Not automatically protected against</b><p>Device compromise, password loss, malicious browser extensions, traffic analysis, IP logging, timing correlation, unique amounts, coercion, compromised setup parameters, or contract/circuit implementation bugs.</p></article></div>
-          <h3>Trusted setup</h3><p>Groth16 requires a setup. A multi-party ceremony ensures security if at least one contributor destroys its secret contribution. The requested direct-mainnet pilot currently skips this ceremony, so its development setup remains trusted and unsuitable for uncapped public funds.</p>
-          <h3>Audit requirement</h3><p>Passing tests is not an audit. Circuit constraints, generated verifiers, token behavior, upgrade assumptions, client cryptography, operational security, and relayer behavior require independent review before real value is accepted.</p>
+          <h3>Trusted setup</h3><p>Groth16 requires a setup. Final keys are generated after the circuits are frozen: verify phase 1, run a multi-party phase 2 for each circuit, apply a public beacon, verify the transcripts, and publish the artifacts. PONS does not issue these keys. Development keys remain trusted and unsuitable for public funds.</p>
+          <h3>Unaudited release</h3><p>The requested release skips independent audits. Passing tests is not an audit, and the circuits, generated verifiers, PONS routing, client cryptography, relayer, keeper, and operational setup may contain value-losing defects. The deployment acknowledgement records acceptance of this risk rather than claiming review.</p>
         </section>
 
         <section id="operations">
           <p class="kicker">13 · OPERATIONS</p><h2>Capped mainnet pilot</h2>
-          <ol class="steps"><li><b>Configure</b><p>Set the final token contract, small reserve cap, owner, audited verifier addresses, deployment block, RPC endpoint, and dedicated relayer.</p></li><li><b>Deploy paused</b><p>Deploy verifiers and the vault, verify bytecode, register the token and cap, then reconcile the genesis root before enabling deposits.</p></li><li><b>Canary testing</b><p>Perform small deposit, transfer, split withdrawal, delay, and recovery tests. Compare the onchain root with the independent indexer after every step.</p></li><li><b>Monitor</b><p>Alert on root divergence, failed simulations, unusual relay volume, cap pressure, RPC disagreement, and token reserve discrepancies.</p></li><li><b>Expand carefully</b><p>Raise caps only after audits, a production ceremony, stable reconciliation, and a published incident-response process.</p></li></ol>
+          <ol class="steps"><li><b>Configure</b><p>Set the final token, quote asset, wrapped native, PONS V2 factory, small reserve caps, owner, verifier addresses, deployment block, RPC endpoint, relayer, and keeper.</p></li><li><b>Deploy paused</b><p>Deploy verifiers, V2 adapter, and vault; verify bytecode and PONS dependencies; register tokens and caps; then reconcile the genesis root before enabling deposits.</p></li><li><b>Canary testing</b><p>Perform tiny curve and graduated-pool buys and sells, buyback burns, settlement, expiry refunds, and recovery tests. Compare roots and reserves after every step.</p></li><li><b>Monitor</b><p>Alert on root divergence, failed simulations, stalled orders, graduation gaps, cap pressure, RPC disagreement, burn mismatch, and reserve discrepancies.</p></li><li><b>Expand carefully</b><p>Raise caps only after final-key verification, stable reconciliation, and a published incident-response process. This release remains explicitly unaudited.</p></li></ol>
           <h3>September 23 WETH/USDG canary</h3><p>The live Robinhood deployment completed real WETH and USDG deposits, a relayed private transfer, withdrawal to a fresh wallet, a private WETH/USDG RFQ settlement, order cancellation, and replay-rejection check. The final onchain commitment root matched the independently computed root, with 23 commitments indexed. Test amounts were intentionally tiny and caps remain restrictive.</p>
         </section>
 
         <section id="limitations">
           <p class="kicker">14 · LIMITATIONS</p><h2>Important realities</h2>
-          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Standard denominations and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Public PONS transactions remain visible and may reveal aggregate strategy.</li><li>RFQ state transitions remain public even though their owners, assets, and amounts are private.</li><li>Local encrypted storage is only as safe as the device and password.</li><li>Only the capped pilot Shield flow is currently enabled in the browser; private send, withdrawal, RFQ settlement, and batched PONS execution remain gated.</li><li>The current proving setup is for development validation, not trust-minimized production.</li></ul>
+          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Variable slices and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Every public PONS slice and immediate buyback remains visible and may reveal the aggregate order when only one user is active.</li><li>Market intent pair, input, minimum output, and deadline are public, although the shielded note owner is not.</li><li>Local encrypted storage is only as safe as the device and password; losing settlement secrets can strand proceeds.</li><li>The browser market flow remains gated until final keys and production services are configured.</li><li>The current proving setup is for development validation, not trust-minimized production.</li><li>The implementation has not received an independent security audit.</li></ul>
         </section>
 
         <section id="glossary">

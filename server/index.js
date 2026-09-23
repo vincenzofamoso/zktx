@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { StateStore } from "../src/state-store.js";
 import { createIndexer } from "../src/indexer.js";
 import { createRelayer } from "../src/relayer.js";
+import { createMarketKeeper } from "../src/market-keeper.js";
+import { vaultAbi } from "../src/vault-abi.js";
 import { createPublicClient, http, parseAbi } from "viem";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -21,11 +23,23 @@ const store = new StateStore(process.env.ZKTX_STATE_FILE || path.join(root, "dat
 await store.load();
 let indexer = null;
 let relayer = null;
+let marketKeeper = null;
 if (mode === "live" && vaultAddress && rpcUrl) {
   indexer = createIndexer({ rpcUrl, vaultAddress, store, startBlock: BigInt(process.env.ZKTX_START_BLOCK || 0) });
   await indexer.sync();
   setInterval(() => indexer.sync().catch((error) => console.error("indexer", error.message)), 12_000).unref();
   if (process.env.ZKTX_RELAYER_PRIVATE_KEY) relayer = createRelayer({ rpcUrl, vaultAddress, privateKey: process.env.ZKTX_RELAYER_PRIVATE_KEY, chainId });
+  const keeperKey = process.env.ZKTX_KEEPER_PRIVATE_KEY || process.env.ZKTX_RELAYER_PRIVATE_KEY;
+  if (process.env.ZKTX_MARKET_KEEPER_ENABLED === "true" && keeperKey) {
+    marketKeeper = createMarketKeeper({
+      rpcUrl,
+      privateKey: keeperKey,
+      vaultAddress,
+      chainId,
+      buybackSlippageBps: Number(process.env.ZKTX_BUYBACK_SLIPPAGE_BPS || 500),
+    });
+    setInterval(() => marketKeeper.tick().catch((error) => console.error("market keeper", error.message)), 1_000).unref();
+  }
 }
 
 app.disable("x-powered-by");
@@ -41,6 +55,7 @@ app.get("/api/status", (_req, res) => res.json({
   treeDepth: 20,
   contractsReady: mode === "live" && Boolean(vaultAddress && rpcUrl),
   relayerReady: Boolean(relayer),
+  marketKeeperReady: Boolean(marketKeeper),
   state: store.snapshot(),
 }));
 
@@ -70,6 +85,26 @@ app.get("/api/tree/path/:index", (req, res) => {
     const proof = store.tree().proof(index);
     res.json({ index, root: String(proof.root), pathElements: proof.pathElements.map(String), pathIndices: proof.pathIndices });
   } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+app.get("/api/market/order/:orderId", async (req, res) => {
+  if (!vaultAddress) return res.status(503).json({ error: "The live vault is not configured" });
+  if (!/^0x[0-9a-fA-F]{64}$/.test(req.params.orderId)) {
+    return res.status(400).json({ error: "Invalid market order id" });
+  }
+  try {
+    const order = await readClient.readContract({
+      address: vaultAddress,
+      abi: vaultAbi,
+      functionName: "getMarketOrder",
+      args: [req.params.orderId],
+    });
+    return res.json(Object.fromEntries(
+      Object.entries(order).map(([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]),
+    ));
+  } catch {
+    return res.status(404).json({ error: "Market order could not be read" });
+  }
 });
 
 const relayWindows = new Map();

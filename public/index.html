@@ -37,7 +37,7 @@
         <div>
           <p class="kicker">ZCASH-STYLE PRIVACY · NATIVE RH TOKENS</p>
           <h1>Take your token<br /><em>off the timeline.</em></h1>
-          <p class="lede">Turn any standard Robinhood Chain token into a shielded note, then transfer or swap it with zero-knowledge proofs. No ZEC, bridge, or second wallet required.</p>
+          <p class="lede">Shield a Robinhood Chain token, then route a buy or sell through PONS without exposing your wallet as the trader. The public pool still shows ZKTX vault slices—not an invisible AMM trade.</p>
           <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Experimental mainnet pilot</span></div>
         </div>
         <div class="orb" aria-hidden="true"><img class="hero-logo" src="./assets/zktx-mark-v2.png" alt="" /></div>
@@ -59,15 +59,17 @@
         </div>
 
         <div class="terminal">
-          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Private RFQ swap</button><button data-tab="withdraw">Withdraw</button></div>
+          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">PONS market trade</button><button data-tab="withdraw">Withdraw</button></div>
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> Capped experimental mainnet</b></div>
             <label><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
             <label><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
-              <div class="field-row"><label>Minimum amount received<input id="receive-amount" inputmode="decimal" placeholder="Example: 5" /><small id="receive-amount-units" class="token-meta">Enter a normal token amount.</small></label><label>Quote expires after<select id="quote-lifetime"><option value="900">15 minutes</option><option value="3600">1 hour</option><option value="86400">24 hours</option></select></label></div>
-              <div class="explain-box"><b>This is a private RFQ, not an automatic market buy.</b><span>You offer one shielded token for another at the amounts above. A counterparty must accept the quote. ZKTX then settles both sides inside the shielded pool.</span></div>
+              <div class="field-row"><label>Minimum net amount received<input id="receive-amount" inputmode="decimal" placeholder="Example: 5" /><small id="receive-amount-units" class="token-meta">This minimum applies after the 1.5% ZKTX fee.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
+              <div class="explain-box"><b>Automated PONS execution · 1.5% total fee</b><span>The spend must exactly match one unspent note in this browser. The vault takes 0.5% for execution, immediately uses 1% to buy and burn ZKTX, and routes the remainder in 3–7 slices over consecutive blocks. Actual proceeds return as a private note 30 seconds after completion.</span></div>
+              <label>Pending order to settle<select id="pending-market-order"><option value="">No pending local orders</option></select></label>
+              <button id="settle-market" class="secondary-action" type="button">Settle completed order</button>
             </div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
@@ -86,7 +88,7 @@
       <section id="privacy" class="privacy-grid">
         <article><span>VISIBLE</span><h3>Pool entry and exit</h3><p>Deposits, withdrawals, asset contracts, boundary amounts, and their timestamps remain onchain.</p></article>
         <article class="private"><span>ZCASH-STYLE</span><h3>Shielded note ownership</h3><p>Commitments hide note contents, nullifiers prevent double-spending, and zero-knowledge proofs enforce balance conservation.</p></article>
-        <article><span>AGGREGATED</span><h3>Public market flow</h3><p>Any PONS market execution appears as vault activity and is batched to reduce user-level correlation.</p></article>
+        <article><span>SLICED</span><h3>Public market flow</h3><p>PONS still exposes each pool swap. It identifies the ZKTX adapter, while randomized slices and overlapping orders reduce direct wallet and order correlation.</p></article>
       </section>
 
       <section id="architecture" class="architecture">

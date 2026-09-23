@@ -1,15 +1,23 @@
 # Production deployment gate
 
-`deploy-vault.sh` refuses to broadcast unless all verifier contracts exist on Robinhood Chain, the RPC reports chain ID 4663, and the explicit audit confirmation is present.
+`deploy-vault.sh` refuses to broadcast unless all verifier contracts exist on Robinhood Chain, the RPC reports chain ID 4663, and `CONFIRM_UNAUDITED_DEPLOY=I_ACCEPT_UNAUDITED_RISK` is present. This acknowledgement records that the requested launch is skipping audits; it is not an audit claim.
 
 Before running it:
 
 1. Run a multi-party Groth16 phase-2 ceremony for each pinned circuit build.
 2. Generate and independently verify the Solidity verifiers.
-3. Complete circuit, contract, client, relayer, and operational audits.
-4. Use a multisig as `ZKTX_OWNER`.
-5. Fund a dedicated relayer separately and apply production rate controls.
-6. Deploy the vault, allow only reviewed token contracts, and test with capped limits before removing the pause.
+3. Use a multisig as `ZKTX_OWNER`.
+4. Fund dedicated relayer and keeper accounts and apply production rate controls.
+5. Deploy the vault, allow only reviewed token contracts, and test with capped limits before removing the pause.
+6. Deploy the adapter matching the PONS launch generation. `PonsV2SwapAdapter` supports V2 curves and graduated V4 pools; `PonsV3SwapAdapter` is for V1.
+7. Generate the final market-order and market-settlement verifiers, then run `configure-market.sh`.
+8. Authorize the dedicated keeper and cap its native-gas balance.
+
+The one-time market configuration fixes the two new verifier addresses, swap adapter, WETH quote asset, ZKTX token, and execution-fee recipient. Replacing any of them requires a new vault and migration plan.
+
+The official PONS repository lists the Robinhood Chain V2 factory as `0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e`. On 2026-09-22 its live getters returned PoolManager `0x8366a39cc670b4001a1121b8f6a443a643e40951` and meme hook `0xe5e702641ea86f4ae6cc3cdaed2b886f976be044`; all three addresses had bytecode. `deploy-pons-v2-adapter.sh` reads and checks the dependencies again at deployment rather than trusting these recorded values. Its native-launch defaults use the live WETH contract `0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73`, whose code and `WETH` symbol were rechecked on the same date. Override `PONS_QUOTE_ASSET` for a PONS V2 launch using an ERC-20 pair token.
+
+The market fee is hard-coded at 150 basis points: 50 basis points remain as quote-asset execution reserves and 100 basis points immediately buy and burn ZKTX during every slice. The vault checks that the burn reduces `totalSupply()`; genuine PONS V2 launcher tokens inherit `ERC20Burnable`.
 
 The pilot owner address and selected operating model are recorded in `pilot-config.json`. Its encrypted keystore is intentionally stored outside this repository on the deployment server.
 

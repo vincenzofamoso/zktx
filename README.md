@@ -7,8 +7,12 @@ Users keep the RH tokens and wallet they already have. ZKTX does not require ZEC
 The current milestone contains:
 
 - A responsive black-and-yellow product interface
-- A domain-bound shielded-vault contract with separate deposit, transfer, withdrawal, RFQ-swap, and order-cancellation verifiers
-- Circom deposit, transfer, withdrawal, RFQ-swap, and order-cancellation circuits with a Poseidon Merkle tree
+- A domain-bound shielded-vault contract with separate deposit, transfer, withdrawal, RFQ-swap, order-cancellation, market-order, and market-settlement verifiers
+- Circom deposit, transfer, withdrawal, RFQ-swap, order-cancellation, market-order, and market-settlement circuits with a Poseidon Merkle tree
+- Shielded public-market intents with 3–7 execution slices, one slice per block, and private settlement notes
+- A fixed 1.5% market fee: 0.5% execution reserve plus an atomic 1% ZKTX buyback and native token burn
+- A lifecycle-aware PONS V2 adapter for both bonding-curve trading and graduated Uniswap V4 pools, including wrapped/native conversion
+- Browser proof flows for opening a relayed market order and settling actual proceeds into private notes
 - A local AES-GCM encrypted note wallet preview
 - A persistent event indexer and guarded, simulation-first relayer
 - A Robinhood Chain-only deployment gate
@@ -18,7 +22,7 @@ The current milestone contains:
 
 ## Current safety state
 
-The interface remains a protocol preview and fund-moving actions remain disabled. The circuits and vault now have executable tests, but production verifier keys, an independent audit, a multisig owner, the final supported token list, and a funded relayer are still required.
+The market flow is implemented but remains disabled until the final Groth16 artifacts, verifier and vault addresses, supported assets, PONS adapter, keeper, and relayer are configured. The project is explicitly unaudited. The deployment scripts require `CONFIRM_UNAUDITED_DEPLOY=I_ACCEPT_UNAUDITED_RISK` so skipping review cannot be mistaken for review having occurred.
 
 ## Validate the protocol
 
@@ -29,4 +33,4 @@ npm test
 
 Run the preview backend with `npm start`. It binds to localhost and defaults to `PROTOCOL_MODE=preview`. See `.env.example`, `docs/RH_SHIELDED_POOL.md`, and `deploy/README.md`.
 
-The Telegram workflow is documented in `apps/telegram-bot/README.md`. Build its minimal trusted-device signer with `npm run build:telegram`. Its public actions remain gated by the same production-key and audit requirements as the web app.
+The Telegram workflow is documented in `apps/telegram-bot/README.md`. Build its minimal trusted-device signer with `npm run build:telegram`. Its public actions remain gated by the same production-key and deployment requirements as the web app.

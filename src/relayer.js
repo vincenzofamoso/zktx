@@ -31,6 +31,20 @@ export function createRelayer({ rpcUrl, privateKey, vaultAddress, chainId = 4663
       for (const key of ["oldRoot", "newRoot", "orderNullifier", "refundCommitment"]) if (!bytes32.test(payload[key] || "")) throw new Error(`Invalid ${key}`);
       functionName = "cancelOrder";
       args = [payload.proof, payload.oldRoot, payload.newRoot, payload.orderNullifier, payload.refundCommitment];
+    } else if (payload.action === "market-order") {
+      for (const key of ["root", "nullifier", "settlementKey"]) if (!bytes32.test(payload[key] || "")) throw new Error(`Invalid ${key}`);
+      if (!address.test(payload.assetIn || "") || !address.test(payload.assetOut || "")) throw new Error("Invalid market assets");
+      const amountIn = BigInt(payload.amountIn);
+      const minimumAmountOut = BigInt(payload.minimumAmountOut);
+      const deadline = BigInt(payload.deadline);
+      if (amountIn <= 0n || minimumAmountOut <= 0n) throw new Error("Invalid market amounts");
+      if (deadline <= BigInt(Math.floor(Date.now() / 1000)) + 30n) throw new Error("Market order deadline is too soon");
+      functionName = "openMarketOrder";
+      args = [payload.proof, payload.root, payload.assetIn, amountIn, payload.assetOut, minimumAmountOut, payload.nullifier, payload.settlementKey, deadline];
+    } else if (payload.action === "market-settlement") {
+      for (const key of ["orderId", "oldRoot", "newRoot", "outputCommitment", "refundCommitment"]) if (!bytes32.test(payload[key] || "")) throw new Error(`Invalid ${key}`);
+      functionName = "settleMarketOrder";
+      args = [payload.proof, payload.orderId, payload.oldRoot, payload.newRoot, payload.outputCommitment, payload.refundCommitment];
     } else if (payload.action === "withdraw") {
       if (!bytes32.test(payload.root || "") || !address.test(payload.asset || "") || !address.test(payload.recipient || "") || !bytes32.test(payload.nullifier || "")) throw new Error("Invalid withdrawal fields");
       const amount = BigInt(payload.amount);

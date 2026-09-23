@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${CONFIRM_PRODUCTION_DEPLOY:-}" != "I_HAVE_AUDITED_ZKTX" ]]; then
-  echo "Refusing deployment: set CONFIRM_PRODUCTION_DEPLOY=I_HAVE_AUDITED_ZKTX after an independent audit." >&2
+if [[ "${CONFIRM_UNAUDITED_DEPLOY:-}" != "I_ACCEPT_UNAUDITED_RISK" ]]; then
+  echo "Refusing deployment: this code is unaudited. Set CONFIRM_UNAUDITED_DEPLOY=I_ACCEPT_UNAUDITED_RISK to acknowledge that risk." >&2
   exit 1
 fi
 

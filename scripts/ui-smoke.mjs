@@ -26,7 +26,7 @@ async function runViewport(name, viewport) {
 
   await page.locator('[data-tab="swap"]').click();
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
-  check((await page.locator("#action-title").textContent()) === "Swap inside the pool", `${name}: swap copy updates`);
+  check((await page.locator("#action-title").textContent()) === "Execute a shielded PONS market trade", `${name}: swap copy updates`);
   await page.locator('[data-tab="withdraw"]').click();
   check(await page.locator("#withdrawal-planner").isVisible(), `${name}: withdrawal planner appears`);
   await page.locator('[data-tab="send"]').click();
@@ -44,7 +44,7 @@ async function runViewport(name, viewport) {
   await page.locator("#note-password").fill("headless-test-password");
   await page.locator("#veil-form").evaluate((form) => form.requestSubmit());
   await page.waitForFunction(() => document.querySelector("#form-result")?.textContent.includes("Connect your wallet"));
-  check((await page.locator("#local-notes").textContent())?.startsWith("0 encrypted notes"), `${name}: no note is stored before an onchain confirmation`);
+  check((await page.locator("#local-notes").textContent())?.startsWith("0 spendable encrypted notes"), `${name}: no note is stored before an onchain confirmation`);
 
   const caseResponse = await page.goto(`${base}/case-study.html`, { waitUntil: "networkidle" });
   check(caseResponse?.ok(), `${name}: case study returns success`);

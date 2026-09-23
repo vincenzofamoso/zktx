@@ -6,15 +6,16 @@
   "scripts": {
     "build:client": "esbuild client/wallet.js --bundle --format=esm --platform=browser --outfile=public/zk-client.js",
     "build:telegram": "mkdir -p public/telegram && cp apps/telegram-bot/web-src/index.html apps/telegram-bot/web-src/style.css public/telegram/ && esbuild apps/telegram-bot/web-src/wallet.js --bundle --format=esm --platform=browser --outfile=public/telegram/wallet.js",
-    "check": "node --check server/index.js && node --check src/notes.js && node --check src/merkle-tree.js && node --check public/veil.js",
-    "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/swap.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/cancel-order.circom --r1cs --wasm --sym -o build/circuits",
-    "contracts:test": "forge test",
+    "check": "node --check server/index.js && node --check src/notes.js && node --check src/merkle-tree.js && node --check src/market-keeper.js && node --check public/veil.js",
+    "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/swap.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/cancel-order.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/market-order.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/market-settlement.circom --r1cs --wasm --sym -o build/circuits",
+    "contracts:test": "forge test --force --offline",
     "keys:dev": "bash scripts/setup-development-keys.sh",
+    "keys:production:install": "bash scripts/install-production-keys.sh",
     "proof:smoke": "node scripts/prove-development-smoke.mjs",
     "test:ui": "node scripts/ui-smoke.mjs",
     "start": "node server/index.js",
     "start:telegram": "node apps/telegram-bot/src/index.js",
-    "test": "npm run build:client && npm run circuits:compile && node --test && forge test"
+    "test": "npm run build:client && npm run circuits:compile && node --test && forge test --force --offline"
   },
   "dependencies": {
     "express": "^5.1.0",
@@ -28,6 +29,9 @@
     "esbuild": "^0.28.2",
     "playwright-core": "^1.63.0",
     "snarkjs": "^0.7.5"
+  },
+  "overrides": {
+    "underscore": "1.13.8"
   },
   "engines": {
     "node": ">=22"
