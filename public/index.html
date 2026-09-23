@@ -3,26 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="description" content="Zcash-style shielded notes and ZK swaps for standard Robinhood Chain tokens. No ZEC or bridge required." />
+    <meta name="description" content="Shield your wallet identity, route your own tokens through real PONS liquidity, and settle proceeds back into private notes on Robinhood Chain." />
     <link rel="canonical" href="https://zktx.tech/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ZKTX" />
     <meta property="og:url" content="https://zktx.tech/" />
     <meta property="og:title" content="ZKTX — Zcash-style privacy for RH tokens" />
-    <meta property="og:description" content="Shield, transfer, and swap Robinhood Chain tokens with zero-knowledge proofs—without ZEC or bridging." />
+    <meta property="og:description" content="User-funded PONS execution in randomized slices, with wallet identity shielded and proceeds settled into private notes." />
     <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="ZKTX — shielded transactions on Robinhood Chain" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="ZKTX — Zcash-style privacy for RH tokens" />
-    <meta name="twitter:description" content="Shield, transfer, and swap RH tokens with zero-knowledge proofs—without ZEC or bridging." />
+    <meta name="twitter:description" content="Trade through real PONS liquidity without exposing your wallet as the trader, then settle proceeds into private notes." />
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX — private token transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
     <link rel="stylesheet" href="./veil.css" />
     <link rel="stylesheet" href="./withdrawal.css" />
     <link rel="stylesheet" href="./hero-logo.css" />
+    <link rel="stylesheet" href="./usp.css" />
   </head>
   <body>
     <div class="noise"></div>
@@ -43,19 +44,28 @@
         <div class="orb" aria-hidden="true"><img class="hero-logo" src="./assets/zktx-mark-v2.png" alt="" /></div>
       </section>
 
+      <section class="usp-grid" aria-label="Why ZKTX">
+        <article><span>YOUR CAPITAL</span><h3>No platform liquidity required</h3><p>Your shielded tokens fund the trade. ZKTX never becomes the buyer of unwanted inventory.</p></article>
+        <article><span>REAL LIQUIDITY</span><h3>Executes through PONS</h3><p>Orders use the token's existing public market instead of an isolated OTC book or a thin secondary pool.</p></article>
+        <article><span>WALLET SHIELDED</span><h3>The vault is the public trader</h3><p>The pool sees ZKTX execution—not the wallet that created the private note and submitted the intent.</p></article>
+        <article><span>PRIVATE SETTLEMENT</span><h3>Proceeds return shielded</h3><p>Actual execution proceeds become private notes, ready for private transfers or a later withdrawal.</p></article>
+        <article><span>LESS CORRELATION</span><h3>Randomized multi-block slices</h3><p>Each order executes across 3–7 variable slices while overlapping orders make simple wallet-to-trade matching harder.</p></article>
+        <article><span>PROTOCOL VALUE</span><h3>Automatic buyback and burn</h3><p>The 1.5% total fee reserves 0.5% for execution and atomically uses 1% to buy and burn ZKTX.</p></article>
+      </section>
+
       <section class="boundary" aria-label="Privacy boundary">
         <div><span>01</span><b>Deposit</b><small>Public boundary</small></div>
         <div class="active"><span>02</span><b>Transact</b><small>Private note set</small></div>
-        <div class="active"><span>03</span><b>Swap</b><small>Private liquidity</small></div>
-        <div><span>04</span><b>Withdraw</b><small>Public boundary</small></div>
+        <div class="active"><span>03</span><b>Execute</b><small>Public PONS slices</small></div>
+        <div><span>04</span><b>Settle</b><small>Private proceeds</small></div>
       </section>
 
       <section id="pool" class="workspace">
         <div class="workspace-copy">
           <p class="kicker">SHIELDED VAULT</p>
           <h2>Move value without publishing the path.</h2>
-          <p>ZK token swaps on Robinhood Chain, built around the same core ideas that make Zcash private: shielded notes, hidden commitments, one-time nullifiers, Merkle membership proofs, and relayed transactions.</p>
-          <dl><div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div><div><dt>Assets</dt><dd>Standard ERC-20s</dd></div><div><dt>Execution</dt><dd>Relayed ZK proofs</dd></div></dl>
+          <p>ZK token execution on Robinhood Chain, combining Zcash-style shielded ownership with existing PONS liquidity. The swap remains public; the originating wallet and resulting ownership remain behind the vault's private-note layer.</p>
+          <dl><div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div><div><dt>Liquidity</dt><dd>Existing PONS markets</dd></div><div><dt>Capital</dt><dd>User funded</dd></div><div><dt>Settlement</dt><dd>Private notes</dd></div></dl>
         </div>
 
         <div class="terminal">
