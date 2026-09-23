@@ -14,7 +14,7 @@ The implementation is native to Robinhood Chain and EVM verification. It does no
 - Private state transitions disclose roots, nullifiers, and commitment counts.
 - Withdrawals disclose the destination, asset, amount, nullifier, and time.
 - Transfers between shielded notes do not disclose owners or values when the circuit, relayer, and client are used correctly.
-- Any execution against the public PONS pool remains visible as a vault trade. Slicing obscures the original order shape but does not make public AMM reserve changes invisible.
+- Any execution against a public RH pool remains visible as a vault trade. Slicing obscures the original order shape but does not make public AMM reserve changes invisible.
 
 The current circuits implement shielding, private transfers with change, withdrawals, two-asset RFQ settlement, maker-only order cancellation, shielded public-market order authorization, and private public-market settlement. The browser can build, relay, persist, and later settle a public-market order once the production contracts, keys, relayer, and keeper are configured.
 
@@ -38,7 +38,7 @@ The current circuits implement shielding, private transfers with change, withdra
 
 1. A multi-party phase-2 ceremony and verifiers generated from the final circuit hashes.
 2. Production proving keys and Solidity verifiers generated from the frozen market-order and market-settlement circuits.
-3. Final PONS V2 quote asset, wrapped-native, adapter, ZKTX token, vault, keeper, and fee-recipient addresses.
+3. Final quote asset, wrapped-native, approved execution adapter, ZKTX token, vault, keeper, and fee-recipient addresses.
 4. A multisig owner, supported-token policy, incident runbook, monitoring, and capped rollout.
 5. A funded relayer and keeper with abuse controls and native gas.
 
@@ -50,11 +50,11 @@ The requested launch explicitly skips independent audits. That removes a release
 - Vault owner: an encrypted, server-held operator wallet until control is moved to a multisig
 - Gas: platform-funded relayer with simulation and request limits
 - Asset rollout: one token at a time, with an immutable-on-transaction owner-set reserve cap
-- Swap support: shielded two-party RFQ settlement plus sliced PONS V1 and PONS V2 execution behind separate deployment gates
+- Swap support: shielded two-party RFQ settlement plus sliced adapter-based RH market execution behind separate deployment gates
 
 RFQ settlement does not require either trader to reveal a spend secret. A maker note commits exact terms and a separate cancellation public key; settlement creates predetermined private outputs, while only the maker can prove the cancellation secret.
 
-## Sliced PONS execution
+## Sliced RH market execution
 
 A market-order proof binds the private input note to its public pair, input amount, minimum net output, deadline, and a private settlement key. The vault removes the input backing from spendable private reserves and places it in market escrow. An authorized keeper executes a protocol-sized slice no more than once per block. Slice sizes derive from recent block data and are operational obfuscation, not cryptographic randomness.
 
@@ -62,7 +62,7 @@ For quote-funded buys, the vault takes both fees from quote input before executi
 
 After every slice completes, settlement becomes available after 30 seconds. A partially executed order can settle after its deadline plus 30 seconds. The settlement proof appends a private output note and a private refund note; either may have zero value. The user receives actual net proceeds, so the protocol takes no market-maker inventory risk.
 
-PONS V1 launches use WETH-quoted Uniswap V3 pools, and `PonsV3SwapAdapter.sol` supports that route with a configurable router and fee tier. `PonsV2SwapAdapter.sol` reads the official V2 factory launch record, trades against the per-token bonding curve before graduation, permissionlessly completes a swept graduation when needed, and trades the factory-defined Uniswap V4 pool afterward. If a final curve buy partially fills, the adapter sends its refund through the newly created V4 pool in the same atomic slice. Native-ETH launches are normalized to wrapped native at the vault boundary. One adapter/vault configuration supports one quote asset; a separate deployment is required for a different PONS pair token.
+Execution is adapter-based rather than PONS-exclusive. PONS V1 launches use WETH-quoted Uniswap V3 pools, and `PonsV3SwapAdapter.sol` supports that route with a configurable router and fee tier. `PonsV2SwapAdapter.sol` reads the official V2 factory launch record, trades against the per-token bonding curve before graduation, permissionlessly completes a swept graduation when needed, and trades the factory-defined Uniswap V4 pool afterward. If a final curve buy partially fills, the adapter sends its refund through the newly created V4 pool in the same atomic slice. Native-ETH launches are normalized to wrapped native at the vault boundary. Other RH venues can be added through reviewed `ISwapAdapter` implementations. The current vault fixes one adapter and quote asset at configuration time; broader venue selection requires a reviewed routing adapter or separate vault deployment.
 
 PONS V2 launcher tokens inherit OpenZeppelin `ERC20Burnable`, so genuine V2 ZKTX tokens support a real supply-reducing burn. Configuration with a non-burnable token fails during the first buyback slice.
 

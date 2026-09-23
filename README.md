@@ -11,7 +11,7 @@ The current milestone contains:
 - Circom deposit, transfer, withdrawal, RFQ-swap, order-cancellation, market-order, and market-settlement circuits with a Poseidon Merkle tree
 - Shielded public-market intents with 3–7 execution slices, one slice per block, and private settlement notes
 - A fixed 1.5% market fee: 0.5% execution reserve plus an atomic 1% ZKTX buyback and native token burn
-- A lifecycle-aware PONS V2 adapter for both bonding-curve trading and graduated Uniswap V4 pools, including wrapped/native conversion
+- An adapter-based RH execution layer, currently including PONS V2 bonding curves, graduated Uniswap V4 pools, PONS V1 Uniswap V3 pools, and wrapped/native conversion
 - Browser proof flows for opening a relayed market order and settling actual proceeds into private notes
 - A local AES-GCM encrypted note wallet preview
 - A persistent event indexer and guarded, simulation-first relayer
@@ -22,7 +22,7 @@ The current milestone contains:
 
 ## Current safety state
 
-The market flow is implemented but remains disabled until the final Groth16 artifacts, verifier and vault addresses, supported assets, PONS adapter, keeper, and relayer are configured. The project is explicitly unaudited. The deployment scripts require `CONFIRM_UNAUDITED_DEPLOY=I_ACCEPT_UNAUDITED_RISK` so skipping review cannot be mistaken for review having occurred.
+The market flow is implemented but remains disabled until the final Groth16 artifacts, verifier and vault addresses, supported assets, approved RH execution adapter, keeper, and relayer are configured. The project is explicitly unaudited. The deployment scripts require `CONFIRM_UNAUDITED_DEPLOY=I_ACCEPT_UNAUDITED_RISK` so skipping review cannot be mistaken for review having occurred.
 
 ## Validate the protocol
 

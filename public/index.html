@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="description" content="Shield your wallet identity, route your own tokens through real PONS liquidity, and settle proceeds back into private notes on Robinhood Chain." />
+    <meta name="description" content="Shield your wallet identity, route your own tokens through existing Robinhood Chain liquidity, and settle proceeds back into private notes." />
     <link rel="canonical" href="https://zktx.tech/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ZKTX" />
     <meta property="og:url" content="https://zktx.tech/" />
     <meta property="og:title" content="ZKTX — Zcash-style privacy for RH tokens" />
-    <meta property="og:description" content="User-funded PONS execution in randomized slices, with wallet identity shielded and proceeds settled into private notes." />
+    <meta property="og:description" content="User-funded RH market execution in randomized slices, with wallet identity shielded and proceeds settled into private notes." />
     <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="ZKTX — shielded transactions on Robinhood Chain" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="ZKTX — Zcash-style privacy for RH tokens" />
-    <meta name="twitter:description" content="Trade through real PONS liquidity without exposing your wallet as the trader, then settle proceeds into private notes." />
+    <meta name="twitter:description" content="Trade through existing RH liquidity without exposing your wallet as the trader, then settle proceeds into private notes." />
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX — private token transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
@@ -38,7 +38,7 @@
         <div>
           <p class="kicker">ZCASH-STYLE PRIVACY · NATIVE RH TOKENS</p>
           <h1>Take your token<br /><em>off the timeline.</em></h1>
-          <p class="lede">Shield a Robinhood Chain token, then route a buy or sell through PONS without exposing your wallet as the trader. The public pool still shows ZKTX vault slices—not an invisible AMM trade.</p>
+          <p class="lede">Shield a Robinhood Chain token, then route a buy or sell through compatible RH liquidity without exposing your wallet as the trader. The public pool still shows ZKTX vault slices—not an invisible AMM trade.</p>
           <div class="hero-actions"><a href="#pool" class="cta">Enter the pool</a><span><i></i> Experimental mainnet pilot</span></div>
         </div>
         <div class="orb" aria-hidden="true"><img class="hero-logo" src="./assets/zktx-mark-v2.png" alt="" /></div>
@@ -46,7 +46,7 @@
 
       <section class="usp-grid" aria-label="Why ZKTX">
         <article><span>ZERO FRICTION</span><h3>Keep your tokens. Skip the bridge.</h3><p>Shield standard Robinhood Chain tokens and trade directly—no ZEC, wrapped privacy asset, or new wallet required.</p></article>
-        <article><span>REAL LIQUIDITY</span><h3>Trade against the market</h3><p>Tap the token's existing PONS liquidity instead of waiting for an OTC match or entering a thin secondary pool.</p></article>
+        <article><span>REAL LIQUIDITY</span><h3>Trade against the market</h3><p>Tap the token's existing Robinhood Chain liquidity instead of waiting for an OTC match or entering a thin secondary pool.</p></article>
         <article><span>WALLET SHIELDED</span><h3>Your wallet stays off the chart</h3><p>The public pool sees the ZKTX vault executing—not the wallet that created the shielded intent.</p></article>
         <article><span>PRIVATE SETTLEMENT</span><h3>Your proceeds stay shielded</h3><p>Actual execution proceeds return as private notes, ready to send privately or withdraw when you choose.</p></article>
         <article><span>LOWER SIGNAL</span><h3>One intent. Multiple slices.</h3><p>Your order executes across 3–7 variable blocks, making simple wallet-to-trade and single-candle matching harder.</p></article>
@@ -56,7 +56,7 @@
       <section class="boundary" aria-label="Privacy boundary">
         <div><span>01</span><b>Deposit</b><small>Public boundary</small></div>
         <div class="active"><span>02</span><b>Transact</b><small>Private note set</small></div>
-        <div class="active"><span>03</span><b>Execute</b><small>Public PONS slices</small></div>
+        <div class="active"><span>03</span><b>Execute</b><small>Public market slices</small></div>
         <div><span>04</span><b>Settle</b><small>Private proceeds</small></div>
       </section>
 
@@ -64,12 +64,12 @@
         <div class="workspace-copy">
           <p class="kicker">SHIELDED VAULT</p>
           <h2>Move value without publishing the path.</h2>
-          <p>ZK token execution on Robinhood Chain, combining Zcash-style shielded ownership with existing PONS liquidity. The swap remains public; the originating wallet and resulting ownership remain behind the vault's private-note layer.</p>
-          <dl><div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div><div><dt>Liquidity</dt><dd>Existing PONS markets</dd></div><div><dt>Capital</dt><dd>User funded</dd></div><div><dt>Settlement</dt><dd>Private notes</dd></div></dl>
+          <p>ZK token execution on Robinhood Chain, combining Zcash-style shielded ownership with compatible existing liquidity. The swap remains public; the originating wallet and resulting ownership remain behind the vault's private-note layer.</p>
+          <dl><div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div><div><dt>Liquidity</dt><dd>Existing RH markets</dd></div><div><dt>Capital</dt><dd>User funded</dd></div><div><dt>Settlement</dt><dd>Private notes</dd></div></dl>
         </div>
 
         <div class="terminal">
-          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">PONS market trade</button><button data-tab="withdraw">Withdraw</button></div>
+          <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="send">Private send</button><button data-tab="swap">Shielded market trade</button><button data-tab="withdraw">Withdraw</button></div>
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> Capped experimental mainnet</b></div>
             <label><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
@@ -77,7 +77,7 @@
             <div id="swap-fields" hidden>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
               <div class="field-row"><label>Minimum net amount received<input id="receive-amount" inputmode="decimal" placeholder="Example: 5" /><small id="receive-amount-units" class="token-meta">This minimum applies after the 1.5% ZKTX fee.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
-              <div class="explain-box"><b>Automated PONS execution · 1.5% total fee</b><span>The spend must exactly match one unspent note in this browser. The vault takes 0.5% for execution, immediately uses 1% to buy and burn ZKTX, and routes the remainder in 3–7 slices over consecutive blocks. Actual proceeds return as a private note 30 seconds after completion.</span></div>
+              <div class="explain-box"><b>Automated RH market execution · 1.5% total fee</b><span>The spend must exactly match one unspent note in this browser. The vault takes 0.5% for execution, immediately uses 1% to buy and burn ZKTX, and routes the remainder through a compatible approved venue in 3–7 slices over consecutive blocks. Actual proceeds return as a private note 30 seconds after completion.</span></div>
               <label>Pending order to settle<select id="pending-market-order"><option value="">No pending local orders</option></select></label>
               <button id="settle-market" class="secondary-action" type="button">Settle completed order</button>
             </div>
@@ -98,7 +98,7 @@
       <section id="privacy" class="privacy-grid">
         <article><span>VISIBLE</span><h3>Pool entry and exit</h3><p>Deposits, withdrawals, asset contracts, boundary amounts, and their timestamps remain onchain.</p></article>
         <article class="private"><span>ZCASH-STYLE</span><h3>Shielded note ownership</h3><p>Commitments hide note contents, nullifiers prevent double-spending, and zero-knowledge proofs enforce balance conservation.</p></article>
-        <article><span>SLICED</span><h3>Public market flow</h3><p>PONS still exposes each pool swap. It identifies the ZKTX adapter, while randomized slices and overlapping orders reduce direct wallet and order correlation.</p></article>
+        <article><span>SLICED</span><h3>Public market flow</h3><p>The selected venue still exposes each pool swap. It identifies the ZKTX adapter, while randomized slices and overlapping orders reduce direct wallet and order correlation.</p></article>
       </section>
 
       <section id="architecture" class="architecture">

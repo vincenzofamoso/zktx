@@ -4735,7 +4735,7 @@ async function ready(account) {
       try {
         status("Signing locally\u2026");
         const response = await api(`/api/v1/jobs/${encodeURIComponent(job.id)}/authorize`, { method: "POST", body: JSON.stringify({ signature: await activeAccount.signMessage({ message }) }) });
-        status(response.status === "authorized_ready" ? "Authorized. Return to Telegram and continue to proof generation." : "Authorized. Execution will remain unavailable until the relayer and PONS keeper are online.");
+        status(response.status === "authorized_ready" ? "Authorized. Return to Telegram and continue to proof generation." : "Authorized. Execution will remain unavailable until the relayer and execution keeper are online.");
       } catch (error) {
         status(error.message || "Authorization failed");
         button.disabled = false;

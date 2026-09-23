@@ -27,7 +27,7 @@ const settleMarket = document.querySelector("#settle-market");
 const copy = {
   shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note—no ZEC or bridge required."],
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
-  swap: ["Execute a shielded PONS market trade", "The relayer hides your wallet; public slices execute promptly and settle back into private notes."],
+  swap: ["Execute a shielded market trade", "The relayer hides your wallet; an approved RH route executes public slices and settles proceeds back into private notes."],
   withdraw: ["Return to a public wallet", "The withdrawal destination and amount become public at the boundary."],
 };
 
