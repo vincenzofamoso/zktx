@@ -219,7 +219,7 @@ connect.addEventListener("click", async () => {
         chainId: `0x${protocol.chainId.toString(16)}`,
         chainName: "Robinhood Chain",
         nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-        rpcUrls: ["https://robinhood-rpc.publicnode.com", "https://rpc.mainnet.chain.robinhood.com"],
+        rpcUrls: ["https://zktx.tech/api/rpc"],
         blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
       }] });
     } catch (networkError) {
@@ -235,7 +235,7 @@ connect.addEventListener("click", async () => {
           chainId: `0x${protocol.chainId.toString(16)}`,
           chainName: "Robinhood Chain",
           nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-          rpcUrls: ["https://robinhood-rpc.publicnode.com", "https://rpc.mainnet.chain.robinhood.com"],
+          rpcUrls: ["https://zktx.tech/api/rpc"],
           blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
         }] });
       }

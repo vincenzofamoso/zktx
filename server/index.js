@@ -156,6 +156,40 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "128kb" }));
 app.use(express.static(path.join(root, "public"), { extensions: ["html"] }));
 
+const walletRpcMethods = new Set([
+  "eth_blockNumber", "eth_call", "eth_chainId", "eth_estimateGas", "eth_feeHistory", "eth_gasPrice",
+  "eth_getBalance", "eth_getBlockByHash", "eth_getBlockByNumber", "eth_getCode", "eth_getLogs",
+  "eth_getStorageAt", "eth_getTransactionByHash", "eth_getTransactionCount", "eth_getTransactionReceipt",
+  "eth_maxPriorityFeePerGas", "eth_sendRawTransaction", "net_version", "web3_clientVersion",
+]);
+const rpcWindows = new Map();
+app.post("/api/rpc", async (req, res) => {
+  if (!rpcUrl) return res.status(503).json({ error: "Robinhood RPC is unavailable" });
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const window = rpcWindows.get(ip);
+  const usage = !window || now - window.startedAt >= 60_000 ? { startedAt: now, count: 0 } : window;
+  const calls = Array.isArray(req.body) ? req.body : [req.body];
+  usage.count += calls.length;
+  rpcWindows.set(ip, usage);
+  if (usage.count > 180) return res.status(429).json({ error: "Wallet RPC rate limit exceeded" });
+  if (!calls.length || calls.some((call) => !call || !walletRpcMethods.has(call.method))) {
+    return res.status(400).json({ error: "Unsupported wallet RPC method" });
+  }
+  try {
+    const upstream = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const body = await upstream.text();
+    res.status(upstream.status).type("application/json").send(body);
+  } catch {
+    res.status(502).json({ error: "Robinhood RPC request failed" });
+  }
+});
+
 app.get("/api/status", (_req, res) => res.json({
   ok: true,
   mode,
