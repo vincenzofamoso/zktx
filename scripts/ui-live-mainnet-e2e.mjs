@@ -9,8 +9,9 @@ const walletFile = process.env.ZKTX_E2E_WALLETS || "/home/ops/.zktx-secrets/main
 const token = process.env.ZKTX_TOKEN_A || "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const amount = process.env.ZKTX_E2E_AMOUNT || "0.000001";
 const stored = JSON.parse(await fs.readFile(walletFile, "utf8"));
-const selected = stored.wallets.find((wallet) => wallet.role === "alice");
-if (!selected) throw new Error("Alice test wallet is missing");
+const role = process.env.ZKTX_E2E_ROLE || "alice";
+const selected = stored.wallets.find((wallet) => wallet.role === role);
+if (!selected) throw new Error(`${role} test wallet is missing`);
 const account = privateKeyToAccount(selected.private_key);
 const chain = { id: 4663, name: "Robinhood Chain", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [rpcUrl] } } };
 const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });

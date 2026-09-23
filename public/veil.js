@@ -212,9 +212,20 @@ connect.addEventListener("click", async () => {
   }
   try {
     [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
-    const chainHex = await window.ethereum.request({ method: "eth_chainId" });
     connected = Boolean(account);
     connect.textContent = connected ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet";
+    try {
+      await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{
+        chainId: `0x${protocol.chainId.toString(16)}`,
+        chainName: "Robinhood Chain",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        rpcUrls: ["https://robinhood-rpc.publicnode.com", "https://rpc.mainnet.chain.robinhood.com"],
+        blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
+      }] });
+    } catch (networkError) {
+      if (networkError?.code === 4001) throw new Error("Approve the Robinhood Chain network update so transactions use the reliable RPC endpoint");
+    }
+    const chainHex = await window.ethereum.request({ method: "eth_chainId" });
     if (Number(chainHex) !== protocol.chainId) {
       try {
         await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${protocol.chainId.toString(16)}` }] });
@@ -224,7 +235,7 @@ connect.addEventListener("click", async () => {
           chainId: `0x${protocol.chainId.toString(16)}`,
           chainName: "Robinhood Chain",
           nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-          rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
+          rpcUrls: ["https://robinhood-rpc.publicnode.com", "https://rpc.mainnet.chain.robinhood.com"],
           blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
         }] });
       }

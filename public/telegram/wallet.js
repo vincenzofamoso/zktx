@@ -21811,6 +21811,26 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
   const cap = BigInt(await ethCall(vaultAddress, encodeFunctionData({ abi: vaultAbi, functionName: "reserveCaps", args: [asset] })));
   const reserve = BigInt(await ethCall(vaultAddress, encodeFunctionData({ abi: vaultAbi, functionName: "publicReserves", args: [asset] })));
   if (cap === 0n || reserve + amount > cap) throw new Error("This deposit exceeds the experimental reserve cap");
+  let tokenBalance = BigInt(await ethCall(asset, encodeFunctionData({ abi: tokenAbi, functionName: "balanceOf", args: [account] })));
+  if (tokenBalance < amount && asset.toLowerCase() === WETH.toLowerCase()) {
+    const shortfall = amount - tokenBalance;
+    const nativeBalance = BigInt(await rpc("eth_getBalance", [account, "latest"]));
+    if (nativeBalance <= shortfall) {
+      throw new Error("Not enough RH ETH to wrap the requested WETH amount and retain gas");
+    }
+    onProgress("Confirm wrapping RH ETH into WETH (step 1 of 3)...");
+    const wrapHash = await rpc("eth_sendTransaction", [{
+      from: account,
+      to: WETH,
+      value: `0x${shortfall.toString(16)}`,
+      data: "0xd0e30db0"
+    }]);
+    await waitForReceipt(wrapHash, 18e4, "WETH wrapping");
+    tokenBalance = BigInt(await ethCall(asset, encodeFunctionData({ abi: tokenAbi, functionName: "balanceOf", args: [account] })));
+  }
+  if (tokenBalance < amount) {
+    throw new Error(`Insufficient token balance. Wallet has ${tokenBalance} base units but this shield requires ${amount}`);
+  }
   onProgress("Building the zero-knowledge deposit proof\u2026");
   const statusResponse = await fetch(apiUrl("/api/status"), { cache: "no-store" });
   const status2 = await statusResponse.json();
@@ -21844,7 +21864,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
     [{ type: "uint256[2]" }, { type: "uint256[2][2]" }, { type: "uint256[2]" }],
     [a.map(BigInt), b.map((row) => row.map(BigInt)), c.map(BigInt)]
   );
-  onProgress("Approve the token in your wallet (step 1 of 2)\u2026");
+  onProgress("Approve the token in your wallet...");
   const approvalHash = await rpc("eth_sendTransaction", [{
     from: account,
     to: asset,
@@ -21855,7 +21875,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
   if (Number(fresh.state.leafCount) !== index2 || BigInt(fresh.state.root) !== BigInt(path.root)) {
     throw new Error("The pool changed while your proof was being prepared. Your approval is safe; submit again to rebuild the proof.");
   }
-  onProgress("Confirm the shield deposit in your wallet (step 2 of 2)\u2026");
+  onProgress("Confirm the shield deposit in your wallet...");
   const depositHash = await rpc("eth_sendTransaction", [{
     from: account,
     to: vaultAddress,
@@ -22080,7 +22100,7 @@ async function settleMarketOrderLive({ orderId, password, onProgress = () => {
 function clearStoredNotes() {
   localStorage.removeItem(STORE_KEY);
 }
-var import_poseidon_lite3, STORE_KEY, MARKET_STORE_KEY, encoder5, decoder2, runtime, apiUrl, provingUrl, vaultAbi, tokenAbi, hex32;
+var import_poseidon_lite3, STORE_KEY, MARKET_STORE_KEY, encoder5, decoder2, runtime, WETH, apiUrl, provingUrl, vaultAbi, tokenAbi, hex32;
 var init_wallet2 = __esm({
   "client/wallet.js"() {
     init_notes();
@@ -22093,6 +22113,7 @@ var init_wallet2 = __esm({
     encoder5 = new TextEncoder();
     decoder2 = new TextDecoder();
     runtime = globalThis.ZKTX_RUNTIME_CONFIG || {};
+    WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
     apiUrl = (pathname) => `${runtime.apiBase || "."}${pathname}`;
     provingUrl = (filename) => `${runtime.provingBase || "./proving"}/${filename}`;
     vaultAbi = parseAbi([
@@ -22102,7 +22123,7 @@ var init_wallet2 = __esm({
       "function deposit(bytes proof,address asset,uint256 amount,bytes32 commitment,bytes32 newRoot)",
       "function openMarketOrder(bytes proof,bytes32 root,address assetIn,uint256 amountIn,address assetOut,uint256 minimumAmountOut,bytes32 nullifier,bytes32 settlementKey,uint256 deadline)"
     ]);
-    tokenAbi = parseAbi(["function approve(address spender,uint256 amount) returns (bool)"]);
+    tokenAbi = parseAbi(["function approve(address spender,uint256 amount) returns (bool)", "function balanceOf(address owner) view returns (uint256)"]);
     hex32 = (value) => `0x${BigInt(value).toString(16).padStart(64, "0")}`;
     window.ZKTXWallet = {
       createEncryptedNote,
