@@ -240,6 +240,21 @@ connect.addEventListener("click", async () => {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const selected = document.querySelector(".tabs .selected")?.dataset.tab;
+  if (selected === "swap") {
+    const spendable = (window.ZKTXWallet?.storedNotes() || []).filter((record) => !record.spentBy);
+    if (spendable.length === 0) {
+      const shieldTab = document.querySelector('.tabs button[data-tab="shield"]');
+      const asset = token.value;
+      const spendAmount = amount.value;
+      selectTab(shieldTab);
+      token.value = asset;
+      amount.value = spendAmount;
+      token.dispatchEvent(new Event("change"));
+      result.textContent = "First shield this exact amount. Confirm the approval and deposit in your wallet, then return to Shielded Swap.";
+      token.focus();
+      return;
+    }
+  }
   if (!payTokenMeta || payTokenMeta.address.toLowerCase() !== token.value.toLowerCase()) payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta);
   if (!payTokenMeta) { result.textContent = "Load a valid Robinhood Chain token first."; return; }
   let payUnits;
@@ -283,7 +298,11 @@ form.addEventListener("submit", async (event) => {
       });
       refreshLocalNotes();
       result.innerHTML = `Market order relayed. The keeper will execute its slices promptly. <a href="https://robinhoodchain.blockscout.com/tx/${order.transactionHash}" target="_blank" rel="noopener">View vault transaction ↗</a>`;
-    } catch (error) { result.textContent = error?.message || "Could not open the shielded market order."; }
+    } catch (error) {
+      result.textContent = error?.message === "No unspent local note exactly matches this token and amount"
+        ? "No matching shielded balance was found. Shield this exact token amount first, or enter the exact amount of an existing shielded note."
+        : error?.message || "Could not open the shielded market order.";
+    }
     return;
   }
   if (selected !== "shield") {
