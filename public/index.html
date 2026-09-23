@@ -20,7 +20,7 @@
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX — private token transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
-    <link rel="stylesheet" href="./veil.css" />
+    <link rel="stylesheet" href="./veil.css?v=5" />
     <link rel="stylesheet" href="./withdrawal.css" />
     <link rel="stylesheet" href="./hero-logo.css" />
     <link rel="stylesheet" href="./usp.css" />
@@ -72,12 +72,17 @@
           <div class="tabs" role="tablist"><button class="selected" data-tab="shield">Shield</button><button data-tab="withdraw">Unshield</button><button data-tab="send">Private send</button><button data-tab="swap">Shielded Swap</button></div>
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> Capped experimental mainnet</b></div>
-            <section class="portfolio-panel"><div><b>Private portfolio</b><small>Your unspent shielded notes are decrypted only in this browser.</small></div><button id="portfolio-toggle" class="secondary-action" type="button">View shielded tokens</button><div id="portfolio-list" hidden></div></section>
+            <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your unspent shielded notes, decrypted only on this device.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div></section>
+            <div id="swap-setup" hidden>
+              <div class="control-label">What do you want to do?</div>
+              <div class="swap-direction" role="group" aria-label="Swap direction"><button type="button" class="selected" data-direction="buy"><b>Buy</b><small>Spend a base asset</small></button><button type="button" data-direction="sell"><b>Sell</b><small>Receive a base asset</small></button></div>
+              <div class="control-label">Choose the base asset</div>
+              <div class="quote-assets"><button type="button" data-quote="weth"><b>WETH</b><small>Wrapped RH ETH</small></button><button type="button" data-quote="usdg"><b>USDG</b><small>Dollar settlement</small></button></div>
+              <p class="field-note">Native RH ETH support will appear when automatic wrapping and unwrapping is live.</p>
+            </div>
             <label><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
             <label><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
-              <div class="swap-direction" role="group" aria-label="Swap direction"><button type="button" class="selected" data-direction="buy">Buy token</button><button type="button" data-direction="sell">Sell token</button></div>
-              <div class="quote-assets"><span>Settlement asset</span><button type="button" data-quote="weth">WETH</button><button type="button" data-quote="usdg">USDG</button><small>Native RH ETH requires wrapping and is not selectable until the wrap/unwrap boundary is live.</small></div>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
               <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
               <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell, select a supported settlement asset, and enter the token contract. ZKTX recognizes the token on RH and uses an approved liquidity route in 3–7 slices. Actual proceeds return as a private note.</span></div>
@@ -112,6 +117,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js"></script>
-    <script type="module" src="./veil.js"></script>
+    <script type="module" src="./veil.js?v=5"></script>
   </body>
 </html>

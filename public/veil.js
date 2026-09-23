@@ -16,6 +16,7 @@ const planner = document.querySelector("#withdrawal-planner");
 const destinations = document.querySelector("#destinations");
 const denominations = document.querySelector("#denominations");
 const swapFields = document.querySelector("#swap-fields");
+const swapSetup = document.querySelector("#swap-setup");
 const receiveToken = document.querySelector("#receive-token");
 const receiveAmount = document.querySelector("#receive-amount");
 const receiveTokenMetaText = document.querySelector("#receive-token-meta");
@@ -168,6 +169,7 @@ function selectTab(button) {
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
   planner.hidden = button.dataset.tab !== "withdraw";
   swapFields.hidden = button.dataset.tab !== "swap";
+  swapSetup.hidden = button.dataset.tab !== "swap";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
