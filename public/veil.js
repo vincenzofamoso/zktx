@@ -28,6 +28,10 @@ const marketSettlement = document.querySelector("#market-settlement");
 const swapPrerequisite = document.querySelector("#swap-prerequisite");
 const portfolioToggle = document.querySelector("#portfolio-toggle");
 const portfolioList = document.querySelector("#portfolio-list");
+const activityTerminal = document.querySelector("#activity-terminal");
+const activitySteps = document.querySelector("#activity-steps");
+const activityState = document.querySelector("#activity-state");
+const activityAction = document.querySelector("#activity-action");
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const quoteAssets = { weth: WETH, usdg: USDG };
@@ -45,6 +49,51 @@ let account = null;
 let protocol = { mode: "preview", contractsReady: false, chainId: 4663, vaultAddress: null };
 let payTokenMeta = null;
 let receiveTokenMeta = null;
+let activityLastMessage = "";
+
+function startActivity() {
+  activitySteps.replaceChildren();
+  activityTerminal.hidden = false;
+  activityAction.hidden = true;
+  activityState.textContent = "Running";
+  activityLastMessage = "";
+}
+
+function logActivity(message, kind = "done") {
+  if (!message || message === activityLastMessage) return;
+  activityLastMessage = message;
+  const line = document.createElement("div");
+  line.className = `activity-line ${kind}`;
+  const time = document.createElement("time");
+  time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const marker = document.createElement("i");
+  marker.textContent = kind === "error" ? "×" : kind === "success" ? "✓" : "›";
+  const copy = document.createElement("span");
+  copy.textContent = message;
+  line.append(time, marker, copy);
+  activitySteps.append(line);
+  activitySteps.scrollTop = activitySteps.scrollHeight;
+}
+
+async function monitorMarketOrder(orderId, deadline) {
+  let lastSlices = -1;
+  const stopAt = Math.max(Number(deadline) + 120, Math.floor(Date.now() / 1000) + 180);
+  while (Math.floor(Date.now() / 1000) < stopAt) {
+    const response = await fetch(`./api/market/order/${orderId}`, { cache: "no-store" });
+    if (response.ok) {
+      const order = await response.json();
+      const slices = Number(order.slicesExecuted);
+      const total = Number(order.sliceCount);
+      if (slices !== lastSlices) {
+        logActivity(slices === 0 ? `Order accepted. Waiting for ${total} execution slices.` : `Execution slice ${slices} of ${total} confirmed.`);
+        lastSlices = slices;
+      }
+      if (BigInt(order.executedInput) >= BigInt(order.amountIn)) return order;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+  }
+  throw new Error("The order is still pending. You can safely return later and claim it from this browser.");
+}
 
 function parseTokenAmount(value, decimals) {
   const normalized = value.trim();
@@ -315,10 +364,14 @@ form.addEventListener("submit", async (event) => {
     try { receiveUnits = parseTokenAmount(receiveAmount.value, receiveTokenMeta.decimals); }
     catch (error) { result.textContent = error.message; return; }
     try {
-      result.textContent = "Checking RH liquidity and activating the swap route if needed...";
+      startActivity();
+      logActivity("Validating token pair and private balance.");
+      result.textContent = "Swap execution started. Follow the live terminal below.";
+      logActivity("Finding executable Robinhood Chain liquidity.");
       const routeResponse = await fetch(`./api/route/${token.value}/${receiveToken.value}/ensure`, { method: "POST" });
       const route = await routeResponse.json();
       if (!routeResponse.ok || !route.approved) throw new Error(route.error || "No executable RH liquidity route was found for this pair");
+      logActivity("Approved Robinhood Chain liquidity route is ready.");
       if (!connected || !account) throw new Error("Connect your wallet before opening a market order");
       const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value));
       const order = await window.ZKTXWallet.openMarketOrderLive({
@@ -330,11 +383,21 @@ form.addEventListener("submit", async (event) => {
         minimumAmountOut: receiveUnits,
         deadline,
         password: password.value,
-        onProgress: (message) => { result.textContent = message; },
+        onProgress: (message) => { logActivity(message); },
       });
       refreshLocalNotes();
-      result.innerHTML = `Market order relayed. The keeper will execute its slices promptly. <a href="https://robinhoodchain.blockscout.com/tx/${order.transactionHash}" target="_blank" rel="noopener">View vault transaction ↗</a>`;
+      logActivity("Private order relayed to the execution vault.");
+      const executed = await monitorMarketOrder(order.orderId, deadline);
+      activityState.textContent = "Ready to claim";
+      logActivity(`Swap complete. ${executed.slicesExecuted} of ${executed.sliceCount} slices confirmed.`, "success");
+      refreshLocalNotes();
+      pendingMarketOrder.value = order.orderId;
+      settleMarket.disabled = false;
+      activityAction.hidden = false;
+      result.innerHTML = `Swap completed successfully. Claim the purchased tokens into your private portfolio, then unshield whenever you want. <a href="https://robinhoodchain.blockscout.com/tx/${order.transactionHash}" target="_blank" rel="noopener">View order ↗</a>`;
     } catch (error) {
+      activityState.textContent = "Action needed";
+      logActivity(error?.message || "Swap execution stopped.", "error");
       result.textContent = error?.message === "No unspent local note exactly matches this token and amount"
         ? "No matching shielded balance was found. Shield this exact token amount first, or enter the exact amount of an existing shielded note."
         : error?.message?.includes("Error in template MarketOrder")
@@ -370,16 +433,22 @@ form.addEventListener("submit", async (event) => {
 
 settleMarket.addEventListener("click", async () => {
   try {
+    if (activityTerminal.hidden) startActivity();
     if (!connected || !account) throw new Error("Connect your wallet before settling");
     if (!pendingMarketOrder.value) throw new Error("Select a pending local market order");
     const settled = await window.ZKTXWallet.settleMarketOrderLive({
       orderId: pendingMarketOrder.value,
       password: password.value,
-      onProgress: (message) => { result.textContent = message; },
+      onProgress: (message) => { logActivity(message); result.textContent = message; },
     });
     refreshLocalNotes();
+    activityState.textContent = "Claimed";
+    activityAction.hidden = true;
+    logActivity("Purchased tokens claimed into your private portfolio.", "success");
     result.innerHTML = settled.transactionHash
       ? `Purchased tokens are now in your private portfolio. Use the Unshield tab to send them to a wallet. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
       : "Recovered the already-settled private notes into this browser.";
   } catch (error) { result.textContent = error?.message || "Could not settle the market order."; }
 });
+
+activityAction.addEventListener("click", () => settleMarket.click());

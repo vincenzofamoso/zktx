@@ -102,6 +102,11 @@
             </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
             <button class="submit" type="submit">Shield tokens</button>
+            <section id="activity-terminal" class="activity-terminal" hidden aria-live="polite">
+              <div class="activity-head"><span><i></i> ZKTX execution</span><b id="activity-state">Preparing</b></div>
+              <div id="activity-steps" class="activity-steps"></div>
+              <button id="activity-action" class="submit" type="button" hidden>Claim purchased tokens</button>
+            </section>
             <p id="form-result" class="form-result">Connect a wallet to use the capped experimental vault. This pilot uses development proving keys and must not hold valuable assets.</p>
             <p id="local-notes" class="form-result">0 encrypted notes stored in this browser.</p>
           </form>
@@ -121,7 +126,7 @@
     </main>
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p></footer>
     <script src="./vendor/snarkjs.min.js"></script>
-    <script type="module" src="./zk-client.js?v=6"></script>
-    <script type="module" src="./veil.js?v=6"></script>
+    <script type="module" src="./zk-client.js?v=7"></script>
+    <script type="module" src="./veil.js?v=7"></script>
   </body>
 </html>
