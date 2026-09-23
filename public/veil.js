@@ -159,7 +159,8 @@ function refreshLocalNotes() {
     pendingMarketOrder.append(option);
   }
   marketSettlement.hidden = pending.length === 0;
-  settleMarket.disabled = !pendingMarketOrder.value;
+  if (pending.length) pendingMarketOrder.value = pending[0].orderId;
+  settleMarket.disabled = pending.length === 0;
   swapPrerequisite.textContent = count === 0
     ? "No shielded balance found in this browser. Use Shield first to create a private WETH or USDG note, then return here to swap it."
     : "Your swap spends one matching shielded note. Select the same token and exact amount you previously shielded.";
@@ -273,10 +274,21 @@ form.addEventListener("submit", async (event) => {
   catch (error) { result.textContent = error.message; return; }
   if (selected === "withdraw") {
     try {
-      const plan = window.ZKTXWallet.planWithdrawals({ total: payUnits, destinations: destinations.value.split(/\r?\n/).filter(Boolean), denominations: denominations.value.split(",").map((value) => parseTokenAmount(value.trim(), payTokenMeta.decimals)) });
-      const summary = plan.withdrawals.map((item) => `${item.amount} → ${item.recipient.slice(0, 8)}… after ${new Date(item.executeAfter).toLocaleString()}`).join(" | ");
-      result.textContent = `Preview plan: ${summary}. Private change: ${plan.privateChange}. No transaction was sent.`;
-    } catch (error) { result.textContent = error?.message || "Could not create withdrawal plan."; }
+      if (!connected || !account) throw new Error("Connect your wallet before unshielding");
+      const recipient = destinations.value.trim();
+      if (!/^0x[0-9a-fA-F]{40}$/.test(recipient)) throw new Error("Enter one valid destination wallet");
+      const withdrawal = await window.ZKTXWallet.withdrawLive({
+        chainId: protocol.chainId,
+        vaultAddress: protocol.vaultAddress,
+        asset: token.value,
+        amount: payUnits,
+        recipient,
+        password: password.value,
+        onProgress: (message) => { result.textContent = message; },
+      });
+      refreshLocalNotes();
+      result.innerHTML = `Tokens unshielded to ${recipient.slice(0, 8)}… <a href="https://robinhoodchain.blockscout.com/tx/${withdrawal.transactionHash}" target="_blank" rel="noopener">View withdrawal ↗</a>`;
+    } catch (error) { result.textContent = error?.message || "Could not unshield the private note."; }
     return;
   }
   if (selected === "swap") {
@@ -354,7 +366,7 @@ settleMarket.addEventListener("click", async () => {
     });
     refreshLocalNotes();
     result.innerHTML = settled.transactionHash
-      ? `Actual proceeds returned to private notes. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
+      ? `Purchased tokens are now in your private portfolio. Use the Unshield tab to send them to a wallet. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
       : "Recovered the already-settled private notes into this browser.";
   } catch (error) { result.textContent = error?.message || "Could not settle the market order."; }
 });

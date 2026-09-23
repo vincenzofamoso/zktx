@@ -73,6 +73,11 @@
           <form id="veil-form">
             <div class="status"><span>Pool status</span><b><i></i> Capped experimental mainnet</b></div>
             <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your unspent shielded notes, decrypted only on this device.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div></section>
+            <section id="market-settlement" class="settlement-panel" hidden>
+              <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Your swap is ready to finish</b><small>Settle the completed market order to add the purchased tokens to your private portfolio.</small></div></div>
+              <label>Completed swap<select id="pending-market-order"><option value="">No completed swaps found</option></select></label>
+              <button id="settle-market" class="submit" type="button" disabled>Settle into private portfolio</button>
+            </section>
             <div id="swap-setup" hidden>
               <div class="control-label">What do you want to do?</div>
               <div class="swap-direction" role="group" aria-label="Swap direction"><button type="button" class="selected" data-direction="buy"><b>Buy</b><small>Spend a base asset</small></button><button type="button" data-direction="sell"><b>Sell</b><small>Receive a base asset</small></button></div>
@@ -87,17 +92,12 @@
               <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
               <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell and paste any tradable RH token contract. ZKTX finds an executable direct or aggregated route, then executes in 3 to 7 slices. Actual proceeds return as a private note.</span></div>
               <p id="swap-prerequisite" class="field-note">Before swapping, use Shield to create a private note for the WETH or USDG you want to spend.</p>
-              <section id="market-settlement" class="portfolio-panel" hidden>
-                <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Finish an existing swap</b><small>This appears after you submit an order. Once its market slices finish, settle it to receive the bought tokens as a private note.</small></div></div>
-                <label>Order waiting for settlement<select id="pending-market-order"><option value="">Select an order</option></select></label>
-                <button id="settle-market" class="secondary-action" type="button" disabled>Settle selected order</button>
-              </section>
             </div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
-              <label>Destination wallets<textarea id="destinations" rows="3" placeholder="One EVM address per line · 2 to 4 different wallets"></textarea></label>
-              <label>Split sizes, in normal token amounts<input id="denominations" inputmode="decimal" placeholder="Example: 5, 2, 1" /></label>
-              <small>Any remainder stays shielded as private change. Execution times are independently randomized.</small>
+              <label>Destination wallet<textarea id="destinations" rows="1" placeholder="0x… receiving EVM wallet"></textarea></label>
+              <input id="denominations" type="hidden" />
+              <small>Unshielding sends one complete private note to the public wallet you choose. The withdrawal becomes public onchain.</small>
             </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
             <button class="submit" type="submit">Shield tokens</button>
@@ -120,7 +120,7 @@
     </main>
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p></footer>
     <script src="./vendor/snarkjs.min.js"></script>
-    <script type="module" src="./zk-client.js"></script>
-    <script type="module" src="./veil.js?v=5"></script>
+    <script type="module" src="./zk-client.js?v=6"></script>
+    <script type="module" src="./veil.js?v=6"></script>
   </body>
 </html>

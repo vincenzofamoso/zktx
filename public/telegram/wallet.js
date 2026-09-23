@@ -21628,7 +21628,8 @@ __export(wallet_exports, {
   shieldLive: () => shieldLive,
   storeEncryptedNote: () => storeEncryptedNote,
   storedMarketOrders: () => storedMarketOrders,
-  storedNotes: () => storedNotes
+  storedNotes: () => storedNotes,
+  withdrawLive: () => withdrawLive
 });
 function bytesToBase64(bytes) {
   let value = "";
@@ -22028,6 +22029,71 @@ async function openMarketOrderLive({
   markNoteSpent(selectedRecord.id, orderId);
   return record;
 }
+async function withdrawLive({
+  chainId,
+  vaultAddress,
+  asset,
+  amount,
+  recipient,
+  password,
+  onProgress = () => {
+  }
+}) {
+  if (!window.snarkjs?.groth16) throw new Error("The browser proof engine did not load");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(recipient || "")) throw new Error("Enter a valid destination wallet");
+  const status2 = await protocolStatus();
+  if (!status2.contractsReady || !status2.relayerReady) throw new Error("The withdrawal relayer is not ready");
+  onProgress("Unlocking the matching private note...");
+  let selectedRecord;
+  let input;
+  let path;
+  for (const record of storedNotes()) {
+    if (record.spentBy) continue;
+    try {
+      const candidate = await decryptNote(record.encrypted, password);
+      if (candidate.note.chainId === BigInt(chainId) && candidate.note.vaultAddress.toLowerCase() === vaultAddress.toLowerCase() && candidate.note.asset.toLowerCase() === asset.toLowerCase() && candidate.note.amount === BigInt(amount) && candidate.index !== null) {
+        const candidatePath = await loadMerklePath(candidate.index);
+        if (noteMatchesPath(candidate, candidatePath)) {
+          selectedRecord = record;
+          input = candidate;
+          path = candidatePath;
+          break;
+        }
+      }
+    } catch {
+    }
+  }
+  if (!input) throw new Error("No spendable private note exactly matches this token and amount");
+  const nullifier = noteNullifier(input.note, input.ownerSecret);
+  onProgress("Building the private withdrawal proof...");
+  const { proof, publicSignals } = await window.snarkjs.groth16.fullProve({
+    root: BigInt(path.root),
+    nullifier,
+    assetId: BigInt(asset),
+    recipient: BigInt(recipient),
+    amount: BigInt(amount),
+    chainId: BigInt(chainId),
+    vaultAddress: BigInt(vaultAddress),
+    ownerSecret: input.ownerSecret,
+    blinding: input.note.blinding,
+    pathElements: path.pathElements.map(BigInt),
+    pathIndices: path.pathIndices
+  }, provingUrl("withdraw.wasm"), provingUrl("withdraw_final.zkey"));
+  const encodedProof = await proofBytes(proof, publicSignals);
+  onProgress("Relaying the unshield transaction...");
+  const transactionHash = await relay({
+    action: "withdraw",
+    proof: encodedProof,
+    root: hex32(path.root),
+    asset,
+    recipient,
+    amount: BigInt(amount).toString(),
+    nullifier: hex32(nullifier)
+  });
+  await waitForReceipt(transactionHash, 18e4, "Unshield withdrawal");
+  markNoteSpent(selectedRecord.id, transactionHash);
+  return { transactionHash, recipient, asset, amount: BigInt(amount).toString() };
+}
 async function settleMarketOrderLive({ orderId, password, onProgress = () => {
 } }) {
   if (!window.snarkjs?.groth16) throw new Error("The browser proof engine did not load");
@@ -22162,6 +22228,7 @@ var init_wallet2 = __esm({
       storeEncryptedNote,
       shieldLive,
       openMarketOrderLive,
+      withdrawLive,
       settleMarketOrderLive,
       decryptNote,
       storedNotes,
