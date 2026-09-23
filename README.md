@@ -22,7 +22,7 @@ The current milestone contains:
 - A Robinhood Chain-only deployment gate
 - A text-first Telegram bot with CURVING-style trusted-device wallet encryption and signing
 - An explicit privacy-boundary specification
-- The Nginx route served at `https://zktx.tech/`
+- The public application served at `https://zktx.tech/`
 
 ## Current safety state
 
