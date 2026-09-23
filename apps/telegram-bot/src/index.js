@@ -13,6 +13,7 @@ const stateDir = path.resolve(process.env.ZKTX_BOT_STATE_DIR || "/var/lib/zktx-t
 const stateFile = path.join(stateDir, "state.json");
 const signerUrl = (process.env.ZKTX_SIGNER_URL || "https://zktx.tech/telegram/").replace(/\/+$/, "") + "/";
 const protocolUrl = (process.env.ZKTX_PROTOCOL_URL || "https://zktx.tech").replace(/\/+$/, "");
+const rpcUrl = process.env.RH_RPC_URL || "https://rpc.mainnet.chain.robinhood.com";
 const port = Number(process.env.PORT || 3540);
 const allowedChats = new Set((process.env.ALLOWED_CHAT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean).map(Number).filter(Number.isSafeInteger));
 const addressPattern = /^0x[0-9a-fA-F]{40}$/;
@@ -41,6 +42,7 @@ function homeKeyboard(userId) {
 
 function startDraft(ctx, type) {
   if (!ctx.chat || !ctx.from) return null;
+  if (type === "send" || type === "withdraw") return ctx.reply("Private send and withdrawal are temporarily gated while their trusted-device proof executors are completed. Shielding and shielded market trades are live in this bot.");
   const vault = vaultFor(ctx);
   if (!vault) return ctx.reply("Import a wallet once before creating ZKTX actions.", { reply_markup: signerButton("Import wallet", "action=import") });
   const firstStep = type === "send" || type === "withdraw" ? "recipient" : "token";
@@ -66,6 +68,17 @@ async function protocolStatus() {
   } catch { return null; }
 }
 
+async function verifiedVaultReceipt(transactionHash) {
+  const [receiptResponse, readiness] = await Promise.all([
+    fetch(rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [transactionHash] }), signal: AbortSignal.timeout(10_000) }),
+    protocolStatus(),
+  ]);
+  const receipt = (await receiptResponse.json()).result;
+  if (!receipt || BigInt(receipt.status || 0) !== 1n) throw new Error("Transaction is not confirmed successfully");
+  if (!readiness?.vaultAddress || receipt.to?.toLowerCase() !== readiness.vaultAddress.toLowerCase()) throw new Error("Transaction did not execute against the active ZKTX vault");
+  return receipt;
+}
+
 function executionUrl(job) {
   const query = new URLSearchParams({ tab: job.type === "market" ? "swap" : job.type });
   if (job.token) query.set("token", job.token);
@@ -82,7 +95,7 @@ async function finalizeDraft(ctx, draft) {
   delete job.step;
   store.jobs.push(job); delete store.drafts[String(draft.chatId)]; await save();
   const marketCopy = job.type === "market" ? "\nExecution uses compatible existing RH liquidity in 3–7 variable slices. During the capped pre-token pilot, 1% accumulates as WETH for later ZKTX buyback-and-burn and 0.5% supports execution." : "";
-  await ctx.reply(["<b>Review ZKTX action</b>", "", `Type: <b>${escape(job.type === "market" ? "shielded market trade" : job.type)}</b>`, job.token ? `Token: <code>${job.token}</code>` : "", job.amount ? `Amount: <code>${job.amount}</code>` : "", job.receiveToken ? `Receive token: <code>${job.receiveToken}</code>` : "", job.receiveAmount ? `Minimum net received: <code>${job.receiveAmount}</code>` : "", job.recipient ? `Destination: <code>${job.recipient}</code>` : "", marketCopy, "Authorize locally, then continue to the protocol for proof generation and execution."].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: signerButton("Authorize on trusted device", `action=authorize&job=${encodeURIComponent(job.id)}`) });
+  await ctx.reply(["<b>Review ZKTX action</b>", "", `Type: <b>${escape(job.type === "market" ? "shielded market trade" : job.type)}</b>`, job.token ? `Token: <code>${job.token}</code>` : "", job.amount ? `Amount: <code>${job.amount}</code>` : "", job.receiveToken ? `Receive token: <code>${job.receiveToken}</code>` : "", job.receiveAmount ? `Minimum net received: <code>${job.receiveAmount}</code>` : "", job.recipient ? `Destination: <code>${job.recipient}</code>` : "", marketCopy, "One secure confirmation creates the proof, signs, and executes from your trusted device."].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: signerButton("🔐 Sign and execute", `action=authorize&job=${encodeURIComponent(job.id)}`) });
 }
 
 const bot = new Bot(token);
@@ -136,6 +149,23 @@ app.post("/api/v1/jobs/:id/authorize", async (req, res) => {
     await bot.api.sendMessage(job.chatId, `✅ ${job.type === "market" ? "shielded market trade" : job.type} authorized by ${job.wallet.slice(0, 8)}…${job.wallet.slice(-6)}. ${note}`, { reply_markup: keyboard });
     return res.json({ ok: true, status: job.status });
   } catch (error) { return res.status(400).json({ error: error.message || "Authorization failed" }); }
+});
+app.post("/api/v1/jobs/:id/complete", async (req, res) => {
+  try {
+    const user = webUser(req), job = store.jobs.find((entry) => entry.id === req.params.id && entry.userId === user.id && entry.status === "awaiting_signature");
+    if (!job || Date.parse(job.expiresAt) < Date.now()) throw new Error("Execution job expired");
+    const transactionHash = String(req.body?.transactionHash || "");
+    if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) throw new Error("Invalid transaction receipt");
+    await verifiedVaultReceipt(transactionHash);
+    const orderId = req.body?.orderId == null ? null : String(req.body.orderId);
+    if (orderId && !/^0x[0-9a-fA-F]{64}$/.test(orderId)) throw new Error("Invalid market order id");
+    job.status = "executed"; job.executedAt = new Date().toISOString(); job.transactionHash = transactionHash;
+    if (orderId) job.orderId = orderId;
+    await save();
+    const explorer = `https://robinhoodchain.blockscout.com/tx/${transactionHash}`;
+    await bot.api.sendMessage(job.chatId, `✅ <b>${job.type === "market" ? "Shielded market trade submitted" : "Shield deposit confirmed"}</b>\n\nTransaction: <a href="${explorer}">${transactionHash.slice(0, 12)}…${transactionHash.slice(-8)}</a>${orderId ? `\nOrder: <code>${orderId}</code>` : ""}`, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
+    return res.json({ ok: true, status: job.status });
+  } catch (error) { return res.status(400).json({ error: error.message || "Could not record execution" }); }
 });
 app.listen(port, "127.0.0.1", () => console.log(`ZKTX Telegram API listening on ${port}`));
 bot.catch(({ error }) => console.error("ZKTX bot", error?.message || error));

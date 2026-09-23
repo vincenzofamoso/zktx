@@ -17,6 +17,9 @@ const STORE_KEY = "zktx.encrypted-notes.v1";
 const MARKET_STORE_KEY = "zktx.market-orders.v1";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+const runtime = globalThis.ZKTX_RUNTIME_CONFIG || {};
+const apiUrl = (pathname) => `${runtime.apiBase || "."}${pathname}`;
+const provingUrl = (filename) => `${runtime.provingBase || "./proving"}/${filename}`;
 
 function bytesToBase64(bytes) {
   let value = "";
@@ -136,14 +139,14 @@ async function ethCall(to, data) {
 }
 
 async function protocolStatus() {
-  const response = await fetch("./api/status", { cache: "no-store" });
+  const response = await fetch(apiUrl("/api/status"), { cache: "no-store" });
   const status = await response.json();
   if (!response.ok) throw new Error(status.error || "Protocol status is unavailable");
   return status;
 }
 
 async function relay(payload) {
-  const response = await fetch("./api/relay", {
+  const response = await fetch(apiUrl("/api/relay"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
@@ -208,11 +211,11 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
   if (cap === 0n || reserve + amount > cap) throw new Error("This deposit exceeds the experimental reserve cap");
 
   onProgress("Building the zero-knowledge deposit proof…");
-  const statusResponse = await fetch("./api/status", { cache: "no-store" });
+  const statusResponse = await fetch(apiUrl("/api/status"), { cache: "no-store" });
   const status = await statusResponse.json();
   if (!statusResponse.ok || !status.contractsReady) throw new Error("The live pilot indexer is not ready");
   const index = Number(status.state.leafCount);
-  const pathResponse = await fetch(`./api/tree/path/${index}`, { cache: "no-store" });
+  const pathResponse = await fetch(apiUrl(`/api/tree/path/${index}`), { cache: "no-store" });
   const path = await pathResponse.json();
   if (!pathResponse.ok) throw new Error(path.error || "Could not load the current Merkle path");
 
@@ -227,7 +230,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
     assetId: BigInt(asset), amount, chainId: BigInt(chainId), vaultAddress: BigInt(vaultAddress),
     ownerPublicKey: created.note.ownerPublicKey, blinding: created.note.blinding,
     pathElements: path.pathElements.map(BigInt), pathIndices: path.pathIndices,
-  }, "./proving/deposit.wasm", "./proving/deposit_final.zkey");
+  }, provingUrl("deposit.wasm"), provingUrl("deposit_final.zkey"));
   const exported = await window.snarkjs.groth16.exportSolidityCallData(proofResult.proof, proofResult.publicSignals);
   const [a, b, c] = JSON.parse(`[${exported}]`);
   const proof = encodeAbiParameters(
@@ -243,7 +246,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
   await waitForReceipt(approvalHash);
 
   // Re-read immediately before broadcast; another deposit may have advanced the tree while the proof was built.
-  const fresh = await (await fetch("./api/status", { cache: "no-store" })).json();
+  const fresh = await (await fetch(apiUrl("/api/status"), { cache: "no-store" })).json();
   if (Number(fresh.state.leafCount) !== index || BigInt(fresh.state.root) !== BigInt(path.root)) {
     throw new Error("The pool changed while your proof was being prepared. Your approval is safe; submit again to rebuild the proof.");
   }
@@ -295,7 +298,7 @@ export async function openMarketOrderLive({
   }
   if (!input) throw new Error("No unspent local note exactly matches this token and amount");
 
-  const pathResponse = await fetch(`./api/tree/path/${input.index}`, { cache: "no-store" });
+  const pathResponse = await fetch(apiUrl(`/api/tree/path/${input.index}`), { cache: "no-store" });
   const path = await pathResponse.json();
   if (!pathResponse.ok) throw new Error(path.error || "Could not load the note's Merkle path");
   const outputOwnerSecret = randomField();
@@ -326,7 +329,7 @@ export async function openMarketOrderLive({
     outputBlinding,
     refundBlinding,
     distinctAssetInverse: modularInverse(BigInt(assetIn) - BigInt(assetOut)),
-  }, "./proving/market-order.wasm", "./proving/market-order_final.zkey");
+  }, provingUrl("market-order.wasm"), provingUrl("market-order_final.zkey"));
   const encodedProof = await proofBytes(proof, publicSignals);
   const orderId = hex32(nullifier);
   const secret = {
@@ -382,7 +385,7 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
   const status = await protocolStatus();
   if (!status.relayerReady) throw new Error("The settlement relayer is not ready");
 
-  const orderResponse = await fetch(`./api/market/order/${orderId}`, { cache: "no-store" });
+  const orderResponse = await fetch(apiUrl(`/api/market/order/${orderId}`), { cache: "no-store" });
   const order = await orderResponse.json();
   if (!orderResponse.ok) throw new Error(order.error || "Could not load the market order");
   if (order.settled) {
@@ -456,7 +459,7 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
     outputInsertionIndices: outputPath.pathIndices,
     refundInsertionElements: refundPath.pathElements,
     refundInsertionIndices: refundPath.pathIndices,
-  }, "./proving/market-settlement.wasm", "./proving/market-settlement_final.zkey");
+  }, provingUrl("market-settlement.wasm"), provingUrl("market-settlement_final.zkey"));
   const encodedProof = await proofBytes(proof, publicSignals);
   onProgress("Relaying the private settlement…");
   const transactionHash = await relay({
