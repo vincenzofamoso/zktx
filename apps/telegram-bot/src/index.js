@@ -31,12 +31,13 @@ const escape = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<",
 const permitted = (ctx) => Boolean(ctx.chat && (!allowedChats.size || allowedChats.has(ctx.chat.id)));
 const draftFor = (ctx) => ctx.chat ? store.drafts[String(ctx.chat.id)] : null;
 const vaultFor = (ctx) => ctx.from ? store.vaults[String(ctx.from.id)] : null;
-const signerButton = (label, query) => new InlineKeyboard().webApp(label, `${signerUrl}?${query}`);
+const signerLink = (query) => `${signerUrl}?v=4&${query}`;
+const signerButton = (label, query) => new InlineKeyboard().webApp(label, signerLink(query));
 
 function homeKeyboard(userId) {
   const keyboard = new InlineKeyboard().text("Shield", "flow:shield").text("Private send", "flow:send").row().text("Shielded market trade", "flow:market").text("Withdraw", "flow:withdraw").row().text("How it works", "how").text("Fees + burn", "fees").row();
-  if (store.vaults[String(userId)]) keyboard.webApp("Wallet", `${signerUrl}?action=wallet`).text("Balance", "balance");
-  else keyboard.webApp("Import wallet", `${signerUrl}?action=import`);
+  if (store.vaults[String(userId)]) keyboard.webApp("Wallet", signerLink("action=wallet")).text("Balance", "balance");
+  else keyboard.webApp("Import wallet", signerLink("action=import"));
   return keyboard;
 }
 
