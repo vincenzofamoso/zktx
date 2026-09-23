@@ -8,6 +8,21 @@
     "deploymentTransaction": "0xa8fadb3086cfd026f66ad300cf115afeb7a037e9fea559f1c15a2926be3714c7",
     "deploymentBlock": 70269110
   },
+  "marketVerifiers": {
+    "warning": "Capped mainnet pilot keys; not a production ceremony.",
+    "order": {
+      "address": "0x22f49E5c8076f136e0B24Df31A03C7AfE8e41137",
+      "deploymentTransaction": "0x931569a32ddc2a093d6d7d6a437177b37178a5b1c2228fc4d0941f4bb7483091"
+    },
+    "settlement": {
+      "address": "0x98aff173f4F313BD19eA9187d91E24723b277e56",
+      "deploymentTransaction": "0x55af4ab4624579806d212ae2610c5e93d03effb4a98e36137aa7aab83b8852c6"
+    }
+  },
+  "upgradedVault": {
+    "status": "blocked-until-zktx-token-address",
+    "reason": "The immutable market configuration requires the real burnable ZKTX token for its mandatory 1% buyback-and-burn route."
+  },
   "legacyVault": {
     "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da",
     "routingCompatible": false,
