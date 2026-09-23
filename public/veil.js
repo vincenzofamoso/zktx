@@ -24,6 +24,8 @@ const receiveAmountUnits = document.querySelector("#receive-amount-units");
 const quoteLifetime = document.querySelector("#quote-lifetime");
 const pendingMarketOrder = document.querySelector("#pending-market-order");
 const settleMarket = document.querySelector("#settle-market");
+const marketSettlement = document.querySelector("#market-settlement");
+const swapPrerequisite = document.querySelector("#swap-prerequisite");
 const portfolioToggle = document.querySelector("#portfolio-toggle");
 const portfolioList = document.querySelector("#portfolio-list");
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
@@ -156,7 +158,14 @@ function refreshLocalNotes() {
     option.textContent = `${order.orderId.slice(0, 10)}… · ${new Date(order.createdAt).toLocaleString()}`;
     pendingMarketOrder.append(option);
   }
+  marketSettlement.hidden = pending.length === 0;
+  settleMarket.disabled = !pendingMarketOrder.value;
+  swapPrerequisite.textContent = count === 0
+    ? "No shielded balance found in this browser. Use Shield first to create a private WETH or USDG note, then return here to swap it."
+    : "Your swap spends one matching shielded note. Select the same token and exact amount you previously shielded.";
 }
+
+pendingMarketOrder.addEventListener("change", () => { settleMarket.disabled = !pendingMarketOrder.value; });
 
 try {
   const response = await fetch("./api/status");

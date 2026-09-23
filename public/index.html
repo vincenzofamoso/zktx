@@ -86,8 +86,12 @@
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
               <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
               <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell and paste any tradable RH token contract. ZKTX finds an executable direct or aggregated route, then executes in 3 to 7 slices. Actual proceeds return as a private note.</span></div>
-              <label>Pending order to settle<select id="pending-market-order"><option value="">No pending local orders</option></select></label>
-              <button id="settle-market" class="secondary-action" type="button">Settle completed order</button>
+              <p id="swap-prerequisite" class="field-note">Before swapping, use Shield to create a private note for the WETH or USDG you want to spend.</p>
+              <section id="market-settlement" class="portfolio-panel" hidden>
+                <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Finish an existing swap</b><small>This appears after you submit an order. Once its market slices finish, settle it to receive the bought tokens as a private note.</small></div></div>
+                <label>Order waiting for settlement<select id="pending-market-order"><option value="">Select an order</option></select></label>
+                <button id="settle-market" class="secondary-action" type="button" disabled>Settle selected order</button>
+              </section>
             </div>
             <label>Local note password<input id="note-password" type="password" autocomplete="new-password" placeholder="10+ characters" /></label>
             <div id="withdrawal-planner" hidden>
