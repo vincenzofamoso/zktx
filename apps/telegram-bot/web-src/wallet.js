@@ -221,11 +221,17 @@ async function loadDashboard() {
   const output = document.querySelector("#dashboard-output");
   output.replaceChildren();
   const notes = await privatePortfolio(password);
+  const grouped = new Map();
   for (const note of notes) {
-    const metadata = await tokenMetadata(note.asset).catch(() => ({ symbol: `${note.asset.slice(0, 6)}...`, decimals: 0 }));
+    const key = note.asset.toLowerCase();
+    const group = grouped.get(key) || { asset: note.asset, total: 0n, notes: [] };
+    group.total += BigInt(note.amount); group.notes.push(note); grouped.set(key, group);
+  }
+  for (const group of grouped.values()) {
+    const metadata = await tokenMetadata(group.asset).catch(() => ({ symbol: `${group.asset.slice(0, 6)}...`, decimals: 0 }));
     const row = document.createElement("div"); row.className = "portfolio-row";
-    const title = document.createElement("b"); title.textContent = `${formatUnits(note.amount, metadata.decimals)} ${metadata.symbol}`;
-    const copy = document.createElement("small"); copy.textContent = "Spendable shielded note";
+    const title = document.createElement("b"); title.textContent = `${formatUnits(group.total, metadata.decimals)} ${metadata.symbol}`;
+    const copy = document.createElement("small"); copy.textContent = `${group.notes.length} spendable private note${group.notes.length === 1 ? "" : "s"}`;
     row.append(title, copy); output.append(row);
   }
   for (const order of storedMarketOrders().filter((entry) => !entry.settled)) {

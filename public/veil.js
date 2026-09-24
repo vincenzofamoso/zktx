@@ -190,26 +190,31 @@ async function showPortfolio() {
   try {
     const notes = await window.ZKTXWallet.privatePortfolio(password.value);
     portfolioList.replaceChildren();
+    const grouped = new Map();
     for (const note of notes) {
-      const response = await fetch(`./api/token/${note.asset}`);
-      const metadata = response.ok ? await response.json() : { symbol: `${note.asset.slice(0, 6)}…`, decimals: 0 };
+      const key = note.asset.toLowerCase();
+      const group = grouped.get(key) || { asset: note.asset, total: 0n, notes: [] };
+      group.total += BigInt(note.amount); group.notes.push(note); grouped.set(key, group);
+    }
+    for (const group of grouped.values()) {
+      const response = await fetch(`./api/token/${group.asset}`);
+      const metadata = response.ok ? await response.json() : { symbol: `${group.asset.slice(0, 6)}…`, decimals: 0 };
       const row = document.createElement("div"); row.className = "portfolio-item";
-      const asset = document.createElement("span"); asset.textContent = metadata.symbol;
-      const formatted = formatTokenAmount(note.amount, metadata.decimals);
-      const balance = document.createElement("span"); balance.textContent = formatted;
-      const unshield = document.createElement("button");
-      unshield.type = "button";
-      unshield.className = "portfolio-withdraw";
-      unshield.textContent = "Unshield to wallet";
-      unshield.addEventListener("click", () => {
-        selectTab(document.querySelector('#withdraw-action'));
-        token.value = note.asset;
-        amount.value = formatted;
-        token.dispatchEvent(new Event("change"));
-        destinations.focus();
-        result.textContent = `Enter the destination wallet, then confirm Unshield tokens to withdraw this ${metadata.symbol} note.`;
-      });
-      row.append(asset, balance, unshield); portfolioList.append(row);
+      const asset = document.createElement("span"); asset.textContent = `${metadata.symbol} · ${group.notes.length} private note${group.notes.length === 1 ? "" : "s"}`;
+      const balance = document.createElement("span"); balance.textContent = `${formatTokenAmount(group.total, metadata.decimals)} total`;
+      const actions = document.createElement("div"); actions.className = "portfolio-note-actions";
+      for (const note of group.notes) {
+        const formatted = formatTokenAmount(note.amount, metadata.decimals);
+        const unshield = document.createElement("button");
+        unshield.type = "button"; unshield.className = "portfolio-withdraw"; unshield.textContent = `Unshield ${formatted}`;
+        unshield.addEventListener("click", () => {
+          selectTab(document.querySelector('#withdraw-action'));
+          token.value = note.asset; amount.value = formatted; token.dispatchEvent(new Event("change")); destinations.focus();
+          result.textContent = `Enter the destination wallet, then confirm Unshield tokens to withdraw this ${metadata.symbol} note.`;
+        });
+        actions.append(unshield);
+      }
+      row.append(asset, balance, actions); portfolioList.append(row);
     }
     if (!notes.length) portfolioList.textContent = "No notes unlocked. Check the password or shield a token first.";
     portfolioList.hidden = false; portfolioToggle.textContent = "Refresh portfolio";
