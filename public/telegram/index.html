@@ -34,6 +34,10 @@
         <small>This is the only backup for your wallet. Store it safely. ZKTX cannot recover it for you.</small>
         <code id="recovery-code"></code>
         <button id="copy-recovery">Copy private key</button>
+        <p class="step">YOUR FUNDING ADDRESS</p>
+        <code id="created-address"></code>
+        <button id="copy-created-address">Copy wallet address</button>
+        <small>Send Robinhood Chain assets to this address. Keep a small amount of RH ETH in it for gas.</small>
         <button id="finish-setup">I saved it, continue</button>
       </section>
       <form id="unlock" hidden>
@@ -41,7 +45,7 @@
         <label>Private key or legacy recovery code<input id="unlock-passphrase" type="password" minlength="12" autocomplete="current-password" required /></label>
         <button>Unlock trusted device</button>
       </form>
-      <section id="wallet" hidden><p class="step">1 OF 2 · WALLET READY</p><code id="address"></code></section>
+      <section id="wallet" hidden><p class="step">WALLET READY</p><h2>Fund your swap wallet</h2><code id="address"></code><button id="copy-address">Copy wallet address</button><small>Send Robinhood Chain assets here before trading. Keep a small RH ETH balance for gas.</small></section>
       <section id="review" hidden>
         <p class="step">2 OF 2 · REVIEW AND EXECUTE</p>
         <pre id="summary"></pre>

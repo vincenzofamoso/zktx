@@ -73,6 +73,8 @@ async function runViewport(name, viewport) {
   check(await page.locator("#import-existing #private-key").count() === 1, `${name}: Telegram wallet import only asks for a private key`);
   check(await page.locator("#passphrase").count() === 0, `${name}: Telegram setup does not require a seed or chosen passphrase`);
   check((await page.locator("#backup").textContent()).includes("Copy your private key"), `${name}: generated wallet reveals a copyable private key backup`);
+  check((await page.locator("#backup").textContent()).includes("YOUR FUNDING ADDRESS"), `${name}: generated wallet shows its funding address immediately`);
+  check((await page.locator("#wallet").textContent()).includes("small RH ETH balance for gas"), `${name}: wallet screen explains funding and gas`);
   check(runtimeErrors.length === 0, `${name}: no console, page, or failed-request errors${runtimeErrors.length ? ` (${runtimeErrors.join(" | ")})` : ""}`);
   await context.close();
 }

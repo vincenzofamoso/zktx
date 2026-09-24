@@ -22775,6 +22775,7 @@ async function storeNewWallet(secret, showPrivateKey) {
   if (showPrivateKey) {
     setupAccount = result.account;
     document.querySelector("#recovery-code").textContent = normalized;
+    document.querySelector("#created-address").textContent = result.account.address;
     showOnly("#backup");
     status("Wallet created. Copy the private key before continuing.");
   } else {
@@ -22950,6 +22951,14 @@ document.querySelector("#import-existing").onsubmit = async (event) => {
 document.querySelector("#copy-recovery").onclick = async () => {
   await navigator.clipboard?.writeText(document.querySelector("#recovery-code").textContent);
   status("Private key copied. Store it somewhere safe.");
+};
+document.querySelector("#copy-created-address").onclick = async () => {
+  await navigator.clipboard?.writeText(document.querySelector("#created-address").textContent);
+  status("Wallet address copied. Fund it on Robinhood Chain and keep some RH ETH for gas.");
+};
+document.querySelector("#copy-address").onclick = async () => {
+  await navigator.clipboard?.writeText(document.querySelector("#address").textContent);
+  status("Wallet address copied. Fund it on Robinhood Chain and keep some RH ETH for gas.");
 };
 document.querySelector("#finish-setup").onclick = async () => {
   if (!setupAccount) return;

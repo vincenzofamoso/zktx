@@ -233,6 +233,7 @@ async function storeNewWallet(secret, showPrivateKey) {
   if (showPrivateKey) {
     setupAccount = result.account;
     document.querySelector("#recovery-code").textContent = normalized;
+    document.querySelector("#created-address").textContent = result.account.address;
     showOnly("#backup");
     status("Wallet created. Copy the private key before continuing.");
   } else {
@@ -341,6 +342,8 @@ document.querySelector("#refresh-dashboard").onclick = async () => { try { await
 document.querySelector("#create-wallet").onclick = async () => { try { await storeNewWallet(randomHex(), true); } catch (error) { status(error.message || "Wallet creation failed"); } };
 document.querySelector("#import-existing").onsubmit = async (event) => { event.preventDefault(); const secret = document.querySelector("#private-key"); try { await storeNewWallet(secret.value.trim(), false); secret.value = ""; } catch (error) { secret.value = ""; status(error.message || "Import failed"); } };
 document.querySelector("#copy-recovery").onclick = async () => { await navigator.clipboard?.writeText(document.querySelector("#recovery-code").textContent); status("Private key copied. Store it somewhere safe."); };
+document.querySelector("#copy-created-address").onclick = async () => { await navigator.clipboard?.writeText(document.querySelector("#created-address").textContent); status("Wallet address copied. Fund it on Robinhood Chain and keep some RH ETH for gas."); };
+document.querySelector("#copy-address").onclick = async () => { await navigator.clipboard?.writeText(document.querySelector("#address").textContent); status("Wallet address copied. Fund it on Robinhood Chain and keep some RH ETH for gas."); };
 document.querySelector("#finish-setup").onclick = async () => { if (!setupAccount) return; await ready(setupAccount); };
 document.querySelector("#unlock").onsubmit = async (event) => { event.preventDefault(); const passphrase = document.querySelector("#unlock-passphrase"); try { const { vault } = await api("/api/v1/vault"), entered = passphrase.value.trim(), credential = /^[0-9a-fA-F]{64}$/.test(entered) ? `0x${entered}` : entered, key = await derive(credential, vault); passphrase.value = ""; const account = await decryptVault(vault, key); await saveKey(vault.address, key); document.querySelector("#unlock").hidden = true; await ready(account); } catch { passphrase.value = ""; status("Wallet unlock failed. Check the private key or legacy recovery code."); } };
 void bootstrap();
