@@ -23,9 +23,9 @@ async function runViewport(name, viewport) {
   check(response?.ok(), `${name}: homepage returns success`);
   check(await page.locator(".brand img").isVisible(), `${name}: brand is visible`);
   check(await page.locator(".dapp-preview-frame img").isVisible(), `${name}: dapp preview is visible`);
-  check((await page.locator('.dapp-preview a[href="./app.html"]').count()) >= 1, `${name}: homepage links to the dapp`);
+  check((await page.locator('.dapp-preview a[href="./app"]').count()) >= 1, `${name}: homepage links to the dapp`);
 
-  const appResponse = await page.goto(`${base}/app.html`, { waitUntil: "networkidle" });
+  const appResponse = await page.goto(`${base}/app`, { waitUntil: "networkidle" });
   check(appResponse?.ok(), `${name}: dapp returns success`);
   check(await page.locator(".usp-grid").isHidden(), `${name}: dapp hides homepage marketing cards`);
   check(await page.locator(".workspace-copy").isHidden(), `${name}: dapp only shows the product workspace`);
