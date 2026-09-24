@@ -267,15 +267,19 @@ function saveMarketOrder(record) {
 }
 
 export async function shieldLive({ account, chainId, vaultAddress, asset, amount, password, onProgress = () => {} }) {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(vaultAddress || "")) throw new Error("Live pilot vault is unavailable");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(vaultAddress || "")) throw new Error("Live vault is unavailable");
   const currentChain = Number(await rpc("eth_chainId"));
   if (currentChain !== Number(chainId)) throw new Error(`Switch your wallet to Robinhood Chain (${chainId}) first`);
 
+  onProgress("Checking token availability in the shielded vault...");
+  const enableResponse = await fetch(apiUrl(`/api/assets/${asset}/ensure`), { method: "POST" });
+  const enableResult = await enableResponse.json();
+  if (!enableResponse.ok) throw new Error(enableResult.error || "This token could not be enabled in the shielded vault");
   const supportedRaw = await ethCall(vaultAddress, encodeFunctionData({ abi: vaultAbi, functionName: "supportedAssets", args: [asset] }));
-  if (BigInt(supportedRaw) !== 1n) throw new Error("This asset is not enabled in the capped experimental vault");
+  if (BigInt(supportedRaw) !== 1n) throw new Error("This token is not enabled in the shielded vault");
   const cap = BigInt(await ethCall(vaultAddress, encodeFunctionData({ abi: vaultAbi, functionName: "reserveCaps", args: [asset] })));
   const reserve = BigInt(await ethCall(vaultAddress, encodeFunctionData({ abi: vaultAbi, functionName: "publicReserves", args: [asset] })));
-  if (cap === 0n || reserve + amount > cap) throw new Error("This deposit exceeds the experimental reserve cap");
+  if (cap === 0n || reserve + amount > cap) throw new Error("This token is temporarily unavailable for shielding");
 
   let tokenBalance = BigInt(await ethCall(asset, encodeFunctionData({ abi: tokenAbi, functionName: "balanceOf", args: [account] })));
   if (tokenBalance < amount && asset.toLowerCase() === WETH.toLowerCase()) {

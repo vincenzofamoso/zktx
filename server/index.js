@@ -31,6 +31,7 @@ const V3_FACTORY = "0x1f7d7550B1b028f7571E69A784071F0205FD2EfA";
 const AGGREGATOR_ADAPTER = "0x357A1B97EAbA27689D33455Ce768687B696e81ed";
 const AGGREGATOR_QUOTE_URL = process.env.ZKTX_AGGREGATOR_QUOTE_URL || "http://127.0.0.1:3010/swap-quote";
 const ZERO = "0x0000000000000000000000000000000000000000";
+const MAX_UINT256 = (1n << 256n) - 1n;
 const v3Adapters = new Map([
   [100, "0xd8c8291b0b32202dCe58540e956F33018D459F59"],
   [500, "0x1249E94E2BfA0BB84Ba27c84e79306055b9562EA"],
@@ -120,14 +121,20 @@ async function aggregatorHasLiquidity(tokenIn, tokenOut) {
 
 async function ensureAssetSupported(asset) {
   const supported = await readClient.readContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "supportedAssets", args: [asset] });
-  if (supported) return;
+  const cap = await readClient.readContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "reserveCaps", args: [asset] });
+  if (supported && cap === MAX_UINT256) return { supported: true, uncapped: true, updated: false };
   const supply = await readClient.readContract({ address: asset, abi: supplyAbi, functionName: "totalSupply" });
   if (supply <= 0n) throw new Error("Token supply could not be validated");
-  const cap = supply / 1_000n || 1n;
-  let hash = await routeOperator.writeContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "setReserveCap", args: [asset, cap] });
-  await readClient.waitForTransactionReceipt({ hash });
-  hash = await routeOperator.writeContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "setAssetSupported", args: [asset, true] });
-  await readClient.waitForTransactionReceipt({ hash });
+  let hash;
+  if (cap !== MAX_UINT256) {
+    hash = await routeOperator.writeContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "setReserveCap", args: [asset, MAX_UINT256] });
+    await readClient.waitForTransactionReceipt({ hash });
+  }
+  if (!supported) {
+    hash = await routeOperator.writeContract({ address: vaultAddress, abi: vaultAdminAbi, functionName: "setAssetSupported", args: [asset, true] });
+    await readClient.waitForTransactionReceipt({ hash });
+  }
+  return { supported: true, uncapped: true, updated: true, transactionHash: hash };
 }
 
 async function ensureRoute(tokenIn, tokenOut) {
@@ -332,6 +339,20 @@ app.get("/api/route/:tokenIn/:tokenOut", async (req, res) => {
 });
 
 const routeJobs = new Map();
+const assetJobs = new Map();
+app.post("/api/assets/:asset/ensure", async (req, res) => {
+  const asset = req.params.asset;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(asset)) return res.status(400).json({ error: "Invalid token contract" });
+  if (!routeOperator || !vaultAddress) return res.status(503).json({ error: "Automatic token activation is unavailable" });
+  const key = asset.toLowerCase();
+  try {
+    if (!assetJobs.has(key)) assetJobs.set(key, ensureAssetSupported(asset).finally(() => assetJobs.delete(key)));
+    return res.json({ asset, ...(await assetJobs.get(key)) });
+  } catch (error) {
+    return res.status(422).json({ error: error.shortMessage || error.message || "Token could not be enabled" });
+  }
+});
+
 app.post("/api/route/:tokenIn/:tokenOut/ensure", async (req, res) => {
   const { tokenIn, tokenOut } = req.params;
   if (!vaultAddress || !/^0x[0-9a-fA-F]{40}$/.test(tokenIn) || !/^0x[0-9a-fA-F]{40}$/.test(tokenOut) || tokenIn.toLowerCase() === tokenOut.toLowerCase()) {
