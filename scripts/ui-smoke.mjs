@@ -102,6 +102,8 @@ async function runViewport(name, viewport) {
 
   const docsResponse = await page.goto(`${base}/docs.html`, { waitUntil: "networkidle" });
   check(docsResponse?.ok(), `${name}: docs return success`);
+  check(await page.locator('.topbar nav a[href="./"]').isVisible(), `${name}: docs retain the main site navigation`);
+  check(await page.locator('.docs-subnav a[href="#overview"]').isVisible(), `${name}: docs have their own section navigation`);
   check((await page.locator("body").innerText()).includes("Zcash solved the ownership problem"), `${name}: docs explain the design choice`);
   check(await page.locator('a[href="./case-study.html"]').count() > 0, `${name}: docs link to evidence`);
 

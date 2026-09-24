@@ -1,4 +1,5 @@
 .docs-home { text-decoration: none; padding: 11px 17px; }
+.docs-page .topbar nav{display:flex;gap:18px;margin-left:auto}.docs-page .topbar nav a{white-space:nowrap}.docs-page .topbar nav a.current{color:var(--acid)}.docs-page .topbar .connect{margin-left:0}.docs-subnav{position:sticky;top:0;z-index:20;width:100%;min-height:52px;display:flex;align-items:center;justify-content:center;gap:24px;padding:0 18px;border-bottom:1px solid var(--line);background:#070603f2;backdrop-filter:blur(14px)}.docs-subnav b{color:var(--acid);font:11px DM Mono;letter-spacing:.14em}.docs-subnav a{color:var(--muted);font-size:12px;text-decoration:none;white-space:nowrap}.docs-subnav a:hover{color:var(--acid)}
 .docs-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 64px; padding: 70px 0 120px; }
 .docs-nav { position: sticky; top: 28px; align-self: start; display: grid; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: #080704e8; }
 .docs-nav b { margin-bottom: 8px; color: var(--acid); font: 11px DM Mono; letter-spacing: .13em; }
@@ -37,5 +38,7 @@ td { color: var(--muted); }
 .glossary div { display: grid; grid-template-columns: 170px 1fr; gap: 20px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .glossary dt { color: var(--ink); font-weight: 700; }
 .glossary dd { color: var(--muted); }
-@media (max-width: 850px) { .docs-layout { grid-template-columns: 1fr; padding-top: 35px; } .docs-nav { position: static; grid-template-columns: 1fr 1fr; } .docs-nav b { grid-column: 1 / -1; } .status-grid, .card-grid { grid-template-columns: 1fr; } }
+@media (max-width: 950px) { .docs-page .topbar nav{gap:12px}.docs-page .topbar nav a{font-size:11px}.docs-page .topbar nav a:nth-child(3),.docs-page .topbar nav a:nth-child(4),.docs-page .topbar nav a:nth-child(5){display:none} }
+@media (max-width: 850px) { .docs-layout { grid-template-columns: 1fr; padding-top: 35px; } .docs-nav { position: static; grid-template-columns: 1fr 1fr; } .docs-nav b { grid-column: 1 / -1; } .status-grid, .card-grid { grid-template-columns: 1fr; } .docs-page .topbar nav{display:flex}.docs-subnav{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}.docs-subnav::-webkit-scrollbar{display:none} }
+@media (max-width:620px){.docs-page .topbar{gap:10px}.docs-page .topbar nav a:nth-child(2),.docs-page .topbar nav a:nth-child(7){display:none}.docs-page .connect{padding:9px 10px;font-size:12px}}
 @media (max-width: 520px) { .docs-layout { gap: 30px; } .docs-hero { padding-bottom: 55px; } .docs-hero h1 { font-size: 49px; } .glossary div { grid-template-columns: 1fr; gap: 4px; } th, td { padding: 10px; } }
