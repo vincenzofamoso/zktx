@@ -269,6 +269,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
       data: "0xd0e30db0",
     }]);
     await waitForReceipt(wrapHash, 180_000, "WETH wrapping");
+    onProgress("WETH wrapping confirmed", { transactionHash: wrapHash });
     tokenBalance = BigInt(await ethCall(asset, encodeFunctionData({ abi: tokenAbi, functionName: "balanceOf", args: [account] })));
   }
   if (tokenBalance < amount) {
@@ -308,6 +309,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
     data: encodeFunctionData({ abi: tokenAbi, functionName: "approve", args: [vaultAddress, amount] }),
   }]);
   await waitForReceipt(approvalHash, 180_000, "Token approval");
+  onProgress("Token approval confirmed", { transactionHash: approvalHash });
 
   // Refresh the root before broadcast.
   const fresh = await (await fetch(apiUrl("/api/status"), { cache: "no-store" })).json();
@@ -320,6 +322,7 @@ export async function shieldLive({ account, chainId, vaultAddress, asset, amount
     data: encodeFunctionData({ abi: vaultAbi, functionName: "deposit", args: [proof, asset, amount, hex32(created.commitment), hex32(newRoot)] }),
   }]);
   const receipt = await waitForReceipt(depositHash, 180_000, "Shield deposit");
+  onProgress("Shield deposit confirmed onchain", { transactionHash: depositHash });
   const record = commitEncryptedNote(preparedRecord);
   onProgress("Deposit confirmed. Syncing your private balance...");
   const indexed = await waitForIndexedNote(created);
@@ -449,6 +452,7 @@ export async function openMarketOrderLive({
   record.transactionHash = transactionHash;
   saveMarketOrder(record);
   await waitForReceipt(transactionHash);
+  onProgress("Private market order confirmed onchain", { transactionHash, orderId });
   markNoteSpent(selectedRecord.id, orderId);
   return record;
 }
@@ -521,6 +525,7 @@ export async function withdrawLive({
     nullifier: hex32(nullifier),
   });
   await waitForReceipt(transactionHash, 180_000, "Unshield withdrawal");
+  onProgress("Unshield withdrawal confirmed", { transactionHash });
   markNoteSpent(selectedRecord.id, transactionHash);
   return { transactionHash, recipient, asset, amount: BigInt(amount).toString() };
 }
@@ -625,6 +630,7 @@ export async function settleMarketOrderLive({ orderId, password, onProgress = ()
   record.settlementHash = transactionHash;
   saveMarketOrder(record);
   await waitForReceipt(transactionHash);
+  onProgress("Private settlement confirmed onchain", { transactionHash, orderId });
   commitEncryptedNote(outputRecord);
   if (refundRecord) commitEncryptedNote(refundRecord);
   record.settled = true;

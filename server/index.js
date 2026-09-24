@@ -258,6 +258,14 @@ app.get("/api/tree/path/:index", (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+app.get("/api/case-study", (_req, res) => {
+  try {
+    res.json(JSON.parse(fs.readFileSync(path.join(root, "public", "case-study-data.json"), "utf8")));
+  } catch {
+    res.status(503).json({ error: "Case study evidence is unavailable" });
+  }
+});
+
 app.get("/api/market/order/:orderId", async (req, res) => {
   if (!vaultAddress) return res.status(503).json({ error: "The live vault is not configured" });
   if (!/^0x[0-9a-fA-F]{64}$/.test(req.params.orderId)) {
@@ -270,9 +278,24 @@ app.get("/api/market/order/:orderId", async (req, res) => {
       functionName: "getMarketOrder",
       args: [req.params.orderId],
     });
-    return res.json(Object.fromEntries(
+    const fromBlock = BigInt(process.env.ZKTX_START_BLOCK || 0);
+    const eventNames = ["MarketOrderOpened", "MarketSliceExecuted", "MarketOrderSettled"];
+    const [opened, slices, settled] = await Promise.all(eventNames.map((eventName) => readClient.getContractEvents({
+      address: vaultAddress,
+      abi: vaultAbi,
+      eventName,
+      args: { orderId: req.params.orderId },
+      fromBlock,
+      toBlock: "latest",
+    })));
+    return res.json({
+      ...Object.fromEntries(
       Object.entries(order).map(([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]),
-    ));
+      ),
+      openingTransaction: opened.at(-1)?.transactionHash || null,
+      sliceTransactions: slices.map((event) => event.transactionHash),
+      settlementTransaction: settled.at(-1)?.transactionHash || null,
+    });
   } catch {
     return res.status(404).json({ error: "Market order could not be read" });
   }

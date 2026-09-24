@@ -21849,6 +21849,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
       data: "0xd0e30db0"
     }]);
     await waitForReceipt(wrapHash, 18e4, "WETH wrapping");
+    onProgress("WETH wrapping confirmed", { transactionHash: wrapHash });
     tokenBalance = BigInt(await ethCall(asset, encodeFunctionData({ abi: tokenAbi, functionName: "balanceOf", args: [account] })));
   }
   if (tokenBalance < amount) {
@@ -21894,6 +21895,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
     data: encodeFunctionData({ abi: tokenAbi, functionName: "approve", args: [vaultAddress, amount] })
   }]);
   await waitForReceipt(approvalHash, 18e4, "Token approval");
+  onProgress("Token approval confirmed", { transactionHash: approvalHash });
   const fresh = await (await fetch(apiUrl("/api/status"), { cache: "no-store" })).json();
   if (Number(fresh.state.leafCount) !== index2 || BigInt(fresh.state.root) !== BigInt(path.root)) {
     throw new Error("The pool changed while your proof was being prepared. Your approval is safe; submit again to rebuild the proof.");
@@ -21905,6 +21907,7 @@ async function shieldLive({ account, chainId, vaultAddress, asset, amount, passw
     data: encodeFunctionData({ abi: vaultAbi, functionName: "deposit", args: [proof, asset, amount, hex32(created.commitment), hex32(newRoot)] })
   }]);
   const receipt = await waitForReceipt(depositHash, 18e4, "Shield deposit");
+  onProgress("Shield deposit confirmed onchain", { transactionHash: depositHash });
   const record = commitEncryptedNote(preparedRecord);
   onProgress("Deposit confirmed. Syncing your private balance...");
   const indexed = await waitForIndexedNote(created);
@@ -22027,6 +22030,7 @@ async function openMarketOrderLive({
   record.transactionHash = transactionHash;
   saveMarketOrder(record);
   await waitForReceipt(transactionHash);
+  onProgress("Private market order confirmed onchain", { transactionHash, orderId });
   markNoteSpent(selectedRecord.id, orderId);
   return record;
 }
@@ -22092,6 +22096,7 @@ async function withdrawLive({
     nullifier: hex32(nullifier)
   });
   await waitForReceipt(transactionHash, 18e4, "Unshield withdrawal");
+  onProgress("Unshield withdrawal confirmed", { transactionHash });
   markNoteSpent(selectedRecord.id, transactionHash);
   return { transactionHash, recipient, asset, amount: BigInt(amount).toString() };
 }
@@ -22190,6 +22195,7 @@ async function settleMarketOrderLive({ orderId, password, onProgress = () => {
   record.settlementHash = transactionHash;
   saveMarketOrder(record);
   await waitForReceipt(transactionHash);
+  onProgress("Private settlement confirmed onchain", { transactionHash, orderId });
   commitEncryptedNote(outputRecord);
   if (refundRecord) commitEncryptedNote(refundRecord);
   record.settled = true;
@@ -22507,7 +22513,7 @@ function startTerminal() {
   document.querySelector("#execution-lines").replaceChildren();
   document.querySelector("#execution-state").textContent = "RUNNING";
 }
-function log(message, kind = "normal") {
+function log(message, kind = "normal", details = {}) {
   const lines = document.querySelector("#execution-lines");
   const row = document.createElement("div");
   row.className = `terminal-line ${kind}`;
@@ -22516,19 +22522,32 @@ function log(message, kind = "normal") {
   const marker = document.createElement("i");
   marker.textContent = kind === "error" ? "\xD7" : kind === "success" ? "\u2713" : ">";
   const text = document.createElement("span");
-  text.textContent = message;
+  if (details.transactionHash) {
+    const link = document.createElement("a");
+    link.href = `https://robinhoodchain.blockscout.com/tx/${details.transactionHash}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = `${message} \xB7 View transaction \u2197`;
+    text.append(link);
+  } else text.textContent = message;
   row.append(time, marker, text);
   lines.append(row);
   lines.scrollTop = lines.scrollHeight;
 }
 async function monitorOrder(orderId) {
   let lastSlices = -1;
+  const linkedSlices = /* @__PURE__ */ new Set();
   for (; ; ) {
     const response = await fetch(`https://zktx.tech/api/market/order/${orderId}`, { cache: "no-store" });
     const order = await response.json();
     if (!response.ok) throw new Error(order.error || "Could not load the market order");
     const slices = Number(order.slicesExecuted);
     const total = Number(order.sliceCount);
+    for (const [index2, transactionHash] of (order.sliceTransactions || []).entries()) {
+      if (linkedSlices.has(transactionHash)) continue;
+      linkedSlices.add(transactionHash);
+      log(`Execution slice ${index2 + 1} confirmed`, "normal", { transactionHash });
+    }
     if (slices !== lastSlices) {
       log(slices ? `Execution slice ${slices} of ${total} confirmed` : `Order accepted. Waiting for ${total} execution slices`);
       lastSlices = slices;
@@ -22543,7 +22562,7 @@ async function monitorOrder(orderId) {
 }
 async function settle(orderId, password, job = null) {
   document.querySelector("#execution-state").textContent = "CLAIMING";
-  const result = await settleMarketOrderLive2({ orderId, password, onProgress: (message) => log(message) });
+  const result = await settleMarketOrderLive2({ orderId, password, onProgress: (message, details) => log(message, "normal", details) });
   log("Proceeds added to your Shielded Portfolio", "success");
   document.querySelector("#execution-state").textContent = "COMPLETE";
   document.querySelector("#claim").hidden = true;
@@ -22556,12 +22575,12 @@ async function execute(job) {
   installLocalSigner(activeAccount);
   const protocol = await (await fetch("https://zktx.tech/api/status", { cache: "no-store" })).json();
   if (job.type === "shield") {
-    const result = await shieldLive2({ account: activeAccount.address, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), password, onProgress: (message) => log(message) });
+    const result = await shieldLive2({ account: activeAccount.address, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), password, onProgress: (message, details) => log(message, "normal", details) });
     return { transactionHash: result.depositHash, approvalHash: result.approvalHash };
   }
   if (job.type === "market") {
     const deadline = BigInt(Math.floor(Date.now() / 1e3) + Number(job.deadlineSeconds));
-    const result = await openMarketOrderLive2({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message) => log(message) });
+    const result = await openMarketOrderLive2({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message, details) => log(message, "normal", details) });
     return { transactionHash: result.transactionHash, orderId: result.orderId };
   }
   throw new Error("This action does not yet have a live trusted-device executor");

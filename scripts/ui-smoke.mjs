@@ -49,8 +49,8 @@ async function runViewport(name, viewport) {
 
   const caseResponse = await page.goto(`${base}/case-study.html`, { waitUntil: "networkidle" });
   check(caseResponse?.ok(), `${name}: case study returns success`);
-  check(await page.locator(".tx").count() >= 11, `${name}: mainnet lifecycle transactions render`);
-  check(await page.locator("#contracts article").count() === 8, `${name}: 8 contracts render`);
+  check(await page.locator(".tx").count() >= 9, `${name}: funded shielded swap transactions render`);
+  check(await page.locator("#contracts article").count() === 7, `${name}: current market contracts render`);
   check(await page.locator("#checks .check").count() >= 3, `${name}: final checks render`);
   check(
     await page.locator('.tx a[href^="https://robinhoodchain.blockscout.com/tx/"]').count() === await page.locator(".tx").count(),

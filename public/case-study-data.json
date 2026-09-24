@@ -1,136 +1,120 @@
 {
-  "generatedAt": "2026-09-23T00:37:59.127Z",
+  "generatedAt": "2026-09-24T00:01:00.000Z",
   "network": "Robinhood Chain",
   "chainId": 4663,
   "warning": "Capped mainnet E2E run using development proving keys and deliberately tiny real-asset amounts; not a production ceremony or audit.",
   "contracts": {
-    "vault": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da",
+    "vault": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760",
     "tokenA": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
     "tokenB": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
-    "depositVerifier": "0x695A2E3ACb8A87c70509F49aa812AD5dBAC4eACf",
-    "transferVerifier": "0x077cC901f1E4218e562BB49690848AF87b51DD10",
-    "withdrawVerifier": "0x838c1324A662097b61634ff50F30b5366Fed4B36",
-    "swapVerifier": "0x537d0E4E686Dc4c8dEBB4D6357bE1C6B8c052337",
-    "cancelOrderVerifier": "0x4f2B3F15CA99e2DaDfa207Ff68BB8D06a82b1406"
+    "marketOrderVerifier": "0x22f49E5c8076f136e0B24Df31A03C7AfE8e41137",
+    "marketSettlementVerifier": "0x98aff173f4F313BD19eA9187d91E24723b277e56",
+    "routingAdapter": "0xaBD17fC2e7c4438b3A1ADC73189c3E0eA5f7337C",
+    "aggregatorAdapter": "0x357A1B97EAbA27689D33455Ce768687B696e81ed"
+  },
+  "contractTransactions": {
+    "vault": "0xdfb5f806aadee5f5640f566774060abef90bbc4bdff9cfc137b2b99b4d782f77",
+    "marketOrderVerifier": "0x931569a32ddc2a093d6d7d6a437177b37178a5b1c2228fc4d0941f4bb7483091",
+    "marketSettlementVerifier": "0x55af4ab4624579806d212ae2610c5e93d03effb4a98e36137aa7aab83b8852c6",
+    "routingAdapter": "0xa8fadb3086cfd026f66ad300cf115afeb7a037e9fea559f1c15a2926be3714c7",
+    "aggregatorAdapter": "0xf6226c51626e607d4497de41b2038d0c12091ad471d45ccb7f1c063de746d78c"
   },
   "assets": {
     "tokenA": "WETH",
     "tokenB": "USDG"
   },
   "scenarioUnits": {
-    "tokenA": "10000000000000",
-    "tokenB": "1000"
+    "tokenA": "1000000000000",
+    "tokenBMinimum": "2000",
+    "tokenBReceived": "2640"
   },
   "transactions": [
     {
-      "label": "Alice approves token A",
+      "label": "Alice shields 0.000001 WETH",
       "role": "alice",
-      "hash": "0x64e71abd4022b171147b48ef97cc5c9cb3c273deee659562a17aa48835af3af0",
-      "blockNumber": "70090057",
-      "gasUsed": "53425",
-      "address": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
+      "hash": "0xeddd874cf925de03f2863fcf55135b49dd0a6657f423b30b900a687200c2b0c1",
+      "blockNumber": "70924829",
+      "gasUsed": "373842",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
     },
     {
-      "label": "Bob approves token B",
-      "role": "bob",
-      "hash": "0x7a755eccf43ee516d64588de4e6d4b7a2bc3a89b044f499baeec5bb2dbbccaa0",
-      "blockNumber": "70090081",
-      "gasUsed": "57976",
-      "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
-    },
-    {
-      "label": "Alice shields 10 token-A test units",
-      "role": "alice",
-      "hash": "0xe109f3c0539491071ab9702f8c3c1ee9c4bfc33e722f29486193dbb92a2bc1fd",
-      "blockNumber": "70090117",
-      "gasUsed": "408196",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Bob shields 20 token-B test units",
-      "role": "bob",
-      "hash": "0x663c41995af0a1ff7d2de8421f151dbfd4fc3a4f918c422673472a104bc93301",
-      "blockNumber": "70090153",
-      "gasUsed": "413359",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Relayed private transfer",
+      "label": "Private WETH to USDG order opens",
       "role": "relayer",
-      "hash": "0x1fb6fbcd352b1a616bbf24d1d691598159ad9b557584b078e315d08e09edb58a",
-      "blockNumber": "70090194",
-      "gasUsed": "383116",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+      "hash": "0x1f8fd7ee14f2fcb0442a6a91cbe64be8456b78f7e7617ae385a9cc068e8e91f8",
+      "blockNumber": "70924918",
+      "gasUsed": "556059",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
     },
     {
-      "label": "Relayed withdrawal to fresh receiver",
+      "label": "Shielded swap slice 1 of 6",
+      "role": "keeper",
+      "hash": "0xbb3b5da4a3900f2a17cb8c9407bba58dcb0900d9253e605ede640ebd19dfe1b3",
+      "blockNumber": "70924927",
+      "gasUsed": "458047",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
+    },
+    {
+      "label": "Shielded swap slice 2 of 6",
+      "role": "keeper",
+      "hash": "0x104eee3e1c4920187245a83e78f48e6c90341f527274da8fa2d56e6be4dcc593",
+      "blockNumber": "70925057",
+      "gasUsed": "357900",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
+    },
+    {
+      "label": "Shielded swap slice 3 of 6",
+      "role": "keeper",
+      "hash": "0xa0f22b3bf4e4c569e36bf6e03e878bf1a3bd59defd2792d11fc30694a920a238",
+      "blockNumber": "70925205",
+      "gasUsed": "357900",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
+    },
+    {
+      "label": "Shielded swap slice 4 of 6",
+      "role": "keeper",
+      "hash": "0x6b53c11294a7aa2a84efc19c555cef19284674ff54d3e0f01b7660448d022371",
+      "blockNumber": "70925353",
+      "gasUsed": "357900",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
+    },
+    {
+      "label": "Shielded swap slice 5 of 6",
+      "role": "keeper",
+      "hash": "0x12e20d396316932e7d1f2e7282ad9b11b013009843fccc41722d35b961a9aeae",
+      "blockNumber": "70925501",
+      "gasUsed": "357157",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
+    },
+    {
+      "label": "Shielded swap slice 6 of 6",
+      "role": "keeper",
+      "hash": "0x824adefd2d2d2df900abd93732e63facc3db25203e6c15a11d9551b928e5d738",
+      "blockNumber": "70925650",
+      "gasUsed": "356914",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
+    },
+    {
+      "label": "2,640 USDG units settle into a private note",
       "role": "relayer",
-      "hash": "0xe9b2d999ce60aafe88b0d29e51402a502d3d39bd65f5826d7bc1afdb0d4e67ed",
-      "blockNumber": "70090216",
-      "gasUsed": "344431",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Alice shields private RFQ order",
-      "role": "alice",
-      "hash": "0x8b5bc07a1aa9bc6f9bd95c2152eefc6461cf65bdeaf6bd96596f204d6ca2397f",
-      "blockNumber": "70090244",
-      "gasUsed": "373996",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Bob shields RFQ liquidity",
-      "role": "bob",
-      "hash": "0x83fc6c2a4d630fc8df8d189523d6df0f3f3202b27193f163230ec94f5cd5714a",
-      "blockNumber": "70090272",
-      "gasUsed": "379171",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Relayed private RFQ swap",
-      "role": "relayer",
-      "hash": "0xbb3ccd983b94400e43dfa5385754305c6db4b18aaaa8196ce0cb0c4b4127ff08",
-      "blockNumber": "70090332",
-      "gasUsed": "457095",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Alice shields cancellable RFQ order",
-      "role": "alice",
-      "hash": "0x624bc531c580a4f579456785f132bbdbf39c13fd63123db4029a2c84502259be",
-      "blockNumber": "70090360",
-      "gasUsed": "373960",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
-    },
-    {
-      "label": "Relayed private order cancellation",
-      "role": "relayer",
-      "hash": "0x64a9ea78f8638dadde085c93ae0fddcd7304c22e9727050a8034dfa3be6ab023",
-      "blockNumber": "70090392",
-      "gasUsed": "346387",
-      "address": "0x779dFb0A09795fDf3Bc0edcB36Ff05093d5026Da"
+      "hash": "0xd9aba0f1fd1f64cef78029f3a8fdce8984fc949ccf30f587199941d3c7b47a98",
+      "blockNumber": "70925992",
+      "gasUsed": "448458",
+      "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760"
     }
   ],
   "checks": [
-    {
-      "name": "nullifier replay rejected",
-      "passed": true
-    },
-    {
-      "name": "onchain root equals locally derived root",
-      "passed": true
-    },
-    {
-      "name": "fresh receiver obtained withdrawn token A",
-      "passed": true
-    }
+    { "name": "wallet-funded shield deposit confirmed onchain", "passed": true },
+    { "name": "all six market slices confirmed through existing RH liquidity", "passed": true },
+    { "name": "minimum output of 2,000 units exceeded with 2,640 USDG units", "passed": true },
+    { "name": "settlement created the encrypted USDG private note", "passed": true },
+    { "name": "all nine receipts independently verified with status 1", "passed": true }
   ],
   "finalState": {
-    "root": "0x12bf62592854bf68bc0128d312ea97d1d6983005816ec263328e943017d1cc7d",
-    "localRoot": "0x12bf62592854bf68bc0128d312ea97d1d6983005816ec263328e943017d1cc7d",
-    "noteCount": "23",
-    "reserveA": "120000000000000",
-    "reserveB": "27000",
-    "receiverBalance": "40000000000000"
+    "root": "13227707422294346654427087073280583303274046272469933559963707815518172237097",
+    "localRoot": "13227707422294346654427087073280583303274046272469933559963707815518172237097",
+    "noteCount": "14",
+    "reserveA": "not displayed",
+    "reserveB": "not displayed",
+    "receiverBalance": "private note"
   }
 }

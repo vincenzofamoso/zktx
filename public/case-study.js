@@ -1,7 +1,7 @@
 const explorer='https://robinhoodchain.blockscout.com';
 const short=value=>`${value.slice(0,8)}…${value.slice(-6)}`;
-const data=await fetch('./case-study-data.json',{cache:'no-store'}).then(response=>{if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.json();});
-const contractLabels={vault:'Shielded vault',tokenA:data.assets?.tokenA||'E2E token A',tokenB:data.assets?.tokenB||'E2E token B',depositVerifier:'Deposit verifier',transferVerifier:'Transfer verifier',withdrawVerifier:'Withdrawal verifier',swapVerifier:'RFQ swap verifier',cancelOrderVerifier:'Cancellation verifier'};
+const data=await fetch('./api/case-study',{cache:'no-store'}).then(response=>{if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.json();});
+const contractLabels={vault:'Shielded vault',tokenA:data.assets?.tokenA||'E2E token A',tokenB:data.assets?.tokenB||'E2E token B',depositVerifier:'Deposit verifier',transferVerifier:'Transfer verifier',withdrawVerifier:'Withdrawal verifier',swapVerifier:'RFQ swap verifier',cancelOrderVerifier:'Cancellation verifier',marketOrderVerifier:'Market order verifier',marketSettlementVerifier:'Market settlement verifier',routingAdapter:'Routing adapter',aggregatorAdapter:'Aggregator adapter'};
 document.querySelector('#transaction-count').textContent=data.transactions.length;
 document.querySelector('#note-count').textContent=data.finalState.noteCount;
 document.querySelector('#asset-count').textContent=Object.keys(data.assets||{}).length;

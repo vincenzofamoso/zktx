@@ -59,7 +59,7 @@ function startActivity() {
   activityLastMessage = "";
 }
 
-function logActivity(message, kind = "done") {
+function logActivity(message, kind = "done", details = {}) {
   if (!message || message === activityLastMessage) return;
   activityLastMessage = message;
   const line = document.createElement("div");
@@ -69,7 +69,14 @@ function logActivity(message, kind = "done") {
   const marker = document.createElement("i");
   marker.textContent = kind === "error" ? "×" : kind === "success" ? "✓" : "›";
   const copy = document.createElement("span");
-  copy.textContent = message;
+  if (details.transactionHash) {
+    const link = document.createElement("a");
+    link.href = `https://robinhoodchain.blockscout.com/tx/${details.transactionHash}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = `${message} · View transaction ↗`;
+    copy.append(link);
+  } else copy.textContent = message;
   line.append(time, marker, copy);
   activitySteps.append(line);
   activitySteps.scrollTop = activitySteps.scrollHeight;
@@ -77,6 +84,7 @@ function logActivity(message, kind = "done") {
 
 async function monitorMarketOrder(orderId, deadline) {
   let lastSlices = -1;
+  const linkedSlices = new Set();
   const stopAt = Math.max(Number(deadline) + 120, Math.floor(Date.now() / 1000) + 180);
   while (Math.floor(Date.now() / 1000) < stopAt) {
     const response = await fetch(`./api/market/order/${orderId}`, { cache: "no-store" });
@@ -84,11 +92,20 @@ async function monitorMarketOrder(orderId, deadline) {
       const order = await response.json();
       const slices = Number(order.slicesExecuted);
       const total = Number(order.sliceCount);
+      for (const [index, transactionHash] of (order.sliceTransactions || []).entries()) {
+        if (linkedSlices.has(transactionHash)) continue;
+        linkedSlices.add(transactionHash);
+        logActivity(`Execution slice ${index + 1} confirmed`, "done", { transactionHash });
+      }
       if (slices !== lastSlices) {
         logActivity(slices === 0 ? `Order accepted. Waiting for ${total} execution slices.` : `Execution slice ${slices} of ${total} confirmed.`);
         lastSlices = slices;
       }
-      if (BigInt(order.executedInput) >= BigInt(order.amountIn)) return order;
+      const complete = BigInt(order.executedInput) >= BigInt(order.amountIn);
+      const readyAt = complete ? Number(order.lastExecutionAt) + 30 : Number(order.deadline) + 30;
+      const now = Math.floor(Date.now() / 1000);
+      if ((complete || now >= Number(order.deadline)) && now >= readyAt) return order;
+      if (complete) activityState.textContent = "Finalizing";
     }
     await new Promise((resolve) => setTimeout(resolve, 2_500));
   }
@@ -382,7 +399,7 @@ form.addEventListener("submit", async (event) => {
         minimumAmountOut: receiveUnits,
         deadline,
         password: password.value,
-        onProgress: (message) => { logActivity(message); },
+        onProgress: (message, details) => { logActivity(message, "done", details); },
       });
       refreshLocalNotes();
       logActivity("Private order relayed to the execution vault.");
@@ -438,7 +455,7 @@ settleMarket.addEventListener("click", async () => {
     const settled = await window.ZKTXWallet.settleMarketOrderLive({
       orderId: pendingMarketOrder.value,
       password: password.value,
-      onProgress: (message) => { logActivity(message); result.textContent = message; },
+      onProgress: (message, details) => { logActivity(message, "done", details); result.textContent = message; },
     });
     refreshLocalNotes();
     activityState.textContent = "Claimed";
