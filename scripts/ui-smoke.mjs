@@ -27,6 +27,9 @@ async function runViewport(name, viewport) {
 
   const appResponse = await page.goto(`${base}/app.html`, { waitUntil: "networkidle" });
   check(appResponse?.ok(), `${name}: dapp returns success`);
+  check(await page.locator(".usp-grid").isHidden(), `${name}: dapp hides homepage marketing cards`);
+  check(await page.locator(".workspace-copy").isHidden(), `${name}: dapp only shows the product workspace`);
+  check(await page.locator(".terminal").isVisible(), `${name}: dapp workspace is visible`);
   check((await page.locator("#action-title").textContent())?.includes("private note"), `${name}: private-send workspace initializes`);
 
   await page.locator('[data-tab="swap"]').click();
