@@ -851,6 +851,7 @@ window.ZKTXWallet = {
   privateSendLive,
   privateReceiveAddress,
   importPrivateTransfer,
+  syncPrivateInbox,
   openMarketOrderLive,
   withdrawLive,
   settleMarketOrderLive,

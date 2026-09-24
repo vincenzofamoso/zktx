@@ -66,6 +66,7 @@ async function runViewport(name, viewport) {
   await page.locator("#portfolio-receive").click();
   check(await page.locator("#receive-fields").isVisible(), `${name}: Private Receive lives inside Portfolio`);
   check((await page.locator(".private-receive-tools").textContent()).includes("Incoming private transfers appear"), `${name}: private receive explains automatic delivery`);
+  check(await page.evaluate(() => typeof window.ZKTXWallet?.syncPrivateInbox === "function"), `${name}: private receive inbox is wired to the browser wallet client`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
