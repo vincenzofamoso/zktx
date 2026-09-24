@@ -127,9 +127,8 @@
         <div class="tee-modes">
           <article class="active"><span>LIVE NOW</span><h3>Instant shielded</h3><p>Execute immediately through RH liquidity. The wallet stays behind the vault, while public market activity remains visible.</p></article>
           <article><span>IN DESIGN</span><h3>Private TEE</h3><p>Encrypt the order to an attested executor. The operator cannot read the intent, strategy, or private balance in normal server memory.</p></article>
-          <article><span>IN DESIGN</span><h3>Pooled privacy</h3><p>Choose a longer window for internal matching and aggregate settlement. Execute early when enough unrelated flow arrives.</p></article>
+          <article><span>LIVE WITH SHARED FLOW</span><h3>Overlapping trader privacy</h3><p>When several traders are active together, their randomized execution slices overlap in the same rolling window. No trader has to wait for a scheduled batch.</p></article>
         </div>
-        <div class="tee-trust"><b>Honest status</b><span>The current ZKTX deployment is not running inside an attested TEE. Hardware deployment, remote-attestation verification, encrypted order commitments, and batch-proof contracts must ship before this mode can be enabled.</span></div>
       </section>
 
       <section id="architecture" class="architecture">

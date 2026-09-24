@@ -173,7 +173,7 @@
           <table><thead><tr><th>Mode</th><th>User experience</th><th>Privacy tradeoff</th></tr></thead><tbody>
             <tr><td>Instant shielded</td><td>Execute immediately using the existing vault and sliced RH route.</td><td>No waiting, but a lone vault trade can still be correlated with nearby activity.</td></tr>
             <tr><td>Private TEE</td><td>Encrypt intent to an attested executor and start immediately.</td><td>Hides intent from the operator, but public settlement can still leak timing and net flow.</td></tr>
-            <tr><td>Pooled privacy</td><td>Wait within a user-selected maximum window and execute early when enough unrelated flow arrives.</td><td>Enables internal matching and aggregate public settlement, producing the strongest practical anonymity set.</td></tr>
+            <tr><td>Overlapping trader flow</td><td>Execute immediately in randomized slices that naturally overlap when several traders are active.</td><td>Live today. A busier execution window makes simple wallet-to-trade correlation harder without forcing a scheduled wait.</td></tr>
           </tbody></table>
           <div class="notice warning"><b>Not active yet</b><span>The current production path does not claim TEE protection. Enabling this mode requires attested hardware, encrypted-order contracts, an attestation verifier, reproducible executor measurements, batch state proofs, failure recovery, and independent security review.</span></div>
         </section>
