@@ -27,6 +27,8 @@ async function runViewport(name, viewport) {
   await page.locator('[data-tab="swap"]').click();
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
   check(await page.locator("#swap-setup").isVisible(), `${name}: swap setup appears before execution fields`);
+  check(await page.locator("#workflow-guide").isHidden(), `${name}: swap does not expose a separate shielding step`);
+  check((await page.locator("#swap-prerequisite").textContent()).includes("automatically shield"), `${name}: swap explains automatic shielding`);
   check((await page.locator("#action-title").textContent()) === "Swap without exposing your wallet", `${name}: swap copy updates`);
   check((await page.locator("#action-submit").textContent()) === "Submit Shielded Swap", `${name}: swap action is bound to the form submit button`);
   check((await page.locator("#settle-market").textContent()) === "Add completed swap to private portfolio", `${name}: settlement action remains independently bound`);

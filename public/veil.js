@@ -33,6 +33,7 @@ const activitySteps = document.querySelector("#activity-steps");
 const activityState = document.querySelector("#activity-state");
 const activityAction = document.querySelector("#activity-action");
 const fundAction = document.querySelector("#fund-action");
+const workflowGuide = document.querySelector("#workflow-guide");
 const sendFields = document.querySelector("#send-fields");
 const privateRecipient = document.querySelector("#private-recipient");
 const receiveAddressAction = document.querySelector("#receive-address-action");
@@ -279,8 +280,8 @@ function refreshLocalNotes() {
   if (pending.length) pendingMarketOrder.value = pending[0].orderId;
   settleMarket.disabled = pending.length === 0;
   swapPrerequisite.textContent = count === 0
-    ? "No private balance found in this browser. Choose Add private balance above, then return here to swap it."
-    : "Your swap spends one matching shielded note. Select the same token and exact amount you previously shielded.";
+    ? "No matching private balance yet. ZKTX will automatically shield the input amount when you submit."
+    : "ZKTX will use a matching private balance, or automatically shield the exact input amount if needed.";
 }
 
 pendingMarketOrder.addEventListener("change", () => { settleMarket.disabled = !pendingMarketOrder.value; });
@@ -299,6 +300,7 @@ function selectTab(button) {
   swapFields.hidden = button.dataset.tab !== "swap";
   swapSetup.hidden = button.dataset.tab !== "swap";
   sendFields.hidden = button.dataset.tab !== "send";
+  workflowGuide.hidden = button.dataset.tab === "swap";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
@@ -378,22 +380,6 @@ connect.addEventListener("click", async () => {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const selected = activeAction;
-  if (selected === "swap") {
-    const spendable = (window.ZKTXWallet?.storedNotes() || []).filter((record) => !record.spentBy);
-    if (spendable.length === 0) {
-      const shieldTab = document.querySelector('#shield-action');
-      returnAfterShield = "swap";
-      const asset = token.value;
-      const spendAmount = amount.value;
-      selectTab(shieldTab);
-      token.value = asset;
-      amount.value = spendAmount;
-      token.dispatchEvent(new Event("change"));
-      result.textContent = "Step 1: add this exact amount to your private balance. After confirmation, ZKTX returns you to the swap.";
-      token.focus();
-      return;
-    }
-  }
   if (!payTokenMeta || payTokenMeta.address.toLowerCase() !== token.value.toLowerCase()) payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta);
   if (!payTokenMeta) { result.textContent = "Load a valid Robinhood Chain token first."; return; }
   let payUnits;
@@ -438,21 +424,31 @@ form.addEventListener("submit", async (event) => {
       if (!routeResponse.ok || !route.approved) throw new Error(route.error || "No executable RH liquidity route was found for this pair");
       logActivity("Approved Robinhood Chain liquidity route is ready.");
       if (!connected || !account) throw new Error("Connect your wallet before opening a market order");
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value));
-      const order = await window.ZKTXWallet.openMarketOrderLive({
-        chainId: protocol.chainId,
-        vaultAddress: protocol.vaultAddress,
-        assetIn: token.value,
-        amountIn: payUnits,
-        assetOut: receiveToken.value,
-        minimumAmountOut: receiveUnits,
-        deadline,
-        password: password.value,
+      const orderInput = () => ({
+        chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: token.value, amountIn: payUnits,
+        assetOut: receiveToken.value, minimumAmountOut: receiveUnits,
+        deadline: BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value)), password: password.value,
         onProgress: (message, details) => { logActivity(message, "done", details); },
       });
+      let order;
+      let submittedOrder = orderInput();
+      try {
+        order = await window.ZKTXWallet.openMarketOrderLive(submittedOrder);
+      } catch (error) {
+        if (!String(error?.message || "").includes("No unspent local note exactly matches")) throw error;
+        logActivity("Preparing the private swap balance from your wallet.");
+        await window.ZKTXWallet.shieldLive({
+          account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
+          asset: token.value, amount: payUnits, password: password.value,
+          onProgress: (message, details) => { logActivity(message, "done", details); },
+        });
+        logActivity("Private swap balance ready. Opening the order.", "success");
+        submittedOrder = orderInput();
+        order = await window.ZKTXWallet.openMarketOrderLive(submittedOrder);
+      }
       refreshLocalNotes();
       logActivity("Private order relayed to the execution vault.");
-      const executed = await monitorMarketOrder(order.orderId, deadline);
+      const executed = await monitorMarketOrder(order.orderId, submittedOrder.deadline);
       activityState.textContent = "Ready to claim";
       logActivity(`Swap complete. ${executed.slicesExecuted} of ${executed.sliceCount} slices confirmed.`, "success");
       refreshLocalNotes();
@@ -463,9 +459,7 @@ form.addEventListener("submit", async (event) => {
     } catch (error) {
       activityState.textContent = "Action needed";
       logActivity(error?.message || "Swap execution stopped.", "error");
-      result.textContent = error?.message === "No unspent local note exactly matches this token and amount"
-        ? "No matching shielded balance was found. Shield this exact token amount first, or enter the exact amount of an existing shielded note."
-        : error?.message?.includes("Error in template MarketOrder")
+      result.textContent = error?.message?.includes("Error in template MarketOrder")
           ? "The selected private note is not synchronized with the current vault. Refresh the page, wait a few seconds, then try again."
         : error?.message || "Could not open the shielded market order.";
     }
