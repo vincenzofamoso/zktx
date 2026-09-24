@@ -103,6 +103,8 @@
               <p id="swap-prerequisite" class="field-note">Enter the swap once. ZKTX automatically shields the exact input amount when needed, then executes the order.</p>
             </div>
             <div id="send-fields">
+              <div class="control-label">Send from</div>
+              <div class="send-source swap-source" role="group" aria-label="Private Send funding source"><button type="button" class="selected" data-send-source="portfolio"><b>Private Portfolio</b><small>Send an existing private balance</small></button><button type="button" data-send-source="wallet"><b>Connected Wallet</b><small>Shield automatically, then send</small></button></div>
               <label>Recipient ZKTX private address<input id="private-recipient" autocomplete="off" placeholder="Ask the recipient to copy their private receive address" /><small class="token-meta">This is a ZKTX private address, not their public 0x wallet address.</small></label>
             </div>
             <div id="withdrawal-planner" hidden>
@@ -148,6 +150,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=9"></script>
-    <script type="module" src="./veil.js?v=23"></script>
+    <script type="module" src="./veil.js?v=24"></script>
   </body>
 </html>

@@ -74,6 +74,7 @@ const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const quoteAssets = { weth: WETH, usdg: USDG };
 let swapDirection = "buy";
 let swapSource = "portfolio";
+let sendSource = "portfolio";
 let activeAction = "send";
 let returnAfterShield = "send";
 
@@ -289,8 +290,13 @@ async function loadWalletAssets() {
       identity.append(symbol, name); button.append(identity, balance);
       button.addEventListener("click", () => {
         walletAssetsList.querySelector(".selected")?.classList.remove("selected");
+        if (activeAction === "send") swapPrivateAssetsList.querySelector(".selected")?.classList.remove("selected");
         button.classList.add("selected");
         selectedWalletBalance = asset;
+        if (activeAction === "send") {
+          sendSource = "wallet";
+          document.querySelectorAll(".send-source button").forEach((source) => source.classList.toggle("selected", source.dataset.sendSource === "wallet"));
+        }
         token.value = asset.address;
         token.dispatchEvent(new Event("change"));
         amount.value = "";
@@ -339,8 +345,13 @@ async function loadPrivateSwapAssets() {
       identity.append(symbol, name); button.append(identity, balance);
       button.addEventListener("click", () => {
         swapPrivateAssetsList.querySelector(".selected")?.classList.remove("selected");
+        if (activeAction === "send") walletAssetsList.querySelector(".selected")?.classList.remove("selected");
         button.classList.add("selected");
         selectedWalletBalance = asset;
+        if (activeAction === "send") {
+          sendSource = "portfolio";
+          document.querySelectorAll(".send-source button").forEach((source) => source.classList.toggle("selected", source.dataset.sendSource === "portfolio"));
+        }
         if (activeAction === "send" || swapDirection === "sell") {
           token.value = asset.address;
           token.dispatchEvent(new Event("change"));
@@ -370,12 +381,12 @@ function refreshSwapFundingSource() {
   const inSwap = activeAction === "swap";
   const inSend = activeAction === "send";
   const usePortfolio = inSwap && swapSource === "portfolio";
-  const showWalletBalances = inSwap && swapSource === "wallet";
+  const showWalletBalances = (inSwap && swapSource === "wallet") || inSend;
   swapPrivateAssets.hidden = !(usePortfolio || inSend);
   privateAssetsTitle.textContent = inSend ? "Choose a private balance to send" : "Spendable Private Portfolio balances";
   privateAssetsCopy.textContent = inSend ? "Private Send uses an existing shielded note." : "Choose a private note to trade without unshielding it.";
   walletAssets.hidden = !(activeAction === "shield" || showWalletBalances);
-  walletAssetsTitle.textContent = activeAction === "shield" ? "Tokens in your connected wallet" : swapDirection === "sell" ? "Tokens available to sell" : "Base asset available to spend";
+  walletAssetsTitle.textContent = inSend ? "Balances in your connected wallet" : activeAction === "shield" ? "Tokens in your connected wallet" : swapDirection === "sell" ? "Tokens available to sell" : "Base asset available to spend";
   const showShortcuts = activeAction === "shield" || showWalletBalances;
   amountHalf.hidden = !showShortcuts;
   amountMax.hidden = !showShortcuts;
@@ -384,6 +395,7 @@ function refreshSwapFundingSource() {
     : "Choose a connected-wallet balance. ZKTX shields the selected amount automatically, then opens the swap.";
   selectedWalletBalance = null;
   if (showWalletBalances) void loadWalletAssets();
+  if (inSend) void loadPrivateSwapAssets();
 }
 
 let quoteRequest = 0;
@@ -565,10 +577,18 @@ document.querySelectorAll(".quote-assets button").forEach((button) => button.add
   document.querySelector(".quote-assets .selected")?.classList.remove("selected"); button.classList.add("selected"); applySwapDirection();
 }));
 document.querySelectorAll(".swap-source button").forEach((button) => button.addEventListener("click", () => {
+  if (button.dataset.sendSource) return;
   document.querySelector(".swap-source .selected")?.classList.remove("selected");
   button.classList.add("selected");
   swapSource = button.dataset.source;
   refreshSwapFundingSource();
+}));
+document.querySelectorAll(".send-source button").forEach((button) => button.addEventListener("click", () => {
+  document.querySelectorAll(".send-source button").forEach((source) => source.classList.remove("selected"));
+  button.classList.add("selected");
+  sendSource = button.dataset.sendSource;
+  selectedWalletBalance = null;
+  result.textContent = sendSource === "wallet" ? "Choose a connected-wallet balance below. ZKTX will shield it automatically before sending." : "Choose an existing private balance below.";
 }));
 
 function refreshLocalNotes() {
@@ -617,7 +637,7 @@ function selectTab(button) {
   swapSetup.hidden = button.dataset.tab !== "swap";
   sendFields.hidden = button.dataset.tab !== "send";
   receiveFields.hidden = button.dataset.tab !== "receive";
-  workflowGuide.hidden = button.dataset.tab !== "send";
+  workflowGuide.hidden = true;
   portfolioPanel.hidden = button.dataset.tab !== "portfolio";
   portfolioActions.hidden = !portfolioFamily;
   const receiveMode = button.dataset.tab === "receive";
@@ -629,8 +649,8 @@ function selectTab(button) {
   refreshSwapFundingSource();
   submit.disabled = button.dataset.tab === "swap";
   token.disabled = false; receiveToken.disabled = false;
-  tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
-  amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
+  tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : button.dataset.tab === "send" ? "Token to send" : "Token you want to shield";
+  amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : button.dataset.tab === "send" ? "Amount to send" : "Amount to shield";
   submit.textContent = button.dataset.tab === "withdraw" ? "Unshield tokens" : button.dataset.tab === "swap" ? "Submit Private Swap" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
   if (button.dataset.tab === "swap") {
     if (!document.querySelector(".quote-assets .selected")) document.querySelector('.quote-assets button[data-quote="weth"]').classList.add("selected");
@@ -654,7 +674,7 @@ document.querySelectorAll("#shield-action, #withdraw-action, #send-action, #rece
 selectTab(document.querySelector(".tabs .selected"));
 portfolioAdd.addEventListener("click", () => { selectTab(document.querySelector("#shield-action")); void loadWalletAssets(); });
 portfolioRemove.addEventListener("click", () => { selectTab(document.querySelector('.tabs button[data-tab="portfolio"]')); void showPortfolio(); result.textContent = "Choose Unshield on one balance, or use Bulk Unshield for the full portfolio."; });
-portfolioSend.addEventListener("click", () => { selectTab(document.querySelector("#send-action")); void loadPrivateSwapAssets(); });
+portfolioSend.addEventListener("click", () => selectTab(document.querySelector("#send-action")));
 portfolioReceive.addEventListener("click", () => selectTab(document.querySelector("#receive-action")));
 portfolioSwap.addEventListener("click", () => selectTab(document.querySelector('.tabs button[data-tab="swap"]')));
 fundAction.addEventListener("click", () => {
@@ -717,7 +737,7 @@ connect.addEventListener("click", async () => {
     result.textContent = protocol.contractsReady
       ? "Wallet connected. Your private workspace is ready."
       : "Wallet connected, but the private workspace is temporarily unavailable.";
-    if (activeAction === "shield" || (activeAction === "swap" && swapSource === "wallet")) await loadWalletAssets();
+    if (activeAction === "shield" || activeAction === "send" || (activeAction === "swap" && swapSource === "wallet")) await loadWalletAssets();
   } catch (error) {
     result.textContent = error?.message || "Wallet connection was cancelled.";
   }
@@ -834,14 +854,25 @@ form.addEventListener("submit", async (event) => {
     try {
       if (!/^zktx1:0x[0-9a-fA-F]{64}:[A-Za-z0-9_-]+$/.test(privateRecipient.value.trim())) throw new Error("Enter the recipient's complete ZKTX private receive address");
       startActivity();
+      logActivity("Validating the selected balance and recipient.");
       result.textContent = "Private Send started. Follow the live terminal below.";
+      const password = await notePassword();
+      if (sendSource === "wallet") {
+        logActivity("Creating a private balance from the connected wallet.");
+        const shielded = await window.ZKTXWallet.shieldLive({
+          account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
+          asset: token.value, amount: payUnits, password,
+          onProgress: (message, details) => logActivity(message, "done", details),
+        });
+        logActivity("Private balance created and ready to send.", "success", { transactionHash: shielded.depositHash });
+      }
       const sent = await window.ZKTXWallet.privateSendLive({
         chainId: protocol.chainId,
         vaultAddress: protocol.vaultAddress,
         asset: token.value,
         amount: payUnits,
         recipientPrivateAddress: privateRecipient.value.trim(),
-        password: await notePassword(),
+        password,
         onProgress: (message, details) => logActivity(message, "done", details),
       });
       refreshLocalNotes();
@@ -867,7 +898,7 @@ form.addEventListener("submit", async (event) => {
     startActivity();
     logActivity("Preparing the shielded deposit.");
     if (!connected || !account) throw new Error("Connect your wallet before shielding");
-    if (!protocol.contractsReady) throw new Error("The experimental live vault is not ready");
+    if (!protocol.contractsReady) throw new Error("The private vault is not ready");
     const live = await window.ZKTXWallet.shieldLive({
       account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
       asset: token.value, amount: payUnits, password: await notePassword(),

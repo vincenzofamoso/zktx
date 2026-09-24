@@ -62,6 +62,9 @@ async function runViewport(name, viewport) {
   await page.locator("#portfolio-send").click();
   check((await page.locator("#action-title").textContent()) === "Send a private note", `${name}: send copy updates`);
   check(await page.locator("#swap-private-assets").isVisible(), `${name}: Private Send chooses an existing private balance`);
+  check(await page.locator("#wallet-assets").isVisible(), `${name}: Private Send shows connected-wallet balances`);
+  check(await page.locator(".send-source button").count() === 2, `${name}: Private Send offers public and private funding sources`);
+  check(await page.locator("#workflow-guide").isHidden(), `${name}: Private Send does not require a separate manual shielding step`);
   check(await page.locator("#private-recipient").isVisible(), `${name}: private send asks for the recipient private address`);
   await page.locator("#portfolio-receive").click();
   check(await page.locator("#receive-fields").isVisible(), `${name}: Private Receive lives inside Portfolio`);
