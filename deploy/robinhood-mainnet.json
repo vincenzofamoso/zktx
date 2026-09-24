@@ -20,12 +20,25 @@
     }
   },
   "upgradedVault": {
-    "status": "capped-pre-token-pilot",
+    "status": "buyback-active",
     "address": "0xeeEE6cF9d5cf61cC25928da82895a0B330A3C760",
     "deploymentTransaction": "0xdfb5f806aadee5f5640f566774060abef90bbc4bdff9cfc137b2b99b4d782f77",
     "deploymentBlock": 70279026,
     "quoteAsset": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
-    "buybackMode": "Accumulate the 1% quote allocation until the real ZKTX token is activated."
+    "zktxToken": "0x8De45F5cb60Bd659ebBaA50d9765608fF1EB48F6",
+    "buybackMode": "Each market slice allocates 1% to buy ZKTX through the approved WETH route and burn it.",
+    "buybackActivationTransaction": "0x71262cfb757c4c4e17772643faf7c2f7d050166eaf8bc1851fa7db34b02d7e12",
+    "buybackAdapter": {
+      "type": "PonsV2SwapAdapter",
+      "address": "0x239aD6Bb3E9595B233f9e87fc87AF961A7E82a40",
+      "deploymentTransaction": "0x8523761fc753afe82f1efda313753f55ece033fbf58bb55e644eab020ce25dd6",
+      "routeProposalTransaction": "0xa63e8dedbaf86aefce23c5ba504fa29edbc6a8c275231e6f9a5346597c7f0ffe",
+      "routeActivationTransaction": "0x4c17207b6bce1c4e44d16ded5fc0109fc0ce27466b2bfbe5d1ae1c519821582a"
+    },
+    "firstBuybackBurn": {
+      "transaction": "0xcea2865287e62eaa75fda540cc792656c2053f0116f00f489f14811f42a12979",
+      "zktxBurned": "1467407575295380421448"
+    }
   },
   "pilotExecution": {
     "swapRouter02": "0xCaf681a66D020601342297493863E78C959E5cb2",

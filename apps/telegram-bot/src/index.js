@@ -113,7 +113,7 @@ async function finalizeDraft(ctx, draft) {
   const job = { ...draft, status: "awaiting_signature", expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() };
   delete job.step;
   store.jobs.push(job); delete store.drafts[String(draft.chatId)]; await save();
-  const marketCopy = job.type === "market" ? "\nExecution uses compatible existing RH liquidity in 3 to 7 variable slices. During the capped pre-token pilot, 1% accumulates as WETH for later ZKTX buyback-and-burn and 0.5% supports execution." : "";
+  const marketCopy = job.type === "market" ? "\nExecution uses compatible existing RH liquidity in 3 to 7 variable slices. Each execution allocates 1% to buy and burn ZKTX, while 0.5% supports execution." : "";
   await ctx.reply(["<b>Review ZKTX action</b>", "", `Type: <b>${escape(job.type === "market" ? "Shielded Swap" : job.type === "withdraw" ? "Unshield" : job.type === "send" ? "Private Send" : "Shield")}</b>`, job.direction ? `Direction: <b>${escape(job.direction === "buy" ? "Buy" : "Sell")}</b>` : "", job.baseAsset ? `Base asset: <b>${escape(job.baseAsset.toUpperCase())}</b>` : "", job.token ? `Pay token: <code>${job.token}</code>` : "", job.amount ? `Amount to spend: <code>${job.amount}</code>` : "", job.receiveToken ? `Receive token: <code>${job.receiveToken}</code>` : "", job.receiveAmount ? `Minimum received: <code>${job.receiveAmount}</code>` : "", job.recipient ? `Destination: <code>${job.recipient}</code>` : "", marketCopy, "One secure confirmation creates the proof, signs, and executes from your trusted device."].filter(Boolean).join("\n"), { parse_mode: "HTML", reply_markup: signerButton("Sign & Execute", `action=authorize&job=${encodeURIComponent(job.id)}`) });
 }
 
