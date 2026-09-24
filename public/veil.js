@@ -20,6 +20,7 @@ const swapSetup = document.querySelector("#swap-setup");
 const receiveToken = document.querySelector("#receive-token");
 const receiveAmount = document.querySelector("#receive-amount");
 const priceDeviation = document.querySelector("#price-deviation");
+const priceProtectionCopy = document.querySelector("#price-protection-copy");
 const receiveTokenMetaText = document.querySelector("#receive-token-meta");
 const receiveAmountUnits = document.querySelector("#receive-amount-units");
 const quoteLifetime = document.querySelector("#quote-lifetime");
@@ -325,8 +326,8 @@ function applySwapDirection() {
   const quote = document.querySelector(".quote-assets button.selected")?.dataset.quote;
   if (!quote) return;
   const address = quoteAssets[quote];
-  if (swapDirection === "buy") { token.value = address; token.disabled = true; receiveToken.disabled = false; tokenLabel.textContent = "You pay with"; }
-  else { receiveToken.value = address; receiveToken.disabled = true; token.disabled = false; tokenLabel.textContent = "Token you sell"; }
+  if (swapDirection === "buy") { token.value = address; token.disabled = true; receiveToken.disabled = false; tokenLabel.textContent = "You pay with"; priceProtectionCopy.innerHTML = "<b>Buy protection:</b> A cheaper price is always accepted. The order is blocked only when the live price is higher than your selected limit."; }
+  else { receiveToken.value = address; receiveToken.disabled = true; token.disabled = false; tokenLabel.textContent = "Token you sell"; priceProtectionCopy.innerHTML = "<b>Sell protection:</b> A higher price is always accepted. The order is blocked only when the live price is lower than your selected limit."; }
   token.dispatchEvent(new Event("change")); receiveToken.dispatchEvent(new Event("change"));
 }
 document.querySelectorAll(".swap-direction button").forEach((button) => button.addEventListener("click", () => {
