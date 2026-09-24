@@ -30,15 +30,15 @@
       </section>
       <section id="backup" hidden>
         <p class="step">SAVE ONCE</p>
-        <h2>Save your recovery code</h2>
-        <small>This restores the encrypted wallet on another device. ZKTX cannot recover it for you.</small>
+        <h2>Copy your private key</h2>
+        <small>This is the only backup for your wallet. Store it safely. ZKTX cannot recover it for you.</small>
         <code id="recovery-code"></code>
-        <button id="copy-recovery">Copy recovery code</button>
+        <button id="copy-recovery">Copy private key</button>
         <button id="finish-setup">I saved it, continue</button>
       </section>
       <form id="unlock" hidden>
         <p class="step">UNLOCK WALLET</p>
-        <label>Wallet recovery code<input id="unlock-passphrase" type="password" minlength="12" autocomplete="current-password" required /></label>
+        <label>Private key or legacy recovery code<input id="unlock-passphrase" type="password" minlength="12" autocomplete="current-password" required /></label>
         <button>Unlock trusted device</button>
       </form>
       <section id="wallet" hidden><p class="step">1 OF 2 · WALLET READY</p><code id="address"></code></section>
