@@ -7,6 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="../vendor/snarkjs.min.js"></script>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./receive.css" />
   </head>
   <body>
     <main>
@@ -40,10 +41,14 @@
         <p class="step">SHIELDED PORTFOLIO</p>
         <label>Private-note password<input id="dashboard-password" type="password" minlength="10" autocomplete="current-password" /></label>
         <button id="refresh-dashboard">Load portfolio and pending swaps</button>
-        <button id="private-address">Create or copy private receive address</button>
-        <code id="private-address-output" hidden></code>
-        <label>Import received transfer<textarea id="import-receipt" rows="3" placeholder="Paste the ZKTX transfer receipt"></textarea></label>
-        <button id="import-transfer">Import received transfer</button>
+        <details>
+          <summary>Receive a private transfer</summary>
+          <small>Only use this when another person sends you a ZKTX private note. It is not needed for swaps or unshielding.</small>
+          <button id="private-address">Copy my private receive address</button>
+          <code id="private-address-output" hidden></code>
+          <label>Transfer receipt from the sender<textarea id="import-receipt" rows="3" placeholder="Paste the receipt the sender gave you"></textarea></label>
+          <button id="import-transfer">Add received note to portfolio</button>
+        </details>
         <div id="dashboard-output"></div>
       </section>
       <section id="transfer-receipt-wrap" hidden><p class="step">SEND THIS TO THE RECIPIENT</p><textarea id="transfer-receipt" rows="5" readonly></textarea><small>The recipient imports this receipt from their Shielded Portfolio.</small></section>

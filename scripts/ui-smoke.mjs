@@ -35,7 +35,8 @@ async function runViewport(name, viewport) {
   await page.locator('[data-tab="send"]').click();
   check((await page.locator("#action-title").textContent()) === "Send a private note", `${name}: send copy updates`);
   check(await page.locator("#private-recipient").isVisible(), `${name}: private send asks for the recipient private address`);
-  check(await page.locator("#receive-address-action").isVisible(), `${name}: portfolio offers a private receive address`);
+  check(!(await page.locator(".private-receive-tools").getAttribute("open")), `${name}: private-transfer receiving tools stay collapsed by default`);
+  check((await page.locator(".private-receive-tools").textContent()).includes("do not need it for swaps or unshielding"), `${name}: private-transfer receiving tools explain when they are needed`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);

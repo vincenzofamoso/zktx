@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build:client": "esbuild client/wallet.js --bundle --format=esm --platform=browser --outfile=public/zk-client.js",
-    "build:telegram": "mkdir -p public/telegram && cp apps/telegram-bot/web-src/index.html apps/telegram-bot/web-src/style.css public/telegram/ && esbuild apps/telegram-bot/web-src/wallet.js --bundle --format=esm --platform=browser --outfile=public/telegram/wallet.js",
+    "build:telegram": "mkdir -p public/telegram && cp apps/telegram-bot/web-src/index.html apps/telegram-bot/web-src/style.css apps/telegram-bot/web-src/receive.css public/telegram/ && esbuild apps/telegram-bot/web-src/wallet.js --bundle --format=esm --platform=browser --outfile=public/telegram/wallet.js",
     "check": "node --check server/index.js && node --check src/notes.js && node --check src/merkle-tree.js && node --check src/market-keeper.js && node --check public/veil.js",
     "circuits:compile": "mkdir -p build/circuits && circom2 circuits/deposit.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/transfer.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/withdraw.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/swap.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/cancel-order.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/market-order.circom --r1cs --wasm --sym -o build/circuits && circom2 circuits/market-settlement.circom --r1cs --wasm --sym -o build/circuits",
     "contracts:test": "forge test --force --offline",
