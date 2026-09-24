@@ -33,6 +33,7 @@ const activityTerminal = document.querySelector("#activity-terminal");
 const activitySteps = document.querySelector("#activity-steps");
 const activityState = document.querySelector("#activity-state");
 const activityAction = document.querySelector("#activity-action");
+const activityClose = document.querySelector("#activity-close");
 const fundAction = document.querySelector("#fund-action");
 const workflowGuide = document.querySelector("#workflow-guide");
 const sendFields = document.querySelector("#send-fields");
@@ -90,6 +91,7 @@ function startActivity() {
   activityState.textContent = "Running";
   activityLastMessage = "";
 }
+activityClose.addEventListener("click", () => { activityTerminal.hidden = true; });
 
 function logActivity(message, kind = "done", details = {}) {
   if (!message || message === activityLastMessage) return;
@@ -452,6 +454,8 @@ form.addEventListener("submit", async (event) => {
   catch (error) { result.textContent = error.message; return; }
   if (selected === "withdraw") {
     try {
+      startActivity();
+      logActivity("Preparing the private withdrawal.");
       if (!connected || !account) throw new Error("Connect your wallet before unshielding");
       const recipient = destinations.value.trim();
       if (!/^0x[0-9a-fA-F]{40}$/.test(recipient)) throw new Error("Enter one valid destination wallet");
@@ -462,11 +466,13 @@ form.addEventListener("submit", async (event) => {
         amount: payUnits,
         recipient,
         password: await notePassword(),
-        onProgress: (message) => { result.textContent = message; },
+        onProgress: (message, details) => { result.textContent = message; logActivity(message, "done", details); },
       });
       refreshLocalNotes();
+      activityState.textContent = "Complete";
+      logActivity("Withdrawal confirmed.", "success", { transactionHash: withdrawal.transactionHash });
       result.innerHTML = `Tokens unshielded to ${recipient.slice(0, 8)}… <a href="https://robinhoodchain.blockscout.com/tx/${withdrawal.transactionHash}" target="_blank" rel="noopener">View withdrawal ↗</a>`;
-    } catch (error) { result.textContent = error?.message || "Could not unshield the private note."; }
+    } catch (error) { activityState.textContent = "Failed"; logActivity(error?.message || "Withdrawal failed.", "error"); result.textContent = error?.message || "Could not unshield the private note."; }
     return;
   }
   if (selected === "swap") {
@@ -518,7 +524,8 @@ form.addEventListener("submit", async (event) => {
       const executed = await monitorMarketOrder(order.orderId, submittedOrder.deadline);
       logActivity(`Swap complete. ${executed.slicesExecuted} of ${executed.sliceCount} slices confirmed.`, "success");
       activityState.textContent = "Auto claiming";
-      logActivity(executed.slicesExecuted === 0 ? "The execution window ended without a fill. Restoring the input balance." : "Automatically adding swap proceeds to your private portfolio.");
+      const unfilledInput = BigInt(executed.amountIn) - BigInt(executed.executedInput);
+      logActivity(executed.slicesExecuted === 0 ? "Execution window expired without a fill. Starting a full refund." : unfilledInput > 0n ? "Execution window closed with a partial fill. Claiming proceeds and refunding the unused input." : "All slices executed. Claiming proceeds automatically.");
       const settled = await window.ZKTXWallet.settleMarketOrderLive({
         orderId: order.orderId,
         password: privateNoteKey,
@@ -526,7 +533,7 @@ form.addEventListener("submit", async (event) => {
       });
       refreshLocalNotes();
       activityState.textContent = "Complete";
-      logActivity("Private portfolio updated automatically.", "success", { transactionHash: settled.transactionHash });
+      logActivity(executed.slicesExecuted === 0 ? "Refund confirmed. Input balance restored to the private portfolio." : unfilledInput > 0n ? "Settlement confirmed. Proceeds and unused input added to the private portfolio." : "Settlement confirmed. Swap proceeds added to the private portfolio.", "success", { transactionHash: settled.transactionHash });
       activityAction.hidden = true;
       result.innerHTML = `${executed.slicesExecuted === 0 ? "The order was not filled and your input was restored" : "Swap completed and proceeds were added to your private portfolio"}. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`;
     } catch (error) {
@@ -575,20 +582,26 @@ form.addEventListener("submit", async (event) => {
     return;
   }
   try {
+    startActivity();
+    logActivity("Preparing the shielded deposit.");
     if (!connected || !account) throw new Error("Connect your wallet before shielding");
     if (!protocol.contractsReady) throw new Error("The experimental live vault is not ready");
     const live = await window.ZKTXWallet.shieldLive({
       account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
       asset: token.value, amount: payUnits, password: await notePassword(),
-      onProgress: (message) => { result.textContent = message; },
+      onProgress: (message, details) => { result.textContent = message; logActivity(message, "done", details); },
     });
     refreshLocalNotes();
+    activityState.textContent = "Complete";
+    logActivity("Shielded deposit confirmed.", "success", { transactionHash: live.depositHash });
     result.innerHTML = live.indexed
       ? `Shielded deposit confirmed and ready to use. Commitment ${live.record.commitment.slice(0, 12)}… <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`
       : `Shielded deposit confirmed onchain. The private balance is still syncing, so wait a few seconds before swapping. <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
     const destination = document.querySelector(`.tabs button[data-tab="${returnAfterShield}"]`);
     if (destination) selectTab(destination);
   } catch (error) {
+    activityState.textContent = "Failed";
+    logActivity(error?.message || "Shielded deposit failed.", "error");
     result.textContent = error?.message || "Could not create the encrypted note.";
   }
 });
@@ -610,7 +623,7 @@ settleMarket.addEventListener("click", async () => {
     result.innerHTML = settled.transactionHash
       ? `Purchased tokens are now in your private portfolio. Open the portfolio and choose Unshield to wallet when you want to withdraw. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
       : "Recovered the already-settled private notes into this browser.";
-  } catch (error) { result.textContent = error?.message || "Could not settle the market order."; }
+  } catch (error) { activityState.textContent = "Failed"; logActivity(error?.message || "Settlement or refund failed.", "error"); result.textContent = error?.message || "Could not settle the market order."; }
 });
 
 activityAction.addEventListener("click", () => settleMarket.click());
