@@ -41,6 +41,7 @@ const activityClose = document.querySelector("#activity-close");
 const fundAction = document.querySelector("#fund-action");
 const workflowGuide = document.querySelector("#workflow-guide");
 const sendFields = document.querySelector("#send-fields");
+const sendSourceControls = document.querySelector("#send-source-controls");
 const receiveFields = document.querySelector("#receive-fields");
 const tokenField = document.querySelector("#token-field");
 const amountField = document.querySelector("#amount-field");
@@ -636,6 +637,7 @@ function selectTab(button) {
   swapFields.hidden = button.dataset.tab !== "swap";
   swapSetup.hidden = button.dataset.tab !== "swap";
   sendFields.hidden = button.dataset.tab !== "send";
+  sendSourceControls.hidden = button.dataset.tab !== "send";
   receiveFields.hidden = button.dataset.tab !== "receive";
   workflowGuide.hidden = true;
   portfolioPanel.hidden = button.dataset.tab !== "portfolio";
