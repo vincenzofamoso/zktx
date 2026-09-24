@@ -13,3 +13,5 @@
 .portfolio-item{grid-template-columns:1fr auto;gap:8px 12px}.portfolio-note-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}
 .private-receive-tools{grid-column:1/-1;margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}.private-receive-tools summary{cursor:pointer;color:var(--ink);font:600 11px DM Mono}.private-receive-tools[open]{display:grid;gap:10px}.private-receive-tools p{margin:0;color:var(--muted);font:10px/1.55 DM Mono}.private-receive-tools output{display:block;padding:10px;border:1px solid var(--line);border-radius:7px;color:var(--acid);font:10px/1.45 DM Mono;overflow-wrap:anywhere}
 .workflow-guide[hidden]{display:none}
+.field-row{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.field-row>label>input,.field-row>label>select{height:56px;padding:0 15px}
+@media(max-width:520px){.field-row{grid-template-columns:1fr}}
