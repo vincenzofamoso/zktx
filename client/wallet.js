@@ -552,6 +552,8 @@ export async function privateSendLive({
   let selectedRecord;
   let input;
   let inputPath;
+  const requestedAmount = BigInt(amount);
+  const candidates = [];
   for (const record of storedNotes()) {
     if (record.spentBy) continue;
     try {
@@ -560,22 +562,28 @@ export async function privateSendLive({
         candidate.note.chainId === BigInt(chainId)
         && candidate.note.vaultAddress.toLowerCase() === vaultAddress.toLowerCase()
         && candidate.note.asset.toLowerCase() === asset.toLowerCase()
-        && candidate.note.amount === BigInt(amount)
+        && candidate.note.amount >= requestedAmount
         && candidate.index !== null
       ) {
         const path = await loadMerklePath(candidate.index);
-        if (noteMatchesPath(candidate, path)) { selectedRecord = record; input = candidate; inputPath = path; break; }
+        if (noteMatchesPath(candidate, path)) candidates.push({ record, candidate, path });
       }
     } catch { /* Continue searching notes protected by this password. */ }
   }
-  if (!input) throw new Error("No spendable private note exactly matches this token and amount");
+  candidates.sort((left, right) => left.candidate.note.amount < right.candidate.note.amount ? -1 : left.candidate.note.amount > right.candidate.note.amount ? 1 : 0);
+  if (candidates.length) {
+    selectedRecord = candidates[0].record;
+    input = candidates[0].candidate;
+    inputPath = candidates[0].path;
+  }
+  if (!input) throw new Error("Your private portfolio does not contain one spendable note large enough for this amount");
 
   const tree = new IncrementalMerkleTree(status.treeDepth, status.state.leaves.map(BigInt));
   if (tree.root() !== BigInt(status.state.root)) throw new Error("The private-note tree is still synchronizing");
-  const change = createNote({ chainId: BigInt(chainId), vaultAddress, asset, amount: 0n });
+  const change = createNote({ chainId: BigInt(chainId), vaultAddress, asset, amount: input.note.amount - requestedAmount });
   const recipientBlinding = randomField();
   const recipientNote = createNote({
-    chainId: BigInt(chainId), vaultAddress, asset, amount: BigInt(amount),
+    chainId: BigInt(chainId), vaultAddress, asset, amount: requestedAmount,
     ownerSecret: 1n, blinding: recipientBlinding,
   });
   recipientNote.ownerSecret = 0n;
@@ -586,6 +594,7 @@ export async function privateSendLive({
   const insertionTwo = tree.proof(tree.leaves.length);
   tree.insert(recipientNote.commitment); recipientNote.index = tree.leaves.length - 1;
   const nullifier = noteNullifier(input.note, input.ownerSecret);
+  const changeRecord = change.note.amount > 0n ? await prepareEncryptedNote(change, password) : null;
 
   onProgress("Building the private transfer proof...");
   const { proof, publicSignals } = await window.snarkjs.groth16.fullProve({
@@ -608,12 +617,13 @@ export async function privateSendLive({
   });
   await waitForReceipt(transactionHash, 180_000, "Private transfer");
   markNoteSpent(selectedRecord.id, transactionHash);
+  if (changeRecord) commitEncryptedNote(changeRecord);
   onProgress("Private transfer confirmed", { transactionHash });
   const receipt = bytesToBase64(encoder.encode(JSON.stringify({
     version: 1,
     note: {
       version: 1, chainId: String(chainId), vaultAddress, asset,
-      amount: BigInt(amount).toString(), ownerPublicKey: recipientOwner.toString(), blinding: recipientBlinding.toString(),
+      amount: requestedAmount.toString(), ownerPublicKey: recipientOwner.toString(), blinding: recipientBlinding.toString(),
     },
     commitment: recipientNote.commitment.toString(), index: recipientNote.index,
   })));
