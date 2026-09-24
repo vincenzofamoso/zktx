@@ -25,6 +25,7 @@ const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 let activeAccount;
 let activeJob;
 let activeOrderId;
+let setupAccount;
 
 async function db() {
   return new Promise((resolve, reject) => {
@@ -212,7 +213,27 @@ async function execute(job) {
 }
 
 function showOnly(id) {
-  for (const selector of ["#import", "#unlock", "#wallet", "#review", "#dashboard"]) document.querySelector(selector).hidden = selector !== id;
+  for (const selector of ["#import", "#backup", "#unlock", "#wallet", "#review", "#dashboard"]) document.querySelector(selector).hidden = selector !== id;
+}
+
+function randomHex(bytes = 32) {
+  return `0x${[...crypto.getRandomValues(new Uint8Array(bytes))].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function recoveryCode() {
+  return encode(crypto.getRandomValues(new Uint8Array(32))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+async function storeNewWallet(secret) {
+  const recovery = recoveryCode();
+  status("Encrypting the wallet on this device...");
+  const result = await encrypt(secret, recovery);
+  await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) });
+  await saveKey(result.account.address, result.key);
+  setupAccount = result.account;
+  document.querySelector("#recovery-code").textContent = recovery;
+  showOnly("#backup");
+  status("Wallet created and encrypted. Save the recovery code once.");
 }
 
 async function loadDashboard() {
@@ -299,7 +320,7 @@ async function ready(account) {
 }
 
 async function bootstrap() {
-  if (action === "import") { showOnly("#import"); status("One-time setup: encrypt and import your wallet on this device."); return; }
+  if (action === "import") { showOnly("#import"); status("Create a new encrypted wallet, or optionally import one private key."); return; }
   try {
     const { vault } = await api("/api/v1/vault");
     const key = await storedKey(vault.address);
@@ -332,6 +353,9 @@ document.querySelector("#import-transfer").onclick = async () => {
     status("Private transfer imported into this portfolio.");
   } catch (error) { status(error.message || "Could not import the private transfer"); }
 };
-document.querySelector("#import").onsubmit = async (event) => { event.preventDefault(); const secret = document.querySelector("#private-key"), passphrase = document.querySelector("#passphrase"); try { status("Encrypting locally..."); const result = await encrypt(secret.value.trim(), passphrase.value); secret.value = ""; passphrase.value = ""; await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) }); await saveKey(result.account.address, result.key); document.querySelector("#import").hidden = true; await ready(result.account); } catch (error) { secret.value = ""; passphrase.value = ""; status(error.message || "Import failed"); } };
+document.querySelector("#create-wallet").onclick = async () => { try { await storeNewWallet(randomHex()); } catch (error) { status(error.message || "Wallet creation failed"); } };
+document.querySelector("#import-existing").onsubmit = async (event) => { event.preventDefault(); const secret = document.querySelector("#private-key"); try { await storeNewWallet(secret.value.trim()); secret.value = ""; } catch (error) { secret.value = ""; status(error.message || "Import failed"); } };
+document.querySelector("#copy-recovery").onclick = async () => { await navigator.clipboard?.writeText(document.querySelector("#recovery-code").textContent); status("Recovery code copied. Keep it somewhere safe."); };
+document.querySelector("#finish-setup").onclick = async () => { if (!setupAccount) return; await ready(setupAccount); };
 document.querySelector("#unlock").onsubmit = async (event) => { event.preventDefault(); const passphrase = document.querySelector("#unlock-passphrase"); try { const { vault } = await api("/api/v1/vault"), key = await derive(passphrase.value, vault); passphrase.value = ""; const account = await decryptVault(vault, key); await saveKey(vault.address, key); document.querySelector("#unlock").hidden = true; await ready(account); } catch { passphrase.value = ""; status("Wallet unlock failed."); } };
 void bootstrap();

@@ -22586,6 +22586,7 @@ var delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milli
 var activeAccount;
 var activeJob;
 var activeOrderId;
+var setupAccount;
 async function db() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, 1);
@@ -22756,7 +22757,24 @@ async function execute(job) {
   throw new Error("This action does not yet have a live trusted-device executor");
 }
 function showOnly(id) {
-  for (const selector of ["#import", "#unlock", "#wallet", "#review", "#dashboard"]) document.querySelector(selector).hidden = selector !== id;
+  for (const selector of ["#import", "#backup", "#unlock", "#wallet", "#review", "#dashboard"]) document.querySelector(selector).hidden = selector !== id;
+}
+function randomHex(bytes = 32) {
+  return `0x${[...crypto.getRandomValues(new Uint8Array(bytes))].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+function recoveryCode() {
+  return encode4(crypto.getRandomValues(new Uint8Array(32))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+async function storeNewWallet(secret) {
+  const recovery = recoveryCode();
+  status("Encrypting the wallet on this device...");
+  const result = await encrypt(secret, recovery);
+  await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) });
+  await saveKey(result.account.address, result.key);
+  setupAccount = result.account;
+  document.querySelector("#recovery-code").textContent = recovery;
+  showOnly("#backup");
+  status("Wallet created and encrypted. Save the recovery code once.");
 }
 async function loadDashboard() {
   const password = document.querySelector("#dashboard-password").value;
@@ -22876,7 +22894,7 @@ async function ready(account) {
 async function bootstrap() {
   if (action === "import") {
     showOnly("#import");
-    status("One-time setup: encrypt and import your wallet on this device.");
+    status("Create a new encrypted wallet, or optionally import one private key.");
     return;
   }
   try {
@@ -22930,23 +22948,31 @@ document.querySelector("#import-transfer").onclick = async () => {
     status(error.message || "Could not import the private transfer");
   }
 };
-document.querySelector("#import").onsubmit = async (event) => {
-  event.preventDefault();
-  const secret = document.querySelector("#private-key"), passphrase = document.querySelector("#passphrase");
+document.querySelector("#create-wallet").onclick = async () => {
   try {
-    status("Encrypting locally...");
-    const result = await encrypt(secret.value.trim(), passphrase.value);
+    await storeNewWallet(randomHex());
+  } catch (error) {
+    status(error.message || "Wallet creation failed");
+  }
+};
+document.querySelector("#import-existing").onsubmit = async (event) => {
+  event.preventDefault();
+  const secret = document.querySelector("#private-key");
+  try {
+    await storeNewWallet(secret.value.trim());
     secret.value = "";
-    passphrase.value = "";
-    await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) });
-    await saveKey(result.account.address, result.key);
-    document.querySelector("#import").hidden = true;
-    await ready(result.account);
   } catch (error) {
     secret.value = "";
-    passphrase.value = "";
     status(error.message || "Import failed");
   }
+};
+document.querySelector("#copy-recovery").onclick = async () => {
+  await navigator.clipboard?.writeText(document.querySelector("#recovery-code").textContent);
+  status("Recovery code copied. Keep it somewhere safe.");
+};
+document.querySelector("#finish-setup").onclick = async () => {
+  if (!setupAccount) return;
+  await ready(setupAccount);
 };
 document.querySelector("#unlock").onsubmit = async (event) => {
   event.preventDefault();

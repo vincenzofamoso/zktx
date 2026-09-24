@@ -66,6 +66,12 @@ async function runViewport(name, viewport) {
   check(docsResponse?.ok(), `${name}: docs return success`);
   check((await page.locator("body").innerText()).includes("Zcash solved the ownership problem"), `${name}: docs explain the design choice`);
   check(await page.locator('a[href="./case-study.html"]').count() > 0, `${name}: docs link to evidence`);
+
+  const telegramResponse = await page.goto(`${base}/telegram/?action=import`, { waitUntil: "networkidle" });
+  check(telegramResponse?.ok(), `${name}: Telegram wallet setup returns success`);
+  check(await page.locator("#create-wallet").isVisible(), `${name}: Telegram setup leads with wallet creation`);
+  check(await page.locator("#import-existing #private-key").count() === 1, `${name}: Telegram wallet import only asks for a private key`);
+  check(await page.locator("#passphrase").count() === 0, `${name}: Telegram setup does not require a seed or chosen passphrase`);
   check(runtimeErrors.length === 0, `${name}: no console, page, or failed-request errors${runtimeErrors.length ? ` (${runtimeErrors.join(" | ")})` : ""}`);
   await context.close();
 }
