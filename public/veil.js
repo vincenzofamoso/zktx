@@ -32,10 +32,13 @@ const activityTerminal = document.querySelector("#activity-terminal");
 const activitySteps = document.querySelector("#activity-steps");
 const activityState = document.querySelector("#activity-state");
 const activityAction = document.querySelector("#activity-action");
+const fundAction = document.querySelector("#fund-action");
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const quoteAssets = { weth: WETH, usdg: USDG };
 let swapDirection = "buy";
+let activeAction = "send";
+let returnAfterShield = "send";
 
 const copy = {
   shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note. No ZEC or bridge required."],
@@ -191,7 +194,7 @@ async function showPortfolio() {
       unshield.className = "portfolio-withdraw";
       unshield.textContent = "Unshield to wallet";
       unshield.addEventListener("click", () => {
-        selectTab(document.querySelector('.tabs button[data-tab="withdraw"]'));
+        selectTab(document.querySelector('#withdraw-action'));
         token.value = note.asset;
         amount.value = formatted;
         token.dispatchEvent(new Event("change"));
@@ -241,7 +244,7 @@ function refreshLocalNotes() {
   if (pending.length) pendingMarketOrder.value = pending[0].orderId;
   settleMarket.disabled = pending.length === 0;
   swapPrerequisite.textContent = count === 0
-    ? "No shielded balance found in this browser. Use Shield first to create a private WETH or USDG note, then return here to swap it."
+    ? "No private balance found in this browser. Choose Add private balance above, then return here to swap it."
     : "Your swap spends one matching shielded note. Select the same token and exact amount you previously shielded.";
 }
 
@@ -254,7 +257,8 @@ try {
 refreshLocalNotes();
 function selectTab(button) {
   document.querySelector(".tabs .selected")?.classList.remove("selected");
-  button.classList.add("selected");
+  activeAction = button.dataset.tab;
+  if (button.closest(".tabs")) button.classList.add("selected");
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
   planner.hidden = button.dataset.tab !== "withdraw";
   swapFields.hidden = button.dataset.tab !== "swap";
@@ -269,11 +273,19 @@ function selectTab(button) {
   }
 }
 document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => selectTab(button)));
+document.querySelectorAll("#shield-action, #withdraw-action").forEach((button) => button.addEventListener("click", () => selectTab(button)));
+selectTab(document.querySelector(".tabs .selected"));
+fundAction.addEventListener("click", () => {
+  returnAfterShield = activeAction === "swap" ? "swap" : "send";
+  selectTab(document.querySelector("#shield-action"));
+  result.textContent = "Step 1: choose the token and exact amount you want to use, then create your private balance.";
+  token.focus();
+});
 
 // Trusted entry points pass action details without secrets in the URL.
 const handoff = new URL(location.href).searchParams;
 const requestedTab = handoff.get("tab");
-const requestedButton = Object.hasOwn(copy, requestedTab) ? document.querySelector(`.tabs button[data-tab="${requestedTab}"]`) : null;
+const requestedButton = Object.hasOwn(copy, requestedTab) ? document.querySelector(`[data-tab="${requestedTab}"]`) : null;
 if (requestedButton) selectTab(requestedButton);
 if (handoff.get("token")) token.value = handoff.get("token");
 if (handoff.get("amount")) amount.value = handoff.get("amount");
@@ -320,8 +332,8 @@ connect.addEventListener("click", async () => {
       }
     }
     result.textContent = protocol.contractsReady
-      ? "Wallet connected. Experimental live shielding is enabled for capped pilot assets."
-      : "Wallet connected, but the live pilot is not ready.";
+      ? "Wallet connected. Your private workspace is ready."
+      : "Wallet connected, but the private workspace is temporarily unavailable.";
   } catch (error) {
     result.textContent = error?.message || "Wallet connection was cancelled.";
   }
@@ -329,18 +341,19 @@ connect.addEventListener("click", async () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const selected = document.querySelector(".tabs .selected")?.dataset.tab;
+  const selected = activeAction;
   if (selected === "swap") {
     const spendable = (window.ZKTXWallet?.storedNotes() || []).filter((record) => !record.spentBy);
     if (spendable.length === 0) {
-      const shieldTab = document.querySelector('.tabs button[data-tab="shield"]');
+      const shieldTab = document.querySelector('#shield-action');
+      returnAfterShield = "swap";
       const asset = token.value;
       const spendAmount = amount.value;
       selectTab(shieldTab);
       token.value = asset;
       amount.value = spendAmount;
       token.dispatchEvent(new Event("change"));
-      result.textContent = "First shield this exact amount. Confirm the approval and deposit in your wallet, then return to Shielded Swap.";
+      result.textContent = "Step 1: add this exact amount to your private balance. After confirmation, ZKTX returns you to the swap.";
       token.focus();
       return;
     }
@@ -442,6 +455,8 @@ form.addEventListener("submit", async (event) => {
     result.innerHTML = live.indexed
       ? `Shielded deposit confirmed and ready to use. Commitment ${live.record.commitment.slice(0, 12)}… <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`
       : `Shielded deposit confirmed onchain. The private balance is still syncing, so wait a few seconds before swapping. <a href="https://robinhoodchain.blockscout.com/tx/${live.depositHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
+    const destination = document.querySelector(`.tabs button[data-tab="${returnAfterShield}"]`);
+    if (destination) selectTab(destination);
   } catch (error) {
     result.textContent = error?.message || "Could not create the encrypted note.";
   }
@@ -462,7 +477,7 @@ settleMarket.addEventListener("click", async () => {
     activityAction.hidden = true;
     logActivity("Purchased tokens claimed into your private portfolio.", "success");
     result.innerHTML = settled.transactionHash
-      ? `Purchased tokens are now in your private portfolio. Use the Unshield tab to send them to a wallet. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
+      ? `Purchased tokens are now in your private portfolio. Open the portfolio and choose Unshield to wallet when you want to withdraw. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`
       : "Recovered the already-settled private notes into this browser.";
   } catch (error) { result.textContent = error?.message || "Could not settle the market order."; }
 });

@@ -22,21 +22,21 @@ async function runViewport(name, viewport) {
   const response = await page.goto(`${base}/`, { waitUntil: "networkidle" });
   check(response?.ok(), `${name}: homepage returns success`);
   check(await page.locator(".brand img").isVisible(), `${name}: brand is visible`);
-  check((await page.locator("#action-title").textContent())?.includes("shielded note"), `${name}: shield workspace initializes`);
+  check((await page.locator("#action-title").textContent())?.includes("private note"), `${name}: private-send workspace initializes`);
 
   await page.locator('[data-tab="swap"]').click();
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
   check(await page.locator("#swap-setup").isVisible(), `${name}: swap setup appears before execution fields`);
   check((await page.locator("#action-title").textContent()) === "Swap without exposing your wallet", `${name}: swap copy updates`);
-  await page.locator('[data-tab="withdraw"]').click();
-  check(await page.locator("#withdrawal-planner").isVisible(), `${name}: withdrawal planner appears`);
+  await page.locator("#withdraw-action").evaluate((button) => button.click());
+  check(await page.locator("#withdrawal-planner").isVisible(), `${name}: portfolio withdrawal flow appears`);
   await page.locator('[data-tab="send"]').click();
   check((await page.locator("#action-title").textContent()) === "Send a private note", `${name}: send copy updates`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
 
-  await page.locator('[data-tab="shield"]').click();
+  await page.locator("#fund-action").click();
   await page.locator("#token").fill("0xC026Ab5fFE8F5AF0C62f9D7c8567af6e967A1e18");
   await page.locator("#token").dispatchEvent("change");
   await page.waitForFunction(() => document.querySelector("#token-meta")?.textContent.includes("SI"));
