@@ -65,7 +65,7 @@ async function runViewport(name, viewport) {
   check(await page.locator("#private-recipient").isVisible(), `${name}: private send asks for the recipient private address`);
   await page.locator("#portfolio-receive").click();
   check(await page.locator("#receive-fields").isVisible(), `${name}: Private Receive lives inside Portfolio`);
-  check((await page.locator(".private-receive-tools").textContent()).includes("Share your private address"), `${name}: private receive explains how to receive`);
+  check((await page.locator(".private-receive-tools").textContent()).includes("Incoming private transfers appear"), `${name}: private receive explains automatic delivery`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
