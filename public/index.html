@@ -103,7 +103,7 @@
               <small>Unshielding sends one complete private note to the public wallet you choose. The withdrawal becomes public onchain.</small>
             </div>
             <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
-            <button class="submit" type="submit">Shield tokens</button>
+            <button id="action-submit" class="submit" type="submit">Shield tokens</button>
             <section id="activity-terminal" class="activity-terminal" hidden aria-live="polite">
               <div class="activity-head"><span><i></i> ZKTX execution</span><b id="activity-state">Preparing</b></div>
               <div id="activity-steps" class="activity-steps"></div>
@@ -140,6 +140,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=7"></script>
-    <script type="module" src="./veil.js?v=7"></script>
+    <script type="module" src="./veil.js?v=8"></script>
   </body>
 </html>

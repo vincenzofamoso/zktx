@@ -1,5 +1,5 @@
 const connect = document.querySelector("#connect");
-const submit = document.querySelector(".submit");
+const submit = document.querySelector("#action-submit");
 const form = document.querySelector("#veil-form");
 const result = document.querySelector("#form-result");
 const actionTitle = document.querySelector("#action-title");
