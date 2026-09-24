@@ -675,7 +675,12 @@ document.querySelectorAll(".tabs button").forEach((button) => button.addEventLis
 document.querySelectorAll("#shield-action, #withdraw-action, #send-action, #receive-action").forEach((button) => button.addEventListener("click", () => selectTab(button)));
 selectTab(document.querySelector(".tabs .selected"));
 portfolioAdd.addEventListener("click", () => { selectTab(document.querySelector("#shield-action")); void loadWalletAssets(); });
-portfolioRemove.addEventListener("click", () => { selectTab(document.querySelector('.tabs button[data-tab="portfolio"]')); void showPortfolio(); result.textContent = "Choose Unshield on one balance, or use Bulk Unshield for the full portfolio."; });
+portfolioRemove.addEventListener("click", () => {
+  selectTab(document.querySelector('.tabs button[data-tab="portfolio"]'));
+  portfolioRemove.classList.add("selected");
+  void showPortfolio();
+  result.textContent = "Choose Unshield on one balance, or use Bulk Unshield for the full portfolio.";
+});
 portfolioSend.addEventListener("click", () => selectTab(document.querySelector("#send-action")));
 portfolioReceive.addEventListener("click", () => selectTab(document.querySelector("#receive-action")));
 portfolioSwap.addEventListener("click", () => selectTab(document.querySelector('.tabs button[data-tab="swap"]')));

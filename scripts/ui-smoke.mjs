@@ -47,6 +47,7 @@ async function runViewport(name, viewport) {
   check(await page.locator("#action-submit").isHidden(), `${name}: portfolio tab hides transaction actions`);
   check(await page.locator("#bulk-unshield-recipient").isVisible(), `${name}: portfolio exposes a bulk unshield destination`);
   check((await page.locator("#bulk-unshield").textContent()) === "Unshield all", `${name}: portfolio exposes bulk unshield`);
+  check(await page.evaluate(() => { const row = document.createElement("div"); row.className = "portfolio-item"; document.body.append(row); const readable = Number.parseFloat(getComputedStyle(row).fontSize) >= 14; row.remove(); return readable; }), `${name}: private balances are readable`);
 
   await page.locator('[data-tab="swap"]').click();
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
