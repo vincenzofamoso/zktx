@@ -35,6 +35,10 @@ const activityAction = document.querySelector("#activity-action");
 const fundAction = document.querySelector("#fund-action");
 const workflowGuide = document.querySelector("#workflow-guide");
 const sendFields = document.querySelector("#send-fields");
+const receiveFields = document.querySelector("#receive-fields");
+const tokenField = document.querySelector("#token-field");
+const amountField = document.querySelector("#amount-field");
+const actionCard = document.querySelector("#action-card");
 const privateRecipient = document.querySelector("#private-recipient");
 const receiveAddressAction = document.querySelector("#receive-address-action");
 const receiveAddress = document.querySelector("#receive-address");
@@ -52,6 +56,7 @@ let returnAfterShield = "send";
 const copy = {
   shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note. No ZEC or bridge required."],
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
+  receive: ["Receive a private note", "Share a private receive address and add the sender's receipt to your portfolio."],
   swap: ["Swap without exposing your wallet", "Choose Buy or Sell. The vault executes through approved RH liquidity and returns proceeds as private notes."],
   withdraw: ["Unshield to a public wallet", "Convert a private note back into public tokens at the wallet you choose."],
 };
@@ -311,11 +316,17 @@ function selectTab(button) {
   swapFields.hidden = button.dataset.tab !== "swap";
   swapSetup.hidden = button.dataset.tab !== "swap";
   sendFields.hidden = button.dataset.tab !== "send";
-  workflowGuide.hidden = button.dataset.tab === "swap";
+  receiveFields.hidden = button.dataset.tab !== "receive";
+  workflowGuide.hidden = button.dataset.tab !== "send";
+  const receiveMode = button.dataset.tab === "receive";
+  tokenField.hidden = receiveMode;
+  amountField.hidden = receiveMode;
+  actionCard.hidden = receiveMode;
+  submit.hidden = receiveMode;
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
-  submit.textContent = button.dataset.tab === "withdraw" ? "Unshield tokens" : button.dataset.tab === "swap" ? "Submit Shielded Swap" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
+  submit.textContent = button.dataset.tab === "withdraw" ? "Unshield tokens" : button.dataset.tab === "swap" ? "Submit Private Swap" : button.dataset.tab === "shield" ? "Shield tokens" : "Create private send";
   if (button.dataset.tab === "swap") {
     if (!document.querySelector(".quote-assets .selected")) document.querySelector('.quote-assets button[data-quote="weth"]').classList.add("selected");
     applySwapDirection();

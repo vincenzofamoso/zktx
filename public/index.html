@@ -70,11 +70,12 @@
         </div>
 
         <div class="terminal">
-          <div class="tabs" role="tablist"><button class="selected" data-tab="send">Private send</button><button data-tab="swap">Shielded Swap</button></div>
+          <div class="tabs" role="tablist"><button class="selected" data-tab="send">Private Send</button><button data-tab="receive">Private Receive</button><button data-tab="swap">Private Swap</button></div>
           <form id="veil-form">
             <button id="shield-action" data-tab="shield" type="button" hidden></button><button id="withdraw-action" data-tab="withdraw" type="button" hidden></button>
             <section id="workflow-guide" class="workflow-guide"><div><b>1. Add a private balance</b><small>Shield the exact token amount you want to send.</small></div><button id="fund-action" class="secondary-action" type="button">Add private balance</button><div><b>2. Complete Private Send</b><small>Return here to send from that private balance.</small></div></section>
-            <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your combined shielded balances, unlocked by your connected wallet.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div><details class="private-receive-tools"><summary>Receive a private transfer</summary><p>Only use this when another person sends you a ZKTX private note. You do not need it for swaps or unshielding to a wallet.</p><button id="receive-address-action" class="secondary-action" type="button">Copy my private receive address</button><output id="receive-address" hidden></output><label>Transfer receipt from the sender<textarea id="transfer-receipt" rows="2" placeholder="Paste the receipt the sender gave you"></textarea></label><button id="import-transfer" class="secondary-action" type="button">Add received note to portfolio</button></details><details class="legacy-note-tools"><summary>Recover notes made with an older password</summary><label>Old private-note password<input id="legacy-note-password" type="password" autocomplete="current-password" /></label></details></section>
+            <section id="receive-fields" class="private-receive-tools" hidden><div class="portfolio-heading"><span class="portfolio-icon">↓</span><div><b>Receive privately</b><small>Share your private address, then add the sender's receipt when it arrives.</small></div></div><button id="receive-address-action" class="secondary-action" type="button">Copy my private receive address</button><output id="receive-address" hidden></output><label>Transfer receipt from the sender<textarea id="transfer-receipt" rows="2" placeholder="Paste the private transfer receipt"></textarea></label><button id="import-transfer" class="submit" type="button">Add received tokens to portfolio</button></section>
+            <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your combined shielded balances, unlocked by your connected wallet.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div><details class="legacy-note-tools"><summary>Recover notes made with an older password</summary><label>Old private-note password<input id="legacy-note-password" type="password" autocomplete="current-password" /></label></details></section>
             <section id="market-settlement" class="settlement-panel" hidden>
               <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Your swap is ready to finish</b><small>Settle the completed market order to add the purchased tokens to your private portfolio.</small></div></div>
               <label>Completed swap<select id="pending-market-order"><option value="">No completed swaps found</option></select></label>
@@ -88,8 +89,8 @@
               <div class="quote-assets"><button type="button" data-quote="weth"><b>WETH</b><small>Wrapped RH ETH</small></button><button type="button" data-quote="usdg"><b>USDG</b><small>Dollar settlement</small></button></div>
               <p class="field-note">Buying with WETH can use native RH ETH. ZKTX wraps the required amount in your wallet before shielding.</p>
             </div>
-            <label><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
-            <label><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
+            <label id="token-field"><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
+            <label id="amount-field"><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
               <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
@@ -105,7 +106,7 @@
               <input id="denominations" type="hidden" />
               <small>Unshielding sends one complete private note to the public wallet you choose. The withdrawal becomes public onchain.</small>
             </div>
-            <div class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
+            <div id="action-card" class="privacy-card"><span class="lock">⌾</span><div><b id="action-title">Create a Zcash-style shielded note</b><small id="action-copy">Keep your RH token. ZKTX converts its ownership into a private note inside the vault.</small></div></div>
             <button id="action-submit" class="submit" type="submit">Shield tokens</button>
             <section id="activity-terminal" class="activity-terminal" hidden aria-live="polite">
               <div class="activity-head"><span><i></i> ZKTX execution</span><b id="activity-state">Preparing</b></div>
@@ -143,6 +144,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=8"></script>
-    <script type="module" src="./veil.js?v=12"></script>
+    <script type="module" src="./veil.js?v=13"></script>
   </body>
 </html>
