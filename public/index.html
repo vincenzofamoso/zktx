@@ -93,7 +93,7 @@
             <label id="amount-field"><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
-              <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
+              <div class="field-row"><label>Maximum price deviation (%)<input id="price-deviation" type="number" inputmode="decimal" min="0.1" max="25" step="0.1" value="5" /><small id="receive-amount-units" class="token-meta">Loading the current Dexscreener price...</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div><input id="receive-amount" type="hidden" />
               <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell and paste any tradable RH token contract. ZKTX finds an executable direct or aggregated route, then executes in 3 to 7 slices. Actual proceeds return as a private note.</span></div>
               <p id="swap-prerequisite" class="field-note">Enter the swap once. ZKTX automatically shields the exact input amount when needed, then executes the order.</p>
             </div>
@@ -144,6 +144,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=8"></script>
-    <script type="module" src="./veil.js?v=13"></script>
+    <script type="module" src="./veil.js?v=14"></script>
   </body>
 </html>

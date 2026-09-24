@@ -19,6 +19,7 @@ const swapFields = document.querySelector("#swap-fields");
 const swapSetup = document.querySelector("#swap-setup");
 const receiveToken = document.querySelector("#receive-token");
 const receiveAmount = document.querySelector("#receive-amount");
+const priceDeviation = document.querySelector("#price-deviation");
 const receiveTokenMetaText = document.querySelector("#receive-token-meta");
 const receiveAmountUnits = document.querySelector("#receive-amount-units");
 const quoteLifetime = document.querySelector("#quote-lifetime");
@@ -199,10 +200,47 @@ function formatTokenAmount(value, decimals) {
   return fraction ? `${whole}.${fraction}` : whole;
 }
 
-token.addEventListener("change", async () => { payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta); showConversion(amount, payTokenMeta, amountUnits); });
-receiveToken.addEventListener("change", async () => { receiveTokenMeta = await readTokenMetadata(receiveToken, receiveTokenMetaText, receiveTokenMeta); showConversion(receiveAmount, receiveTokenMeta, receiveAmountUnits); });
-amount.addEventListener("input", () => showConversion(amount, payTokenMeta, amountUnits));
-receiveAmount.addEventListener("input", () => showConversion(receiveAmount, receiveTokenMeta, receiveAmountUnits));
+token.addEventListener("change", async () => { payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta); showConversion(amount, payTokenMeta, amountUnits); await updateDexQuote(); });
+receiveToken.addEventListener("change", async () => { receiveTokenMeta = await readTokenMetadata(receiveToken, receiveTokenMetaText, receiveTokenMeta); await updateDexQuote(); });
+amount.addEventListener("input", () => { showConversion(amount, payTokenMeta, amountUnits); void updateDexQuote(); });
+priceDeviation.addEventListener("input", () => void updateDexQuote());
+
+let quoteRequest = 0;
+async function updateDexQuote() {
+  if (activeAction !== "swap" || !payTokenMeta || !receiveTokenMeta || !amount.value.trim()) return;
+  const deviation = Number(priceDeviation.value);
+  if (!Number.isFinite(deviation) || deviation < 0.1 || deviation > 25) {
+    receiveAmount.value = "";
+    receiveAmountUnits.textContent = "Choose a deviation between 0.1% and 25%.";
+    receiveAmountUnits.className = "token-meta error";
+    return;
+  }
+  const request = ++quoteRequest;
+  receiveAmountUnits.textContent = "Reading current prices from Dexscreener...";
+  receiveAmountUnits.className = "token-meta";
+  try {
+    const [payResponse, receiveResponse] = await Promise.all([
+      fetch(`./api/dex-price/${token.value}`),
+      fetch(`./api/dex-price/${receiveToken.value}`),
+    ]);
+    const [payPrice, receivePrice] = await Promise.all([payResponse.json(), receiveResponse.json()]);
+    if (!payResponse.ok) throw new Error(payPrice.error || `No Dexscreener price for ${payTokenMeta.symbol}`);
+    if (!receiveResponse.ok) throw new Error(receivePrice.error || `No Dexscreener price for ${receiveTokenMeta.symbol}`);
+    const input = Number(amount.value);
+    const marketOutput = input * Number(payPrice.priceUsd) / Number(receivePrice.priceUsd);
+    const protectedOutput = marketOutput * (1 - deviation / 100);
+    if (!Number.isFinite(protectedOutput) || protectedOutput <= 0) throw new Error("Dexscreener could not produce a valid quote");
+    if (request !== quoteRequest) return;
+    receiveAmount.value = protectedOutput.toFixed(Math.min(receiveTokenMeta.decimals, 12)).replace(/0+$/, "").replace(/\.$/, "");
+    receiveAmountUnits.textContent = `Current estimate: ${marketOutput.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${receiveTokenMeta.symbol}. Protected minimum at ${deviation}% deviation: ${receiveAmount.value} ${receiveTokenMeta.symbol}.`;
+    receiveAmountUnits.className = "token-meta loaded";
+  } catch (error) {
+    if (request !== quoteRequest) return;
+    receiveAmount.value = "";
+    receiveAmountUnits.textContent = error.message || "Dexscreener price unavailable for this pair.";
+    receiveAmountUnits.className = "token-meta error";
+  }
+}
 
 async function showPortfolio() {
   portfolioToggle.disabled = true;
@@ -435,6 +473,7 @@ form.addEventListener("submit", async (event) => {
     if (!receiveTokenMeta || receiveTokenMeta.address.toLowerCase() !== receiveToken.value.toLowerCase()) receiveTokenMeta = await readTokenMetadata(receiveToken, receiveTokenMetaText, receiveTokenMeta);
     if (!receiveTokenMeta) { result.textContent = "Load a valid receive token first."; return; }
     let receiveUnits;
+    if (!receiveAmount.value) { result.textContent = "Wait for the Dexscreener quote before submitting the swap."; return; }
     try { receiveUnits = parseTokenAmount(receiveAmount.value, receiveTokenMeta.decimals); }
     catch (error) { result.textContent = error.message; return; }
     try {

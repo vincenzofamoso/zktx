@@ -223,6 +223,32 @@ app.get("/api/token/:address", async (req, res) => {
   }
 });
 
+const dexPriceCache = new Map();
+app.get("/api/dex-price/:address", async (req, res) => {
+  const address = req.params.address;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return res.status(400).json({ error: "Invalid token contract" });
+  const key = address.toLowerCase();
+  const cached = dexPriceCache.get(key);
+  if (cached && Date.now() - cached.loadedAt < 30_000) return res.json(cached.payload);
+  try {
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${address}`, { signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) throw new Error("Dexscreener request failed");
+    const payload = await response.json();
+    const pairs = (payload.pairs || []).filter((pair) => pair.chainId === "robinhood" && Number(pair.priceUsd) > 0);
+    pairs.sort((left, right) => Number(right.liquidity?.usd || 0) - Number(left.liquidity?.usd || 0));
+    const pair = pairs.find((candidate) => candidate.baseToken?.address?.toLowerCase() === key || candidate.quoteToken?.address?.toLowerCase() === key);
+    if (!pair) return res.status(404).json({ error: "No Robinhood Chain price is available on Dexscreener" });
+    const isBase = pair.baseToken.address.toLowerCase() === key;
+    const priceUsd = isBase ? Number(pair.priceUsd) : Number(pair.priceUsd) / Number(pair.priceNative);
+    if (!Number.isFinite(priceUsd) || priceUsd <= 0) return res.status(404).json({ error: "Dexscreener returned an invalid token price" });
+    const result = { address, priceUsd: String(priceUsd), liquidityUsd: Number(pair.liquidity?.usd || 0), pairUrl: pair.url, pairAddress: pair.pairAddress, source: "Dexscreener" };
+    dexPriceCache.set(key, { loadedAt: Date.now(), payload: result });
+    return res.json(result);
+  } catch {
+    return res.status(502).json({ error: "Dexscreener price is temporarily unavailable" });
+  }
+});
+
 app.get("/api/route/:tokenIn/:tokenOut", async (req, res) => {
   const { tokenIn, tokenOut } = req.params;
   if (!vaultAddress || !/^0x[0-9a-fA-F]{40}$/.test(tokenIn) || !/^0x[0-9a-fA-F]{40}$/.test(tokenOut) || tokenIn.toLowerCase() === tokenOut.toLowerCase()) {

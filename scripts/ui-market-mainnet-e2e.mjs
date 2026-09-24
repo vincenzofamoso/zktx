@@ -65,7 +65,8 @@ try {
   await page.locator("#receive-token").dispatchEvent("change");
   await page.waitForFunction(() => document.querySelector("#receive-token-meta")?.classList.contains("loaded"));
   await page.locator("#amount").fill(amount);
-  await page.locator("#receive-amount").fill(minimumOut);
+  await page.locator("#price-deviation").fill("5");
+  await page.waitForFunction(() => Boolean(document.querySelector("#receive-amount")?.value));
   await page.locator("#veil-form").evaluate((form) => form.requestSubmit());
   await page.waitForFunction(() => document.querySelector("#activity-state")?.textContent === "Ready to claim", null, { timeout: 600_000 });
   const executionLinks = await page.locator("#activity-steps a").evaluateAll((links) => links.map((link) => link.href));
