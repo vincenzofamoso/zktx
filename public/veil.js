@@ -136,8 +136,12 @@ async function monitorMarketOrder(orderId, deadline) {
       const complete = BigInt(order.executedInput) >= BigInt(order.amountIn);
       const readyAt = complete ? Number(order.lastExecutionAt) + 30 : Number(order.deadline) + 30;
       const now = Math.floor(Date.now() / 1000);
+      if (!complete) {
+        const remaining = Math.max(0, Number(order.deadline) - now);
+        activityState.textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} left`;
+      }
       if ((complete || now >= Number(order.deadline)) && now >= readyAt) return order;
-      if (complete) activityState.textContent = "Finalizing";
+      if (complete) activityState.textContent = `Claiming in ${Math.max(0, readyAt - now)}s`;
     }
     await new Promise((resolve) => setTimeout(resolve, 2_500));
   }
@@ -512,13 +516,19 @@ form.addEventListener("submit", async (event) => {
       refreshLocalNotes();
       logActivity("Private order relayed to the execution vault.");
       const executed = await monitorMarketOrder(order.orderId, submittedOrder.deadline);
-      activityState.textContent = "Ready to claim";
       logActivity(`Swap complete. ${executed.slicesExecuted} of ${executed.sliceCount} slices confirmed.`, "success");
+      activityState.textContent = "Auto claiming";
+      logActivity(executed.slicesExecuted === 0 ? "The execution window ended without a fill. Restoring the input balance." : "Automatically adding swap proceeds to your private portfolio.");
+      const settled = await window.ZKTXWallet.settleMarketOrderLive({
+        orderId: order.orderId,
+        password: privateNoteKey,
+        onProgress: (message, details) => logActivity(message, "done", details),
+      });
       refreshLocalNotes();
-      pendingMarketOrder.value = order.orderId;
-      settleMarket.disabled = false;
-      activityAction.hidden = false;
-      result.innerHTML = `Swap completed successfully. Claim the purchased tokens into your private portfolio, then unshield whenever you want. <a href="https://robinhoodchain.blockscout.com/tx/${order.transactionHash}" target="_blank" rel="noopener">View order ↗</a>`;
+      activityState.textContent = "Complete";
+      logActivity("Private portfolio updated automatically.", "success", { transactionHash: settled.transactionHash });
+      activityAction.hidden = true;
+      result.innerHTML = `${executed.slicesExecuted === 0 ? "The order was not filled and your input was restored" : "Swap completed and proceeds were added to your private portfolio"}. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`;
     } catch (error) {
       activityState.textContent = "Action needed";
       logActivity(error?.message || "Swap execution stopped.", "error");

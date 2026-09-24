@@ -3,6 +3,9 @@ import { privateKeyToAccount } from "viem/accounts";
 import { vaultAbi } from "./vault-abi.js";
 
 const BPS = 10_000n;
+const EXECUTION_FEE_BPS = 50n;
+const BUYBACK_FEE_BPS = 100n;
+const TOTAL_MARKET_FEE_BPS = EXECUTION_FEE_BPS + BUYBACK_FEE_BPS;
 const AGGREGATOR_ENTRY_POINT = "0x0000000000001fF3684f28c67538d4D072C22734";
 const routingAbi = parseAbi(["function routeKey(address,address) pure returns (bytes32)", "function routes(bytes32) view returns (address)"]);
 const marketConfigAbi = parseAbi(["function marketAdapter() view returns (address)"]);
@@ -35,10 +38,11 @@ export function createMarketKeeper({
 
   async function prepareAggregatorSlice(orderId) {
     if (!aggregatorAdapter || !aggregatorQuoteUrl) return;
-    const [order, routingAdapter, sliceAmount] = await Promise.all([
+    const [order, routingAdapter, sliceAmount, quoteAsset] = await Promise.all([
       publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "getMarketOrder", args: [orderId] }),
       publicClient.readContract({ address: vaultAddress, abi: marketConfigAbi, functionName: "marketAdapter" }),
       publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "nextMarketSliceAmount", args: [orderId] }),
+      publicClient.readContract({ address: vaultAddress, abi: vaultAbi, functionName: "marketQuoteAsset" }),
     ]);
     const key = await publicClient.readContract({ address: routingAdapter, abi: routingAbi, functionName: "routeKey", args: [order.assetIn, order.assetOut] });
     const adapter = await publicClient.readContract({ address: routingAdapter, abi: routingAbi, functionName: "routes", args: [key] });
@@ -47,10 +51,15 @@ export function createMarketKeeper({
     const ceil = (value, divisor) => (value + divisor - 1n) / divisor;
     const requiredOutput = ceil(BigInt(order.minimumAmountOut) * nextExecuted, BigInt(order.amountIn))
       - ceil(BigInt(order.minimumAmountOut) * BigInt(order.executedInput), BigInt(order.amountIn));
+    const buying = order.assetIn.toLowerCase() === quoteAsset.toLowerCase();
+    const executionFee = buying ? nextExecuted * EXECUTION_FEE_BPS / BPS - BigInt(order.executionFeeAmount) : 0n;
+    const buybackFee = buying ? nextExecuted * BUYBACK_FEE_BPS / BPS - BigInt(order.buybackFeeAmount) : 0n;
+    const adapterInput = buying ? BigInt(sliceAmount) - executionFee - buybackFee : BigInt(sliceAmount);
+    const adapterMinimum = buying ? requiredOutput : ceil(requiredOutput * BPS, BPS - TOTAL_MARKET_FEE_BPS);
     const response = await fetch(aggregatorQuoteUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ kind: "quote", sellToken: order.assetIn, buyToken: order.assetOut, sellAmount: String(sliceAmount), taker: aggregatorAdapter, slippageBps: 500 }),
+      body: JSON.stringify({ kind: "quote", sellToken: order.assetIn, buyToken: order.assetOut, sellAmount: String(adapterInput), taker: aggregatorAdapter, slippageBps: 500 }),
       signal: AbortSignal.timeout(12_000),
     });
     const quote = await response.json();
@@ -61,13 +70,13 @@ export function createMarketKeeper({
     if (quote.issues?.allowance?.spender && quote.issues.allowance.spender.toLowerCase() !== AGGREGATOR_ENTRY_POINT.toLowerCase()) {
       throw new Error("Aggregate quote returned an untrusted allowance target");
     }
-    if (BigInt(quote.buyAmount || 0) < requiredOutput) throw new Error("Aggregate quote is below the order minimum");
+    if (BigInt(quote.buyAmount || 0) < adapterMinimum) throw new Error("Aggregate quote is below the order minimum");
     const request = await publicClient.simulateContract({
       account,
       address: aggregatorAdapter,
       abi: aggregatorAbi,
       functionName: "prepareSwap",
-      args: [order.assetIn, order.assetOut, BigInt(sliceAmount), requiredOutput, BigInt(Math.floor(Date.now() / 1000) + 90), quote.transaction.data],
+      args: [order.assetIn, order.assetOut, adapterInput, adapterMinimum, BigInt(Math.floor(Date.now() / 1000) + 90), quote.transaction.data],
     });
     const hash = await wallet.writeContract(request.request);
     await publicClient.waitForTransactionReceipt({ hash });

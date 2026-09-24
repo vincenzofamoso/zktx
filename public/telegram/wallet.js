@@ -22732,8 +22732,12 @@ async function monitorOrder(orderId) {
     const now = Math.floor(Date.now() / 1e3);
     const complete = BigInt(order.executedInput) >= BigInt(order.amountIn);
     const readyAt = complete ? Number(order.lastExecutionAt) + 30 : Number(order.deadline) + 30;
+    if (!complete) {
+      const remaining = Math.max(0, Number(order.deadline) - now);
+      document.querySelector("#execution-state").textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} LEFT`;
+    }
     if ((complete || now >= Number(order.deadline)) && now >= readyAt) return order;
-    if (complete) document.querySelector("#execution-state").textContent = "FINALIZING";
+    if (complete) document.querySelector("#execution-state").textContent = `CLAIMING IN ${Math.max(0, readyAt - now)}S`;
     await delay(2500);
   }
 }
@@ -22876,10 +22880,10 @@ async function ready(account) {
         if (execution.orderId) {
           activeOrderId = execution.orderId;
           log("Private order confirmed onchain", "success");
-          await monitorOrder(execution.orderId);
-          log("Swap complete. Your proceeds are ready to claim", "success");
-          document.querySelector("#execution-state").textContent = "READY TO CLAIM";
-          document.querySelector("#claim").hidden = false;
+          const completed = await monitorOrder(execution.orderId);
+          log(completed.slicesExecuted === 0 ? "The window ended without a fill. Restoring your input balance." : "Swap complete. Adding proceeds to your Shielded Portfolio.", "success");
+          await settle(execution.orderId, await notePassword("#legacy-review-password"), activeJob);
+          status(completed.slicesExecuted === 0 ? "Input balance restored automatically." : "Swap complete. Proceeds are in your Shielded Portfolio.");
         } else {
           log("Shielded balance updated", "success");
           document.querySelector("#execution-state").textContent = "COMPLETE";
