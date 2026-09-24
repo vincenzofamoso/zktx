@@ -22,6 +22,11 @@ async function runViewport(name, viewport) {
   const response = await page.goto(`${base}/`, { waitUntil: "networkidle" });
   check(response?.ok(), `${name}: homepage returns success`);
   check(await page.locator(".brand img").isVisible(), `${name}: brand is visible`);
+  check(await page.locator(".dapp-preview-frame img").isVisible(), `${name}: dapp preview is visible`);
+  check((await page.locator('.dapp-preview a[href="./app.html"]').count()) >= 1, `${name}: homepage links to the dapp`);
+
+  const appResponse = await page.goto(`${base}/app.html`, { waitUntil: "networkidle" });
+  check(appResponse?.ok(), `${name}: dapp returns success`);
   check((await page.locator("#action-title").textContent())?.includes("private note"), `${name}: private-send workspace initializes`);
 
   await page.locator('[data-tab="swap"]').click();
@@ -30,7 +35,7 @@ async function runViewport(name, viewport) {
   check(await page.locator("#workflow-guide").isHidden(), `${name}: swap does not expose a separate shielding step`);
   check((await page.locator("#swap-prerequisite").textContent()).includes("automatically shield"), `${name}: swap explains automatic shielding`);
   check((await page.locator("#action-title").textContent()) === "Swap without exposing your wallet", `${name}: swap copy updates`);
-  check((await page.locator("#action-submit").textContent()) === "Submit Shielded Swap", `${name}: swap action is bound to the form submit button`);
+  check((await page.locator("#action-submit").textContent()) === "Submit Private Swap", `${name}: swap action is bound to the form submit button`);
   check((await page.locator("#settle-market").textContent()) === "Add completed swap to private portfolio", `${name}: settlement action remains independently bound`);
   await page.locator("#withdraw-action").evaluate((button) => button.click());
   check(await page.locator("#withdrawal-planner").isVisible(), `${name}: portfolio withdrawal flow appears`);
@@ -38,7 +43,7 @@ async function runViewport(name, viewport) {
   check((await page.locator("#action-title").textContent()) === "Send a private note", `${name}: send copy updates`);
   check(await page.locator("#private-recipient").isVisible(), `${name}: private send asks for the recipient private address`);
   check(!(await page.locator(".private-receive-tools").getAttribute("open")), `${name}: private-transfer receiving tools stay collapsed by default`);
-  check((await page.locator(".private-receive-tools").textContent()).includes("do not need it for swaps or unshielding"), `${name}: private-transfer receiving tools explain when they are needed`);
+  check((await page.locator(".private-receive-tools").textContent()).includes("Share your private address"), `${name}: private receive explains how to receive`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
@@ -49,7 +54,6 @@ async function runViewport(name, viewport) {
   await page.waitForFunction(() => document.querySelector("#token-meta")?.textContent.includes("SI"));
   await page.locator("#amount").fill("5");
   check((await page.locator("#amount-units").textContent())?.includes("5000000000000000000 base units"), `${name}: human SI amount converts to 18-decimal base units`);
-  await page.locator("#note-password").fill("headless-test-password");
   await page.locator("#veil-form").evaluate((form) => form.requestSubmit());
   await page.waitForFunction(() => document.querySelector("#form-result")?.textContent.includes("Connect your wallet"));
   check((await page.locator("#local-notes").textContent())?.startsWith("0 spendable encrypted notes"), `${name}: no note is stored before an onchain confirmation`);

@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="description" content="Shield your wallet identity, route your own tokens through existing Robinhood Chain liquidity, and settle proceeds back into private notes." />
-    <link rel="canonical" href="https://zktx.tech/" />
+    <link rel="canonical" href="https://zktx.tech/app.html" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ZKTX" />
-    <meta property="og:url" content="https://zktx.tech/" />
+    <meta property="og:url" content="https://zktx.tech/app.html" />
     <meta property="og:title" content="ZKTX | Zcash-style privacy for RH tokens" />
     <meta property="og:description" content="User-funded RH market execution in randomized slices, with wallet identity shielded and proceeds settled into private notes." />
     <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
@@ -18,7 +18,7 @@
     <meta name="twitter:title" content="ZKTX | Zcash-style privacy for RH tokens" />
     <meta name="twitter:description" content="Trade through existing RH liquidity without exposing your wallet as the trader, then settle proceeds into private notes." />
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
-    <title>ZKTX | private token transactions</title>
+    <title>ZKTX Dapp | private RH transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
     <link rel="stylesheet" href="./veil.css?v=14" />
     <link rel="stylesheet" href="./withdrawal.css" />
@@ -26,12 +26,12 @@
     <link rel="stylesheet" href="./usp.css" />
     <link rel="stylesheet" href="./repo-link.css" />
   </head>
-  <body class="home-page">
+  <body class="app-page">
     <div class="noise"></div>
     <header class="topbar">
       <a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>shielded transactions</small></span></a>
       <nav><a href="#pool">Pool</a><a href="#privacy">Privacy</a><a href="#private-tee">Private TEE</a><a href="#architecture">Architecture</a><a href="./case-study.html">Case study</a><a href="./docs.html">Docs</a><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">GitHub ↗</a></nav>
-      <a class="connect" href="./app.html">Use ZKTX</a>
+      <button id="connect" class="connect" type="button">Connect wallet</button>
     </header>
 
     <main>
@@ -60,8 +60,6 @@
         <div class="active"><span>03</span><b>Execute</b><small>Public market slices</small></div>
         <div><span>04</span><b>Settle</b><small>Private proceeds</small></div>
       </section>
-
-      <section class="dapp-preview"><div><p class="kicker">ZKTX DAPP</p><h2>Private RH transactions in one workspace.</h2><p>Send, receive and swap through shielded notes, then manage every private balance from one portfolio.</p><a class="cta" href="./app.html">Open the dapp</a></div><a class="dapp-preview-frame" href="./app.html" aria-label="Open the ZKTX dapp"><img src="./assets/dapp-preview.webp" alt="Preview of the ZKTX private transaction dapp" /></a></section>
 
       <section id="pool" class="workspace">
         <div class="workspace-copy">
@@ -144,5 +142,8 @@
       </section>
     </main>
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
+    <script src="./vendor/snarkjs.min.js"></script>
+    <script type="module" src="./zk-client.js?v=8"></script>
+    <script type="module" src="./veil.js?v=18"></script>
   </body>
 </html>
