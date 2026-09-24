@@ -22881,7 +22881,7 @@ async function ready(account) {
           activeOrderId = execution.orderId;
           log("Private order confirmed onchain", "success");
           const completed = await monitorOrder(execution.orderId);
-          log(completed.slicesExecuted === 0 ? "The window ended without a fill. Restoring your input balance." : "Swap complete. Adding proceeds to your Shielded Portfolio.", "success");
+          log(completed.slicesExecuted === 0 ? `Order closed without a fill. 0 of ${completed.sliceCount} slices executed. Restoring your input balance.` : `Swap execution finished. ${completed.slicesExecuted} of ${completed.sliceCount} slices confirmed. Adding proceeds to your Shielded Portfolio.`, completed.slicesExecuted === 0 ? "error" : "success");
           await settle(execution.orderId, await notePassword("#legacy-review-password"), activeJob);
           status(completed.slicesExecuted === 0 ? "Input balance restored automatically." : "Swap complete. Proceeds are in your Shielded Portfolio.");
         } else {

@@ -522,7 +522,7 @@ form.addEventListener("submit", async (event) => {
       refreshLocalNotes();
       logActivity("Private order relayed to the execution vault.");
       const executed = await monitorMarketOrder(order.orderId, submittedOrder.deadline);
-      logActivity(`Swap complete. ${executed.slicesExecuted} of ${executed.sliceCount} slices confirmed.`, "success");
+      logActivity(executed.slicesExecuted === 0 ? `Order closed without a fill. 0 of ${executed.sliceCount} slices executed.` : `Swap execution finished. ${executed.slicesExecuted} of ${executed.sliceCount} slices confirmed.`, executed.slicesExecuted === 0 ? "error" : "success");
       activityState.textContent = "Auto claiming";
       const unfilledInput = BigInt(executed.amountIn) - BigInt(executed.executedInput);
       logActivity(executed.slicesExecuted === 0 ? "Execution window expired without a fill. Starting a full refund." : unfilledInput > 0n ? "Execution window closed with a partial fill. Claiming proceeds and refunding the unused input." : "All slices executed. Claiming proceeds automatically.");
@@ -532,7 +532,7 @@ form.addEventListener("submit", async (event) => {
         onProgress: (message, details) => logActivity(message, "done", details),
       });
       refreshLocalNotes();
-      activityState.textContent = "Complete";
+      activityState.textContent = executed.slicesExecuted === 0 ? "Refunded" : "Complete";
       logActivity(executed.slicesExecuted === 0 ? "Refund confirmed. Input balance restored to the private portfolio." : unfilledInput > 0n ? "Settlement confirmed. Proceeds and unused input added to the private portfolio." : "Settlement confirmed. Swap proceeds added to the private portfolio.", "success", { transactionHash: settled.transactionHash });
       activityAction.hidden = true;
       result.innerHTML = `${executed.slicesExecuted === 0 ? "The order was not filled and your input was restored" : "Swap completed and proceeds were added to your private portfolio"}. <a href="https://robinhoodchain.blockscout.com/tx/${settled.transactionHash}" target="_blank" rel="noopener">View settlement ↗</a>`;
