@@ -31,6 +31,8 @@ const swapPrerequisite = document.querySelector("#swap-prerequisite");
 const portfolioToggle = document.querySelector("#portfolio-toggle");
 const portfolioList = document.querySelector("#portfolio-list");
 const portfolioPanel = document.querySelector("#portfolio-panel");
+const bulkUnshield = document.querySelector("#bulk-unshield");
+const bulkUnshieldRecipient = document.querySelector("#bulk-unshield-recipient");
 const activityTerminal = document.querySelector("#activity-terminal");
 const activitySteps = document.querySelector("#activity-steps");
 const activityState = document.querySelector("#activity-state");
@@ -303,6 +305,56 @@ async function showPortfolio() {
   } finally { portfolioToggle.disabled = false; }
 }
 portfolioToggle.addEventListener("click", () => void showPortfolio());
+
+bulkUnshield.addEventListener("click", async () => {
+  const recipient = bulkUnshieldRecipient.value.trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(recipient)) {
+    result.textContent = "Enter one valid destination wallet for the bulk unshield.";
+    return;
+  }
+  try {
+    if (!connected || !account) throw new Error("Connect your wallet before unshielding");
+    const privateNoteKey = await notePassword();
+    const notes = await window.ZKTXWallet.privatePortfolio(privateNoteKey);
+    if (!notes.length) throw new Error("There are no spendable private notes to unshield");
+    if (!window.confirm(`Unshield all ${notes.length} private notes to ${recipient}?`)) return;
+    bulkUnshield.disabled = true;
+    startActivity();
+    activityState.textContent = "Bulk unshield";
+    logActivity(`Starting bulk unshield of ${notes.length} private notes.`);
+    let completed = 0;
+    for (const [index, note] of notes.entries()) {
+      try {
+        logActivity(`Unshielding note ${index + 1} of ${notes.length}.`);
+        const withdrawal = await window.ZKTXWallet.withdrawLive({
+          chainId: protocol.chainId,
+          vaultAddress: protocol.vaultAddress,
+          asset: note.asset,
+          amount: BigInt(note.amount),
+          recipient,
+          password: privateNoteKey,
+          onProgress: (message, details) => logActivity(message, "done", details),
+        });
+        completed += 1;
+        logActivity(`Note ${index + 1} unshielded.`, "success", { transactionHash: withdrawal.transactionHash });
+      } catch (error) {
+        logActivity(`Note ${index + 1} failed: ${error?.message || "Unknown withdrawal error"}`, "error");
+      }
+    }
+    refreshLocalNotes();
+    await showPortfolio();
+    activityState.textContent = completed === notes.length ? "Complete" : "Partial";
+    result.textContent = completed === notes.length
+      ? `All ${completed} private notes were unshielded to ${recipient}.`
+      : `${completed} of ${notes.length} private notes were unshielded. Review the execution log for any failures.`;
+  } catch (error) {
+    activityState.textContent = "Failed";
+    logActivity(error?.message || "Bulk unshield failed.", "error");
+    result.textContent = error?.message || "Could not complete the bulk unshield.";
+  } finally {
+    bulkUnshield.disabled = false;
+  }
+});
 
 receiveAddressAction.addEventListener("click", async () => {
   try {

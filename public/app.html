@@ -20,7 +20,7 @@
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX Dapp | private RH transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
-    <link rel="stylesheet" href="./veil.css?v=18" />
+    <link rel="stylesheet" href="./veil.css?v=19" />
     <link rel="stylesheet" href="./withdrawal.css" />
     <link rel="stylesheet" href="./hero-logo.css" />
     <link rel="stylesheet" href="./usp.css" />
@@ -75,7 +75,7 @@
             <button id="shield-action" data-tab="shield" type="button" hidden></button><button id="withdraw-action" data-tab="withdraw" type="button" hidden></button>
             <section id="workflow-guide" class="workflow-guide"><div><b>1. Add a private balance</b><small>Shield the exact token amount you want to send.</small></div><button id="fund-action" class="secondary-action" type="button">Add private balance</button><div><b>2. Complete Private Send</b><small>Return here to send from that private balance.</small></div></section>
             <section id="receive-fields" class="private-receive-tools" hidden><div class="portfolio-heading"><span class="portfolio-icon">↓</span><div><b>Receive privately</b><small>Share your private address, then add the sender's receipt when it arrives.</small></div></div><button id="receive-address-action" class="secondary-action" type="button">Copy my private receive address</button><output id="receive-address" hidden></output><label>Transfer receipt from the sender<textarea id="transfer-receipt" rows="2" placeholder="Paste the private transfer receipt"></textarea></label><button id="import-transfer" class="submit" type="button">Add received tokens to portfolio</button></section>
-            <section id="portfolio-panel" class="portfolio-panel" hidden><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your combined shielded balances, unlocked by your connected wallet.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div></section>
+            <section id="portfolio-panel" class="portfolio-panel" hidden><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your combined shielded balances, unlocked by your connected wallet.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div class="bulk-unshield"><label>Bulk unshield destination<input id="bulk-unshield-recipient" autocomplete="off" placeholder="0x… receiving EVM wallet" /></label><button id="bulk-unshield" class="secondary-action" type="button">Unshield all</button><small>Withdraw every spendable private note to this wallet. Each note is processed separately.</small></div><div id="portfolio-list" hidden></div></section>
             <section id="market-settlement" class="settlement-panel" hidden>
               <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Your swap is ready to finish</b><small>Settle the completed market order to add the purchased tokens to your private portfolio.</small></div></div>
               <label>Completed swap<select id="pending-market-order"><option value="">No completed swaps found</option></select></label>
@@ -144,6 +144,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=8"></script>
-    <script type="module" src="./veil.js?v=19"></script>
+    <script type="module" src="./veil.js?v=20"></script>
   </body>
 </html>

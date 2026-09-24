@@ -38,6 +38,8 @@ async function runViewport(name, viewport) {
   await page.locator('[data-tab="portfolio"]').click();
   check(await page.locator("#portfolio-panel").isVisible(), `${name}: portfolio has its own tab`);
   check(await page.locator("#action-submit").isHidden(), `${name}: portfolio tab hides transaction actions`);
+  check(await page.locator("#bulk-unshield-recipient").isVisible(), `${name}: portfolio exposes a bulk unshield destination`);
+  check((await page.locator("#bulk-unshield").textContent()) === "Unshield all", `${name}: portfolio exposes bulk unshield`);
 
   await page.locator('[data-tab="swap"]').click();
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
