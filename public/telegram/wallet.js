@@ -21632,6 +21632,7 @@ __export(wallet_exports, {
   storeEncryptedNote: () => storeEncryptedNote,
   storedMarketOrders: () => storedMarketOrders,
   storedNotes: () => storedNotes,
+  syncPrivateInbox: () => syncPrivateInbox,
   withdrawLive: () => withdrawLive
 });
 function bytesToBase64(bytes) {
@@ -21641,6 +21642,44 @@ function bytesToBase64(bytes) {
 }
 function base64ToBytes(value) {
   return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+}
+function base64Url(bytes) {
+  return bytesToBase64(bytes).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
+}
+function fromBase64Url(value) {
+  return base64ToBytes(value.replaceAll("-", "+").replaceAll("_", "/") + "===".slice((value.length + 3) % 4));
+}
+async function newReceiveIdentity() {
+  const ownerSecret = randomField();
+  const keys = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+  const privateKey = new Uint8Array(await crypto.subtle.exportKey("pkcs8", keys.privateKey));
+  const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", keys.publicKey));
+  return { ownerSecret: ownerSecret.toString(), privateKey: base64Url(privateKey), publicKey: base64Url(publicKey) };
+}
+async function receiveIdentityRecord(password, create2 = false) {
+  let encrypted;
+  try {
+    encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null");
+  } catch {
+  }
+  if (!encrypted && !create2) throw new Error("Create your private receive address first");
+  if (!encrypted) {
+    const identity2 = await newReceiveIdentity();
+    encrypted = await encryptText(JSON.stringify(identity2), password);
+    localStorage.setItem(RECEIVE_IDENTITY_KEY, JSON.stringify(encrypted));
+    return identity2;
+  }
+  const plaintext = await decryptText(encrypted, password);
+  if (plaintext.startsWith("{")) return JSON.parse(plaintext);
+  const identity = await newReceiveIdentity();
+  identity.ownerSecret = plaintext;
+  localStorage.setItem(RECEIVE_IDENTITY_KEY, JSON.stringify(await encryptText(JSON.stringify(identity), password)));
+  return identity;
+}
+function parsePrivateAddress(address) {
+  const [prefix, owner, encryptionKey] = String(address || "").split(":");
+  if (prefix !== "zktx1" || !/^0x[0-9a-fA-F]{64}$/.test(owner) || !encryptionKey) throw new Error("Enter a valid ZKTX private receive address");
+  return { owner, encryptionKey };
 }
 async function passwordKey(password, salt, usage) {
   if (password.length < 10) throw new Error("Use a password with at least 10 characters");
@@ -21708,29 +21747,29 @@ async function privatePortfolio(password) {
   return entries;
 }
 async function privateReceiveAddress(password) {
-  let encrypted;
-  try {
-    encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null");
-  } catch {
-  }
-  let ownerSecret;
-  if (encrypted) ownerSecret = BigInt(await decryptText(encrypted, password));
-  else {
-    ownerSecret = randomField();
-    encrypted = await encryptText(ownerSecret.toString(), password);
-    localStorage.setItem(RECEIVE_IDENTITY_KEY, JSON.stringify(encrypted));
-  }
-  return hex32(ownerPublicKey(ownerSecret));
+  const identity = await receiveIdentityRecord(password, true);
+  return `zktx1:${hex32(ownerPublicKey(BigInt(identity.ownerSecret)))}:${identity.publicKey}`;
 }
 async function receiveIdentity(password) {
-  let encrypted;
-  try {
-    encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null");
-  } catch {
-  }
-  if (!encrypted) throw new Error("Create your private receive address first");
-  const ownerSecret = BigInt(await decryptText(encrypted, password));
-  return { ownerSecret, ownerPublicKey: ownerPublicKey(ownerSecret) };
+  const identity = await receiveIdentityRecord(password);
+  const ownerSecret = BigInt(identity.ownerSecret);
+  return { ...identity, ownerSecret, ownerPublicKey: ownerPublicKey(ownerSecret) };
+}
+async function encryptInboxPayload(receipt, recipientPublicKey) {
+  const recipient = await crypto.subtle.importKey("raw", fromBase64Url(recipientPublicKey), { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const ephemeral = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "ECDH", public: recipient }, ephemeral.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder5.encode(receipt));
+  const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", ephemeral.publicKey));
+  return { version: 1, ephemeralKey: base64Url(publicKey), iv: base64Url(iv), ciphertext: base64Url(new Uint8Array(ciphertext)) };
+}
+async function decryptInboxPayload(envelope, privateKey) {
+  const ownKey = await crypto.subtle.importKey("pkcs8", fromBase64Url(privateKey), { name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
+  const ephemeral = await crypto.subtle.importKey("raw", fromBase64Url(envelope.ephemeralKey), { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const key = await crypto.subtle.deriveKey({ name: "ECDH", public: ephemeral }, ownKey, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64Url(envelope.iv) }, key, fromBase64Url(envelope.ciphertext));
+  return decoder2.decode(plaintext);
 }
 async function createEncryptedNote(input, password) {
   const privateNote = createNote(input);
@@ -22077,7 +22116,8 @@ async function privateSendLive({
   }
 }) {
   if (!window.snarkjs?.groth16) throw new Error("The browser proof engine did not load");
-  const recipientOwner = BigInt(recipientPrivateAddress);
+  const recipientAddress = parsePrivateAddress(recipientPrivateAddress);
+  const recipientOwner = BigInt(recipientAddress.owner);
   if (recipientOwner <= 0n || recipientOwner >= SNARK_FIELD) throw new Error("Enter a valid ZKTX private receive address");
   const status2 = await protocolStatus();
   if (!status2.contractsReady || !status2.relayerReady) throw new Error("The private-send relayer is not ready");
@@ -22180,7 +22220,10 @@ async function privateSendLive({
     commitment: recipientNote.commitment.toString(),
     index: recipientNote.index
   })));
-  return { transactionHash, receipt };
+  const envelope = await encryptInboxPayload(receipt, recipientAddress.encryptionKey);
+  const response = await fetch(apiUrl("/api/private-inbox"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ recipient: recipientAddress.owner.toLowerCase(), envelope, transactionHash }) });
+  if (!response.ok) throw new Error("Transfer confirmed, but automatic delivery could not be queued");
+  return { transactionHash };
 }
 async function importPrivateTransfer(receipt, password) {
   let payload;
@@ -22193,9 +22236,28 @@ async function importPrivateTransfer(receipt, password) {
   if (BigInt(payload.note.ownerPublicKey) !== identity.ownerPublicKey) throw new Error("This transfer was sent to a different ZKTX private address");
   const privateNote = parsePrivateNote(JSON.stringify({ ...payload, ownerSecret: identity.ownerSecret.toString() }));
   if (privateNote.commitment !== noteCommitment(privateNote.note)) throw new Error("The transfer receipt is invalid");
+  if (storedNotes().some((record) => record.commitment === privateNote.commitment.toString())) return null;
   const path = await loadMerklePath(privateNote.index);
   if (!noteMatchesPath(privateNote, path)) throw new Error("The private transfer is not indexed yet. Try again in a few seconds");
   return storeEncryptedNote(privateNote, password);
+}
+async function syncPrivateInbox(password) {
+  const identity = await receiveIdentity(password);
+  const recipient = hex32(identity.ownerPublicKey).toLowerCase();
+  const response = await fetch(apiUrl(`/api/private-inbox/${recipient}`));
+  if (!response.ok) throw new Error("Could not check for private transfers");
+  const { messages = [] } = await response.json();
+  let imported = 0;
+  for (const message of messages) {
+    try {
+      const receipt = await decryptInboxPayload(message.envelope, identity.privateKey);
+      const record = await importPrivateTransfer(receipt, password);
+      if (record) imported += 1;
+    } catch (error) {
+      if (!String(error?.message || "").includes("not indexed yet")) console.warn("private inbox", error);
+    }
+  }
+  return { imported };
 }
 async function withdrawLive({
   chainId,

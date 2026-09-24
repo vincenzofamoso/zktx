@@ -68,10 +68,7 @@ const actionCard = document.querySelector("#action-card");
 const privateRecipient = document.querySelector("#private-recipient");
 const receiveAddressAction = document.querySelector("#receive-address-action");
 const receiveAddress = document.querySelector("#receive-address");
-const transferReceipt = document.querySelector("#transfer-receipt");
-const importTransfer = document.querySelector("#import-transfer");
-const sendReceiptWrap = document.querySelector("#send-receipt-wrap");
-const sendReceipt = document.querySelector("#send-receipt");
+const syncPrivateInbox = document.querySelector("#sync-private-inbox");
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const quoteAssets = { weth: WETH, usdg: USDG };
@@ -83,7 +80,7 @@ let returnAfterShield = "send";
 const copy = {
   shield: ["Create a Zcash-style shielded note", "Keep your RH token. Its ownership becomes a private note. No ZEC or bridge required."],
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
-  receive: ["Receive a private note", "Share a private receive address and add the sender's receipt to your portfolio."],
+  receive: ["Receive a private note", "Share your private address. Received tokens appear automatically."],
   swap: ["Swap without exposing your wallet", "Choose Buy or Sell. The vault executes through approved RH liquidity and returns proceeds as private notes."],
   portfolio: ["Private portfolio", "View, manage and unshield the private balances held by this wallet."],
   withdraw: ["Unshield to a public wallet", "Convert a private note back into public tokens at the wallet you choose."],
@@ -539,14 +536,15 @@ receiveAddressAction.addEventListener("click", async () => {
   } catch (error) { result.textContent = error?.message || "Could not create the private receive address."; }
 });
 
-importTransfer.addEventListener("click", async () => {
+syncPrivateInbox.addEventListener("click", async () => {
   try {
-    await window.ZKTXWallet.importPrivateTransfer(transferReceipt.value, await notePassword());
-    transferReceipt.value = "";
+    syncPrivateInbox.disabled = true;
+    const synced = await window.ZKTXWallet.syncPrivateInbox(await notePassword());
     refreshLocalNotes();
     await showPortfolio();
-    result.textContent = "Private transfer imported into this portfolio.";
-  } catch (error) { result.textContent = error?.message || "Could not import the private transfer."; }
+    result.textContent = synced.imported ? `${synced.imported} received private transfer${synced.imported === 1 ? "" : "s"} added to your portfolio.` : "No new private transfers found.";
+  } catch (error) { result.textContent = error?.message || "Could not check for private transfers."; }
+  finally { syncPrivateInbox.disabled = false; }
 });
 
 function applySwapDirection() {
@@ -610,6 +608,9 @@ function selectTab(button) {
   if (button.closest(".tabs")) button.classList.add("selected");
   const portfolioFamily = ["portfolio", "shield", "withdraw", "send", "receive"].includes(button.dataset.tab);
   if (portfolioFamily) document.querySelector('.tabs button[data-tab="portfolio"]').classList.add("selected");
+  document.querySelectorAll("#portfolio-actions button").forEach((action) => action.classList.remove("selected"));
+  const portfolioAction = { shield: portfolioAdd, withdraw: portfolioRemove, send: portfolioSend, receive: portfolioReceive }[button.dataset.tab];
+  portfolioAction?.classList.add("selected");
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
   planner.hidden = button.dataset.tab !== "withdraw";
   swapFields.hidden = button.dataset.tab !== "swap";
@@ -634,6 +635,18 @@ function selectTab(button) {
   if (button.dataset.tab === "swap") {
     if (!document.querySelector(".quote-assets .selected")) document.querySelector('.quote-assets button[data-quote="weth"]').classList.add("selected");
     applySwapDirection();
+  }
+  if (button.dataset.tab === "receive") {
+    void (async () => {
+      try {
+        const password = await notePassword();
+        const address = await window.ZKTXWallet.privateReceiveAddress(password);
+        receiveAddress.hidden = false;
+        receiveAddress.textContent = address;
+        const synced = await window.ZKTXWallet.syncPrivateInbox(password);
+        if (synced.imported) { refreshLocalNotes(); result.textContent = `${synced.imported} received private transfer${synced.imported === 1 ? "" : "s"} added to your portfolio.`; }
+      } catch (error) { result.textContent = error?.message || "Could not load private receiving."; }
+    })();
   }
 }
 document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => selectTab(button)));
@@ -819,7 +832,7 @@ form.addEventListener("submit", async (event) => {
   }
   if (selected === "send") {
     try {
-      if (!/^0x[0-9a-fA-F]{64}$/.test(privateRecipient.value.trim())) throw new Error("Enter the recipient's ZKTX private receive address");
+      if (!/^zktx1:0x[0-9a-fA-F]{64}:[A-Za-z0-9_-]+$/.test(privateRecipient.value.trim())) throw new Error("Enter the recipient's complete ZKTX private receive address");
       startActivity();
       result.textContent = "Private Send started. Follow the live terminal below.";
       const sent = await window.ZKTXWallet.privateSendLive({
@@ -833,11 +846,8 @@ form.addEventListener("submit", async (event) => {
       });
       refreshLocalNotes();
       activityState.textContent = "Complete";
-      logActivity("Private Send completed. Share the receipt with the recipient.", "success");
-      sendReceiptWrap.hidden = false;
-      sendReceipt.value = sent.receipt;
-      await navigator.clipboard?.writeText(sent.receipt);
-      result.innerHTML = `Private transfer confirmed. The recipient receipt was copied. Send that receipt to the recipient so they can import it. <a href="https://robinhoodchain.blockscout.com/tx/${sent.transactionHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
+      logActivity("Private Send completed. The recipient can sync it automatically.", "success");
+      result.innerHTML = `Private transfer confirmed and delivered to the recipient's encrypted inbox. <a href="https://robinhoodchain.blockscout.com/tx/${sent.transactionHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
     } catch (error) {
       activityState.textContent = "Action needed";
       logActivity(error?.message || "Private Send stopped.", "error");

@@ -40,6 +40,15 @@ const v3Adapters = new Map([
 ]);
 const tokenCache = new Map();
 const walletAssetsCache = new Map();
+const inboxFile = process.env.ZKTX_INBOX_FILE || path.join(root, "data", "private-inbox.json");
+let privateInbox = {};
+try { privateInbox = JSON.parse(fs.readFileSync(inboxFile, "utf8")); } catch {}
+function savePrivateInbox() {
+  fs.mkdirSync(path.dirname(inboxFile), { recursive: true });
+  const temporary = `${inboxFile}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(privateInbox));
+  fs.renameSync(temporary, inboxFile);
+}
 const store = new StateStore(process.env.ZKTX_STATE_FILE || path.join(root, "data", "state.json"));
 await store.load();
 let indexer = null;
@@ -163,6 +172,24 @@ async function ensureRoute(tokenIn, tokenOut) {
 app.disable("x-powered-by");
 app.use(express.json({ limit: "128kb" }));
 app.use(express.static(path.join(root, "public"), { extensions: ["html"] }));
+
+app.post("/api/private-inbox", (req, res) => {
+  const { recipient, envelope, transactionHash } = req.body || {};
+  if (!/^0x[0-9a-f]{64}$/.test(recipient || "") || !/^0x[0-9a-fA-F]{64}$/.test(transactionHash || "")) return res.status(400).json({ error: "Invalid private delivery" });
+  if (!envelope || envelope.version !== 1 || !envelope.ephemeralKey || !envelope.iv || !envelope.ciphertext || envelope.ciphertext.length > 16_384) return res.status(400).json({ error: "Invalid encrypted envelope" });
+  const messages = privateInbox[recipient] || [];
+  if (!messages.some((message) => message.transactionHash.toLowerCase() === transactionHash.toLowerCase())) {
+    messages.push({ id: crypto.randomUUID(), envelope, transactionHash, createdAt: new Date().toISOString() });
+    privateInbox[recipient] = messages.slice(-100);
+    savePrivateInbox();
+  }
+  res.json({ delivered: true });
+});
+
+app.get("/api/private-inbox/:recipient", (req, res) => {
+  if (!/^0x[0-9a-f]{64}$/.test(req.params.recipient || "")) return res.status(400).json({ error: "Invalid private address" });
+  res.json({ messages: privateInbox[req.params.recipient] || [] });
+});
 
 const walletRpcMethods = new Set([
   "eth_blockNumber", "eth_call", "eth_chainId", "eth_estimateGas", "eth_feeHistory", "eth_gasPrice",
