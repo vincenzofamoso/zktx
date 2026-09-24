@@ -5,7 +5,7 @@ const result = document.querySelector("#form-result");
 const actionTitle = document.querySelector("#action-title");
 const actionCopy = document.querySelector("#action-copy");
 const localNotes = document.querySelector("#local-notes");
-const password = document.querySelector("#note-password");
+const legacyNotePassword = document.querySelector("#legacy-note-password");
 const token = document.querySelector("#token");
 const amount = document.querySelector("#amount");
 const tokenLabel = document.querySelector("#token-label");
@@ -62,6 +62,20 @@ let protocol = { mode: "preview", contractsReady: false, chainId: 4663, vaultAdd
 let payTokenMeta = null;
 let receiveTokenMeta = null;
 let activityLastMessage = "";
+let automaticNotePassword;
+
+async function notePassword() {
+  const legacy = legacyNotePassword?.value?.trim();
+  if (legacy?.length >= 10) return legacy;
+  if (automaticNotePassword) return automaticNotePassword;
+  if (!connected || !account || !window.ethereum) throw new Error("Connect your wallet first");
+  const message = `ZKTX private notes v1\nRobinhood Chain\n${account.toLowerCase()}`;
+  const encoded = `0x${[...new TextEncoder().encode(message)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  const signature = await window.ethereum.request({ method: "personal_sign", params: [encoded, account] });
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature)));
+  automaticNotePassword = [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return automaticNotePassword;
+}
 
 function startActivity() {
   activitySteps.replaceChildren();
@@ -186,10 +200,9 @@ amount.addEventListener("input", () => showConversion(amount, payTokenMeta, amou
 receiveAmount.addEventListener("input", () => showConversion(receiveAmount, receiveTokenMeta, receiveAmountUnits));
 
 async function showPortfolio() {
-  if (password.value.length < 10) { result.textContent = "Enter your private-note password first to decrypt the portfolio locally."; password.focus(); return; }
   portfolioToggle.disabled = true;
   try {
-    const notes = await window.ZKTXWallet.privatePortfolio(password.value);
+    const notes = await window.ZKTXWallet.privatePortfolio(await notePassword());
     portfolioList.replaceChildren();
     const grouped = new Map();
     for (const note of notes) {
@@ -217,7 +230,7 @@ async function showPortfolio() {
       }
       row.append(asset, balance, actions); portfolioList.append(row);
     }
-    if (!notes.length) portfolioList.textContent = "No notes unlocked. Check the password or shield a token first.";
+    if (!notes.length) portfolioList.textContent = "No shielded tokens found for this wallet.";
     portfolioList.hidden = false; portfolioToggle.textContent = "Refresh portfolio";
   } finally { portfolioToggle.disabled = false; }
 }
@@ -225,8 +238,7 @@ portfolioToggle.addEventListener("click", () => void showPortfolio());
 
 receiveAddressAction.addEventListener("click", async () => {
   try {
-    if (password.value.length < 10) throw new Error("Enter your private-note password first");
-    const address = await window.ZKTXWallet.privateReceiveAddress(password.value);
+    const address = await window.ZKTXWallet.privateReceiveAddress(await notePassword());
     receiveAddress.hidden = false;
     receiveAddress.textContent = address;
     await navigator.clipboard?.writeText(address);
@@ -236,8 +248,7 @@ receiveAddressAction.addEventListener("click", async () => {
 
 importTransfer.addEventListener("click", async () => {
   try {
-    if (password.value.length < 10) throw new Error("Enter your private-note password first");
-    await window.ZKTXWallet.importPrivateTransfer(transferReceipt.value, password.value);
+    await window.ZKTXWallet.importPrivateTransfer(transferReceipt.value, await notePassword());
     transferReceipt.value = "";
     refreshLocalNotes();
     await showPortfolio();
@@ -340,6 +351,7 @@ connect.addEventListener("click", async () => {
     return;
   }
   try {
+    automaticNotePassword = undefined;
     [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
     connected = Boolean(account);
     connect.textContent = connected ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet";
@@ -396,7 +408,7 @@ form.addEventListener("submit", async (event) => {
         asset: token.value,
         amount: payUnits,
         recipient,
-        password: password.value,
+        password: await notePassword(),
         onProgress: (message) => { result.textContent = message; },
       });
       refreshLocalNotes();
@@ -424,10 +436,11 @@ form.addEventListener("submit", async (event) => {
       if (!routeResponse.ok || !route.approved) throw new Error(route.error || "No executable RH liquidity route was found for this pair");
       logActivity("Approved Robinhood Chain liquidity route is ready.");
       if (!connected || !account) throw new Error("Connect your wallet before opening a market order");
+      const privateNoteKey = await notePassword();
       const orderInput = () => ({
         chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: token.value, amountIn: payUnits,
         assetOut: receiveToken.value, minimumAmountOut: receiveUnits,
-        deadline: BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value)), password: password.value,
+        deadline: BigInt(Math.floor(Date.now() / 1000) + Number(quoteLifetime.value)), password: privateNoteKey,
         onProgress: (message, details) => { logActivity(message, "done", details); },
       });
       let order;
@@ -439,7 +452,7 @@ form.addEventListener("submit", async (event) => {
         logActivity("Preparing the private swap balance from your wallet.");
         await window.ZKTXWallet.shieldLive({
           account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
-          asset: token.value, amount: payUnits, password: password.value,
+          asset: token.value, amount: payUnits, password: privateNoteKey,
           onProgress: (message, details) => { logActivity(message, "done", details); },
         });
         logActivity("Private swap balance ready. Opening the order.", "success");
@@ -476,7 +489,7 @@ form.addEventListener("submit", async (event) => {
         asset: token.value,
         amount: payUnits,
         recipientPrivateAddress: privateRecipient.value.trim(),
-        password: password.value,
+        password: await notePassword(),
         onProgress: (message, details) => logActivity(message, "done", details),
       });
       refreshLocalNotes();
@@ -506,7 +519,7 @@ form.addEventListener("submit", async (event) => {
     if (!protocol.contractsReady) throw new Error("The experimental live vault is not ready");
     const live = await window.ZKTXWallet.shieldLive({
       account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
-      asset: token.value, amount: payUnits, password: password.value,
+      asset: token.value, amount: payUnits, password: await notePassword(),
       onProgress: (message) => { result.textContent = message; },
     });
     refreshLocalNotes();
@@ -527,7 +540,7 @@ settleMarket.addEventListener("click", async () => {
     if (!pendingMarketOrder.value) throw new Error("Select a pending local market order");
     const settled = await window.ZKTXWallet.settleMarketOrderLive({
       orderId: pendingMarketOrder.value,
-      password: password.value,
+      password: await notePassword(),
       onProgress: (message, details) => { logActivity(message, "done", details); result.textContent = message; },
     });
     refreshLocalNotes();

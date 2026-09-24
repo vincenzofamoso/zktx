@@ -49,19 +49,20 @@
       <section id="review" hidden>
         <p class="step">2 OF 2 · REVIEW AND EXECUTE</p>
         <pre id="summary"></pre>
-        <label>Private-note password<input id="note-password" type="password" minlength="10" autocomplete="current-password" required /></label>
-        <small>Create this password when shielding. Use the same password later to trade or spend that private note. It never leaves this device.</small>
+        <small>Your private-note key is generated automatically from this wallet and remains on this device.</small>
+        <details><summary>Recover notes made with an older password</summary><label>Old private-note password<input id="legacy-review-password" type="password" autocomplete="current-password" /></label></details>
         <button id="authorize" hidden>Sign and execute transaction</button>
         <div id="execution-terminal" class="execution-terminal" hidden><div class="terminal-head"><span>● ZKTX EXECUTION</span><b id="execution-state">RUNNING</b></div><div id="execution-lines" class="terminal-lines"></div></div>
         <button id="claim" hidden>Claim to Shielded Portfolio</button>
       </section>
       <section id="dashboard" hidden>
         <p class="step">SHIELDED PORTFOLIO</p>
-        <label>Private-note password<input id="dashboard-password" type="password" minlength="10" autocomplete="current-password" /></label>
+        <small>Your wallet unlocks its shielded balances automatically.</small>
+        <details><summary>Recover notes made with an older password</summary><label>Old private-note password<input id="legacy-dashboard-password" type="password" autocomplete="current-password" /></label></details>
         <button id="refresh-dashboard">Load portfolio and pending swaps</button>
         <div id="dashboard-output"></div>
       </section>
     </main>
-    <script type="module" src="./wallet.js?v=4"></script>
+    <script type="module" src="./wallet.js?v=5"></script>
   </body>
 </html>

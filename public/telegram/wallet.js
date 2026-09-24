@@ -22587,6 +22587,19 @@ var activeAccount;
 var activeJob;
 var activeOrderId;
 var setupAccount;
+var automaticNotePassword;
+async function notePassword(legacySelector) {
+  const legacy = document.querySelector(legacySelector)?.value?.trim();
+  if (legacy?.length >= 10) return legacy;
+  if (!activeAccount) throw new Error("Unlock your wallet first");
+  if (automaticNotePassword) return automaticNotePassword;
+  const signature = await activeAccount.signMessage({ message: `ZKTX private notes v1
+Robinhood Chain
+${activeAccount.address.toLowerCase()}` });
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", utf8.encode(signature)));
+  automaticNotePassword = [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return automaticNotePassword;
+}
 async function db() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, 1);
@@ -22734,8 +22747,7 @@ async function settle(orderId, password, job = null) {
   return result;
 }
 async function execute(job) {
-  const password = document.querySelector("#note-password").value;
-  if (password.length < 10) throw new Error("Use a private-note password with at least 10 characters");
+  const password = await notePassword("#legacy-review-password");
   installLocalSigner(activeAccount);
   const protocol = await (await fetch("https://zktx.tech/api/status", { cache: "no-store" })).json();
   if (job.type === "shield") {
@@ -22784,8 +22796,7 @@ async function storeNewWallet(secret, showPrivateKey) {
   }
 }
 async function loadDashboard() {
-  const password = document.querySelector("#dashboard-password").value;
-  if (password.length < 10) throw new Error("Enter your private-note password");
+  const password = await notePassword("#legacy-dashboard-password");
   const output = document.querySelector("#dashboard-output");
   output.replaceChildren();
   const notes = await privatePortfolio2(password);
@@ -22842,6 +22853,7 @@ async function loadDashboard() {
 }
 async function ready(account) {
   activeAccount = account;
+  automaticNotePassword = void 0;
   document.querySelector("#import").hidden = true;
   document.querySelector("#unlock").hidden = true;
   document.querySelector("#wallet").hidden = false;
@@ -22885,14 +22897,14 @@ async function ready(account) {
       const claim = document.querySelector("#claim");
       claim.disabled = true;
       try {
-        await settle(activeOrderId, document.querySelector("#note-password").value, activeJob);
+        await settle(activeOrderId, await notePassword("#legacy-review-password"), activeJob);
         status("Claim complete. Your proceeds are in the Shielded Portfolio.");
       } catch (error) {
         log(error.message || "Claim failed", "error");
         claim.disabled = false;
       }
     };
-    status("Review the action, enter your private-note password, then press the yellow button.");
+    status("Review the action, then press the yellow button. Your wallet handles the private-note key automatically.");
   } else {
     document.querySelector("#dashboard").hidden = false;
     status("Wallet unlocked. Load your local Shielded Portfolio or resume a pending swap.");
