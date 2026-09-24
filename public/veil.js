@@ -56,6 +56,14 @@ const swapPrivateAssets = document.querySelector("#swap-private-assets");
 const swapPrivateAssetsList = document.querySelector("#swap-private-assets-list");
 const swapPrivateAssetsStatus = document.querySelector("#swap-private-assets-status");
 const swapPrivateRefresh = document.querySelector("#swap-private-refresh");
+const privateAssetsTitle = document.querySelector("#private-assets-title");
+const privateAssetsCopy = document.querySelector("#private-assets-copy");
+const portfolioActions = document.querySelector("#portfolio-actions");
+const portfolioAdd = document.querySelector("#portfolio-add");
+const portfolioRemove = document.querySelector("#portfolio-remove");
+const portfolioSend = document.querySelector("#portfolio-send");
+const portfolioReceive = document.querySelector("#portfolio-receive");
+const portfolioSwap = document.querySelector("#portfolio-swap");
 const actionCard = document.querySelector("#action-card");
 const privateRecipient = document.querySelector("#private-recipient");
 const receiveAddressAction = document.querySelector("#receive-address-action");
@@ -270,7 +278,10 @@ async function loadWalletAssets() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Wallet balances are unavailable");
     connectedWalletAssets = (payload.assets || []).sort((left, right) => left.symbol.localeCompare(right.symbol));
-    for (const asset of connectedWalletAssets) {
+    const visibleAssets = activeAction === "swap" && swapDirection === "buy"
+      ? connectedWalletAssets.filter((asset) => asset.address.toLowerCase() === token.value.toLowerCase())
+      : connectedWalletAssets;
+    for (const asset of visibleAssets) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "wallet-asset";
@@ -291,9 +302,11 @@ async function loadWalletAssets() {
       });
       walletAssetsList.append(button);
     }
-    walletAssetsStatus.textContent = connectedWalletAssets.length
-      ? `${connectedWalletAssets.length} token balance${connectedWalletAssets.length === 1 ? "" : "s"} found. Choose one to continue.${payload.truncated ? " Showing the first 100 indexed balances." : ""}`
-      : "No ERC-20 token balances were found in this wallet.";
+    walletAssetsStatus.textContent = visibleAssets.length
+      ? `${visibleAssets.length} usable token balance${visibleAssets.length === 1 ? "" : "s"} found. Choose one to continue.${payload.truncated ? " Showing the first 100 indexed balances." : ""}`
+      : activeAction === "swap" && swapDirection === "buy"
+        ? "No wrapped balance was found for this base asset. WETH buys may still wrap available RH ETH automatically."
+        : "No ERC-20 token balances were found in this wallet.";
   } catch (error) {
     connectedWalletAssets = [];
     walletAssetsStatus.textContent = error?.message || "Could not load wallet token balances.";
@@ -310,7 +323,9 @@ async function loadPrivateSwapAssets() {
   try {
     if (!connected || !account) throw new Error("Connect your wallet to open the Private Portfolio");
     const notes = await window.ZKTXWallet.privatePortfolio(await notePassword());
-    const eligible = swapDirection === "buy"
+    const eligible = activeAction === "send"
+      ? notes
+      : swapDirection === "buy"
       ? notes.filter((note) => note.asset.toLowerCase() === token.value.toLowerCase())
       : notes;
     for (const note of eligible) {
@@ -329,18 +344,20 @@ async function loadPrivateSwapAssets() {
         swapPrivateAssetsList.querySelector(".selected")?.classList.remove("selected");
         button.classList.add("selected");
         selectedWalletBalance = asset;
-        if (swapDirection === "sell") {
+        if (activeAction === "send" || swapDirection === "sell") {
           token.value = asset.address;
           token.dispatchEvent(new Event("change"));
         }
         amount.value = formatTokenAmount(asset.balance, asset.decimals);
         amount.dispatchEvent(new Event("input"));
-        swapPrivateAssetsStatus.textContent = `${asset.symbol} private note selected. This balance will trade directly from the Private Portfolio.`;
+        swapPrivateAssetsStatus.textContent = activeAction === "send"
+          ? `${asset.symbol} private note selected for Private Send.`
+          : `${asset.symbol} private note selected. This balance will trade directly from the Private Portfolio.`;
       });
       swapPrivateAssetsList.append(button);
     }
     swapPrivateAssetsStatus.textContent = eligible.length
-      ? `${eligible.length} spendable private note${eligible.length === 1 ? "" : "s"} available. Choose one to trade it directly.`
+      ? `${eligible.length} spendable private note${eligible.length === 1 ? "" : "s"} available. Choose one to ${activeAction === "send" ? "send" : "trade directly"}.`
       : swapDirection === "buy"
         ? "No private notes match the selected base asset. Choose Connected Wallet or add that asset to your Private Portfolio."
         : "No spendable private notes are available. Choose Connected Wallet to sell a public wallet balance.";
@@ -354,19 +371,22 @@ swapPrivateRefresh.addEventListener("click", () => void loadPrivateSwapAssets())
 
 function refreshSwapFundingSource() {
   const inSwap = activeAction === "swap";
+  const inSend = activeAction === "send";
   const usePortfolio = inSwap && swapSource === "portfolio";
-  const showWalletSellBalances = inSwap && swapSource === "wallet" && swapDirection === "sell";
-  swapPrivateAssets.hidden = !usePortfolio;
-  walletAssets.hidden = !(activeAction === "shield" || showWalletSellBalances);
-  walletAssetsTitle.textContent = activeAction === "shield" ? "Tokens in your connected wallet" : "Tokens available to sell";
-  const showShortcuts = activeAction === "shield" || showWalletSellBalances;
+  const showWalletBalances = inSwap && swapSource === "wallet";
+  swapPrivateAssets.hidden = !(usePortfolio || inSend);
+  privateAssetsTitle.textContent = inSend ? "Choose a private balance to send" : "Spendable Private Portfolio balances";
+  privateAssetsCopy.textContent = inSend ? "Private Send uses an existing shielded note." : "Choose a private note to trade without unshielding it.";
+  walletAssets.hidden = !(activeAction === "shield" || showWalletBalances);
+  walletAssetsTitle.textContent = activeAction === "shield" ? "Tokens in your connected wallet" : swapDirection === "sell" ? "Tokens available to sell" : "Base asset available to spend";
+  const showShortcuts = activeAction === "shield" || showWalletBalances;
   amountHalf.hidden = !showShortcuts;
   amountMax.hidden = !showShortcuts;
   if (inSwap) swapPrerequisite.textContent = usePortfolio
     ? "Choose an exact private note above. ZKTX trades it directly without returning it to your public wallet."
     : "Choose a connected-wallet balance. ZKTX shields the selected amount automatically, then opens the swap.";
   selectedWalletBalance = null;
-  if (showWalletSellBalances) void loadWalletAssets();
+  if (showWalletBalances) void loadWalletAssets();
 }
 
 let quoteRequest = 0;
@@ -588,6 +608,8 @@ function selectTab(button) {
   document.querySelector(".tabs .selected")?.classList.remove("selected");
   activeAction = button.dataset.tab;
   if (button.closest(".tabs")) button.classList.add("selected");
+  const portfolioFamily = ["portfolio", "shield", "withdraw", "send", "receive"].includes(button.dataset.tab);
+  if (portfolioFamily) document.querySelector('.tabs button[data-tab="portfolio"]').classList.add("selected");
   [actionTitle.textContent, actionCopy.textContent] = copy[button.dataset.tab];
   planner.hidden = button.dataset.tab !== "withdraw";
   swapFields.hidden = button.dataset.tab !== "swap";
@@ -596,6 +618,7 @@ function selectTab(button) {
   receiveFields.hidden = button.dataset.tab !== "receive";
   workflowGuide.hidden = button.dataset.tab !== "send";
   portfolioPanel.hidden = button.dataset.tab !== "portfolio";
+  portfolioActions.hidden = !portfolioFamily;
   const receiveMode = button.dataset.tab === "receive";
   const portfolioMode = button.dataset.tab === "portfolio";
   tokenField.hidden = receiveMode || portfolioMode;
@@ -614,8 +637,13 @@ function selectTab(button) {
   }
 }
 document.querySelectorAll(".tabs button").forEach((button) => button.addEventListener("click", () => selectTab(button)));
-document.querySelectorAll("#shield-action, #withdraw-action").forEach((button) => button.addEventListener("click", () => selectTab(button)));
+document.querySelectorAll("#shield-action, #withdraw-action, #send-action, #receive-action").forEach((button) => button.addEventListener("click", () => selectTab(button)));
 selectTab(document.querySelector(".tabs .selected"));
+portfolioAdd.addEventListener("click", () => { selectTab(document.querySelector("#shield-action")); void loadWalletAssets(); });
+portfolioRemove.addEventListener("click", () => { selectTab(document.querySelector('.tabs button[data-tab="portfolio"]')); void showPortfolio(); result.textContent = "Choose Unshield on one balance, or use Bulk Unshield for the full portfolio."; });
+portfolioSend.addEventListener("click", () => { selectTab(document.querySelector("#send-action")); void loadPrivateSwapAssets(); });
+portfolioReceive.addEventListener("click", () => selectTab(document.querySelector("#receive-action")));
+portfolioSwap.addEventListener("click", () => selectTab(document.querySelector('.tabs button[data-tab="swap"]')));
 fundAction.addEventListener("click", () => {
   returnAfterShield = activeAction === "swap" ? "swap" : "send";
   selectTab(document.querySelector("#shield-action"));
@@ -676,7 +704,7 @@ connect.addEventListener("click", async () => {
     result.textContent = protocol.contractsReady
       ? "Wallet connected. Your private workspace is ready."
       : "Wallet connected, but the private workspace is temporarily unavailable.";
-    if (activeAction === "shield" || (activeAction === "swap" && swapSource === "wallet" && swapDirection === "sell")) await loadWalletAssets();
+    if (activeAction === "shield" || (activeAction === "swap" && swapSource === "wallet")) await loadWalletAssets();
   } catch (error) {
     result.textContent = error?.message || "Wallet connection was cancelled.";
   }

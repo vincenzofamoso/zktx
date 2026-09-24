@@ -40,9 +40,10 @@ async function runViewport(name, viewport) {
   check(await page.locator("#amount-half").isVisible() && await page.locator("#amount-max").isVisible(), `${name}: wallet-funded sells offer Half and Max`);
   check(await page.locator("#portfolio-panel").isHidden(), `${name}: portfolio stays out of transaction forms`);
   const tabRows = await page.locator(".tabs button").evaluateAll((buttons) => new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size);
-  check(tabRows === 1, `${name}: all four dapp tabs stay on one row`);
+  check(tabRows === 1 && await page.locator(".tabs button").count() === 2, `${name}: Swap and Portfolio remain the only primary tabs`);
   await page.locator('[data-tab="portfolio"]').click();
   check(await page.locator("#portfolio-panel").isVisible(), `${name}: portfolio has its own tab`);
+  check(await page.locator("#portfolio-actions button").count() === 5, `${name}: portfolio exposes balance, transfer and swap actions`);
   check(await page.locator("#action-submit").isHidden(), `${name}: portfolio tab hides transaction actions`);
   check(await page.locator("#bulk-unshield-recipient").isVisible(), `${name}: portfolio exposes a bulk unshield destination`);
   check((await page.locator("#bulk-unshield").textContent()) === "Unshield all", `${name}: portfolio exposes bulk unshield`);
@@ -57,16 +58,20 @@ async function runViewport(name, viewport) {
   check((await page.locator("#settle-market").textContent()) === "Add completed swap to private portfolio", `${name}: settlement action remains independently bound`);
   await page.locator("#withdraw-action").evaluate((button) => button.click());
   check(await page.locator("#withdrawal-planner").isVisible(), `${name}: portfolio withdrawal flow appears`);
-  await page.locator('[data-tab="send"]').click();
+  await page.locator('[data-tab="portfolio"]').click();
+  await page.locator("#portfolio-send").click();
   check((await page.locator("#action-title").textContent()) === "Send a private note", `${name}: send copy updates`);
+  check(await page.locator("#swap-private-assets").isVisible(), `${name}: Private Send chooses an existing private balance`);
   check(await page.locator("#private-recipient").isVisible(), `${name}: private send asks for the recipient private address`);
-  check(!(await page.locator(".private-receive-tools").getAttribute("open")), `${name}: private-transfer receiving tools stay collapsed by default`);
+  await page.locator("#portfolio-receive").click();
+  check(await page.locator("#receive-fields").isVisible(), `${name}: Private Receive lives inside Portfolio`);
   check((await page.locator(".private-receive-tools").textContent()).includes("Share your private address"), `${name}: private receive explains how to receive`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
 
-  await page.locator("#fund-action").click();
+  await page.locator('[data-tab="portfolio"]').click();
+  await page.locator("#portfolio-add").click();
   check(await page.locator("#wallet-assets").isVisible(), `${name}: add private balance shows connected-wallet assets`);
   check(await page.locator("#amount-half").isVisible() && await page.locator("#amount-max").isVisible(), `${name}: shield amount offers Half and Max controls`);
   check(Number.parseFloat(await page.locator("#token-label").evaluate((element) => getComputedStyle(element).fontSize)) >= 12, `${name}: dapp helper text remains readable`);

@@ -20,7 +20,7 @@
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX Dapp | private RH transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
-    <link rel="stylesheet" href="./veil.css?v=21" />
+    <link rel="stylesheet" href="./veil.css?v=22" />
     <link rel="stylesheet" href="./withdrawal.css" />
     <link rel="stylesheet" href="./hero-logo.css" />
     <link rel="stylesheet" href="./usp.css" />
@@ -70,9 +70,10 @@
         </div>
 
         <div class="terminal">
-          <div class="tabs" role="tablist"><button class="selected" data-tab="swap">Private Swap</button><button data-tab="send">Private Send</button><button data-tab="receive">Private Receive</button><button data-tab="portfolio">Portfolio</button></div>
+          <div class="tabs" role="tablist"><button class="selected" data-tab="swap">Private Swap</button><button data-tab="portfolio">Portfolio</button></div>
           <form id="veil-form">
-            <button id="shield-action" data-tab="shield" type="button" hidden></button><button id="withdraw-action" data-tab="withdraw" type="button" hidden></button>
+            <button id="shield-action" data-tab="shield" type="button" hidden></button><button id="withdraw-action" data-tab="withdraw" type="button" hidden></button><button id="send-action" data-tab="send" type="button" hidden></button><button id="receive-action" data-tab="receive" type="button" hidden></button>
+            <section id="portfolio-actions" class="portfolio-actions" hidden><button id="portfolio-add" type="button"><b>Add private balance</b><small>Shield tokens from your wallet</small></button><button id="portfolio-remove" type="button"><b>Remove private balance</b><small>Unshield to a public wallet</small></button><button id="portfolio-send" type="button"><b>Private Send</b><small>Send a shielded note</small></button><button id="portfolio-receive" type="button"><b>Private Receive</b><small>Receive a shielded note</small></button><button id="portfolio-swap" type="button"><b>Private Swap</b><small>Trade without unshielding</small></button></section>
             <section id="workflow-guide" class="workflow-guide"><div><b>1. Add a private balance</b><small>Shield the exact token amount you want to send.</small></div><button id="fund-action" class="secondary-action" type="button">Add private balance</button><div><b>2. Complete Private Send</b><small>Return here to send from that private balance.</small></div></section>
             <section id="wallet-assets" class="wallet-assets" hidden><div class="wallet-assets-heading"><div><b id="wallet-assets-title">Tokens in your connected wallet</b><small id="wallet-assets-account">Connect a wallet to load balances.</small></div><button id="wallet-assets-refresh" class="secondary-action" type="button">Refresh</button></div><div id="wallet-assets-list"></div><p id="wallet-assets-status" class="field-note"></p></section>
             <section id="receive-fields" class="private-receive-tools" hidden><div class="portfolio-heading"><span class="portfolio-icon">↓</span><div><b>Receive privately</b><small>Share your private address, then add the sender's receipt when it arrives.</small></div></div><button id="receive-address-action" class="secondary-action" type="button">Copy my private receive address</button><output id="receive-address" hidden></output><label>Transfer receipt from the sender<textarea id="transfer-receipt" rows="2" placeholder="Paste the private transfer receipt"></textarea></label><button id="import-transfer" class="submit" type="button">Add received tokens to portfolio</button></section>
@@ -92,7 +93,7 @@
               <div class="quote-assets"><button type="button" data-quote="weth"><b>WETH</b><small>Wrapped RH ETH</small></button><button type="button" data-quote="usdg"><b>USDG</b><small>Dollar settlement</small></button></div>
               <p class="field-note">Buying with WETH can use native RH ETH. ZKTX wraps the required amount in your wallet before shielding.</p>
             </div>
-            <section id="swap-private-assets" class="wallet-assets" hidden><div class="wallet-assets-heading"><div><b>Spendable Private Portfolio balances</b><small>Choose a private note to trade without unshielding it.</small></div><button id="swap-private-refresh" class="secondary-action" type="button">Load balances</button></div><div id="swap-private-assets-list"></div><p id="swap-private-assets-status" class="field-note">Your balances are decrypted only in this browser.</p></section>
+            <section id="swap-private-assets" class="wallet-assets" hidden><div class="wallet-assets-heading"><div><b id="private-assets-title">Spendable Private Portfolio balances</b><small id="private-assets-copy">Choose a private note to trade without unshielding it.</small></div><button id="swap-private-refresh" class="secondary-action" type="button">Load balances</button></div><div id="swap-private-assets-list"></div><p id="swap-private-assets-status" class="field-note">Your balances are decrypted only in this browser.</p></section>
             <label id="token-field"><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
             <label id="amount-field"><span id="amount-label">Amount to shield</span><div class="amount-entry"><input id="amount" inputmode="decimal" placeholder="Enter amount" /><button id="amount-half" type="button">Half</button><button id="amount-max" type="button">Max</button></div><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
@@ -148,6 +149,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=8"></script>
-    <script type="module" src="./veil.js?v=22"></script>
+    <script type="module" src="./veil.js?v=23"></script>
   </body>
 </html>
