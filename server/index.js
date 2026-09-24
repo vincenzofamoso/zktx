@@ -249,6 +249,29 @@ app.get("/api/dex-price/:address", async (req, res) => {
   }
 });
 
+app.post("/api/swap-quote", async (req, res) => {
+  const { tokenIn, tokenOut, amountIn } = req.body || {};
+  if (!/^0x[0-9a-fA-F]{40}$/.test(tokenIn || "") || !/^0x[0-9a-fA-F]{40}$/.test(tokenOut || "") || tokenIn.toLowerCase() === tokenOut.toLowerCase()) {
+    return res.status(400).json({ error: "Invalid quote pair" });
+  }
+  if (!/^\d+$/.test(String(amountIn || "")) || BigInt(amountIn) <= 0n) return res.status(400).json({ error: "Invalid quote amount" });
+  try {
+    const response = await fetch(AGGREGATOR_QUOTE_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kind: "price", sellToken: tokenIn, buyToken: tokenOut, sellAmount: String(amountIn), taker: AGGREGATOR_ADAPTER, slippageBps: 100 }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    const quote = await response.json();
+    if (!response.ok || quote.liquidityAvailable !== true || BigInt(quote.buyAmount || 0) <= 0n) {
+      return res.status(422).json({ error: quote.error || "No executable live route quote is available" });
+    }
+    return res.json({ amountIn: String(amountIn), amountOut: String(quote.buyAmount), source: "Live RH route" });
+  } catch {
+    return res.status(502).json({ error: "The live route quote is temporarily unavailable" });
+  }
+});
+
 app.get("/api/route/:tokenIn/:tokenOut", async (req, res) => {
   const { tokenIn, tokenOut } = req.params;
   if (!vaultAddress || !/^0x[0-9a-fA-F]{40}$/.test(tokenIn) || !/^0x[0-9a-fA-F]{40}$/.test(tokenOut) || tokenIn.toLowerCase() === tokenOut.toLowerCase()) {

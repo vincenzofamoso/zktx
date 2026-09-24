@@ -213,6 +213,7 @@ priceDeviation.addEventListener("input", () => void updateDexQuote());
 
 let quoteRequest = 0;
 async function updateDexQuote() {
+  if (activeAction === "swap") submit.disabled = true;
   if (activeAction !== "swap" || !payTokenMeta || !receiveTokenMeta || !amount.value.trim()) return;
   const deviation = Number(priceDeviation.value);
   if (!Number.isFinite(deviation) || deviation < 0.1 || deviation > 25) {
@@ -222,6 +223,7 @@ async function updateDexQuote() {
     return;
   }
   const request = ++quoteRequest;
+  submit.disabled = true;
   receiveAmountUnits.textContent = "Reading current prices from Dexscreener...";
   receiveAmountUnits.className = "token-meta";
   try {
@@ -236,13 +238,27 @@ async function updateDexQuote() {
     const marketOutput = input * Number(payPrice.priceUsd) / Number(receivePrice.priceUsd);
     const protectedOutput = marketOutput * (1 - deviation / 100);
     if (!Number.isFinite(protectedOutput) || protectedOutput <= 0) throw new Error("Dexscreener could not produce a valid quote");
+    const payUnits = parseTokenAmount(amount.value, payTokenMeta.decimals);
+    const buying = swapDirection === "buy";
+    const routeInput = buying ? payUnits * 9_850n / 10_000n : payUnits;
+    const routeResponse = await fetch("./api/swap-quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenIn: token.value, tokenOut: receiveToken.value, amountIn: String(routeInput) }) });
+    const routeQuote = await routeResponse.json();
+    if (!routeResponse.ok) throw new Error(routeQuote.error || "Live route quote unavailable");
+    const grossRouteOutput = BigInt(routeQuote.amountOut);
+    const netRouteOutput = buying ? grossRouteOutput : grossRouteOutput * 9_850n / 10_000n;
+    const routeOutput = Number(formatTokenAmount(netRouteOutput, receiveTokenMeta.decimals));
+    const unfavorableDeviation = Math.max(0, (marketOutput - routeOutput) / marketOutput * 100);
     if (request !== quoteRequest) return;
     receiveAmount.value = protectedOutput.toFixed(Math.min(receiveTokenMeta.decimals, 12)).replace(/0+$/, "").replace(/\.$/, "");
-    receiveAmountUnits.textContent = `Current estimate: ${marketOutput.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${receiveTokenMeta.symbol}. Protected minimum at ${deviation}% deviation: ${receiveAmount.value} ${receiveTokenMeta.symbol}.`;
-    receiveAmountUnits.className = "token-meta loaded";
+    const executable = unfavorableDeviation <= deviation;
+    const movement = routeOutput >= marketOutput ? `${Math.abs((routeOutput - marketOutput) / marketOutput * 100).toFixed(2)}% favorable` : `${unfavorableDeviation.toFixed(2)}% worse`;
+    receiveAmountUnits.textContent = `Dexscreener reference: ${marketOutput.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${receiveTokenMeta.symbol}. Live route: ${routeOutput.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${receiveTokenMeta.symbol} (${movement}). ${executable ? `Protected minimum: ${receiveAmount.value} ${receiveTokenMeta.symbol}.` : `This exceeds your ${deviation}% limit, so submission is blocked.`}`;
+    receiveAmountUnits.className = executable ? "token-meta loaded" : "token-meta error";
+    submit.disabled = !executable;
   } catch (error) {
     if (request !== quoteRequest) return;
     receiveAmount.value = "";
+    submit.disabled = true;
     receiveAmountUnits.textContent = error.message || "Dexscreener price unavailable for this pair.";
     receiveAmountUnits.className = "token-meta error";
   }
@@ -367,6 +383,7 @@ function selectTab(button) {
   amountField.hidden = receiveMode;
   actionCard.hidden = receiveMode;
   submit.hidden = receiveMode;
+  submit.disabled = button.dataset.tab === "swap";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
