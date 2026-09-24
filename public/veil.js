@@ -30,6 +30,7 @@ const marketSettlement = document.querySelector("#market-settlement");
 const swapPrerequisite = document.querySelector("#swap-prerequisite");
 const portfolioToggle = document.querySelector("#portfolio-toggle");
 const portfolioList = document.querySelector("#portfolio-list");
+const portfolioPanel = document.querySelector("#portfolio-panel");
 const activityTerminal = document.querySelector("#activity-terminal");
 const activitySteps = document.querySelector("#activity-steps");
 const activityState = document.querySelector("#activity-state");
@@ -61,6 +62,7 @@ const copy = {
   send: ["Send a private note", "Commitments hide ownership while a nullifier prevents the note from being spent twice."],
   receive: ["Receive a private note", "Share a private receive address and add the sender's receipt to your portfolio."],
   swap: ["Swap without exposing your wallet", "Choose Buy or Sell. The vault executes through approved RH liquidity and returns proceeds as private notes."],
+  portfolio: ["Private portfolio", "View, manage and unshield the private balances held by this wallet."],
   withdraw: ["Unshield to a public wallet", "Convert a private note back into public tokens at the wallet you choose."],
 };
 
@@ -379,11 +381,13 @@ function selectTab(button) {
   sendFields.hidden = button.dataset.tab !== "send";
   receiveFields.hidden = button.dataset.tab !== "receive";
   workflowGuide.hidden = button.dataset.tab !== "send";
+  portfolioPanel.hidden = button.dataset.tab !== "portfolio";
   const receiveMode = button.dataset.tab === "receive";
-  tokenField.hidden = receiveMode;
-  amountField.hidden = receiveMode;
-  actionCard.hidden = receiveMode;
-  submit.hidden = receiveMode;
+  const portfolioMode = button.dataset.tab === "portfolio";
+  tokenField.hidden = receiveMode || portfolioMode;
+  amountField.hidden = receiveMode || portfolioMode;
+  actionCard.hidden = receiveMode || portfolioMode;
+  submit.hidden = receiveMode || portfolioMode;
   submit.disabled = button.dataset.tab === "swap";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
