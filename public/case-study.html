@@ -23,7 +23,6 @@
       <section><p class="kicker">DEPLOYMENT</p><h2>Contracts used in the run</h2><div class="contract-grid" id="contracts"></div></section>
       <section><p class="kicker">TRANSACTION LOG</p><h2>Follow every state transition</h2><div class="tx-list" id="transactions"></div></section>
       <section><p class="kicker">FINAL ASSERTIONS</p><h2>What was independently checked</h2><div class="check-grid" id="checks"></div></section>
-      <section><p class="kicker">A REAL TEST FINDING</p><h2>The EVM rejected a bad setup that JavaScript accepted.</h2><div class="notice finding"><b>Found and repaired before any deposit</b><span>The first development Powers of Tau file lacked a phase-one contribution and produced degenerate verifier points. Offchain JavaScript verification returned true, while both a local EVM and Robinhood Chain returned false. Simulation prevented the deposit from broadcasting. The setup script was fixed, all keys and verifiers were regenerated, the corrected verifier was proven locally, and only then was the successful mainnet run executed.</span></div></section>
     </main>
     <footer><span>ZKTX CASE STUDY</span><p>Verifiable evidence, explicit limitations, no hidden failures.</p></footer>
     <script type="module" src="./case-study.js"></script>
