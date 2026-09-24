@@ -32,6 +32,8 @@ async function runViewport(name, viewport) {
   check(await page.locator(".terminal").isVisible(), `${name}: dapp workspace is visible`);
   check((await page.locator("#action-title").textContent())?.includes("private note"), `${name}: private-send workspace initializes`);
   check(await page.locator("#portfolio-panel").isHidden(), `${name}: portfolio stays out of transaction forms`);
+  const tabRows = await page.locator(".tabs button").evaluateAll((buttons) => new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size);
+  check(tabRows === 1, `${name}: all four dapp tabs stay on one row`);
   await page.locator('[data-tab="portfolio"]').click();
   check(await page.locator("#portfolio-panel").isVisible(), `${name}: portfolio has its own tab`);
   check(await page.locator("#action-submit").isHidden(), `${name}: portfolio tab hides transaction actions`);
