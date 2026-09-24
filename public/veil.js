@@ -47,10 +47,15 @@ const amountField = document.querySelector("#amount-field");
 const amountHalf = document.querySelector("#amount-half");
 const amountMax = document.querySelector("#amount-max");
 const walletAssets = document.querySelector("#wallet-assets");
+const walletAssetsTitle = document.querySelector("#wallet-assets-title");
 const walletAssetsAccount = document.querySelector("#wallet-assets-account");
 const walletAssetsList = document.querySelector("#wallet-assets-list");
 const walletAssetsStatus = document.querySelector("#wallet-assets-status");
 const walletAssetsRefresh = document.querySelector("#wallet-assets-refresh");
+const swapPrivateAssets = document.querySelector("#swap-private-assets");
+const swapPrivateAssetsList = document.querySelector("#swap-private-assets-list");
+const swapPrivateAssetsStatus = document.querySelector("#swap-private-assets-status");
+const swapPrivateRefresh = document.querySelector("#swap-private-refresh");
 const actionCard = document.querySelector("#action-card");
 const privateRecipient = document.querySelector("#private-recipient");
 const receiveAddressAction = document.querySelector("#receive-address-action");
@@ -63,6 +68,7 @@ const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const quoteAssets = { weth: WETH, usdg: USDG };
 let swapDirection = "buy";
+let swapSource = "portfolio";
 let activeAction = "send";
 let returnAfterShield = "send";
 
@@ -222,7 +228,9 @@ function formatTokenAmount(value, decimals) {
 
 token.addEventListener("change", async () => {
   payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta);
-  selectedWalletBalance = connectedWalletAssets.find((asset) => asset.address.toLowerCase() === token.value.trim().toLowerCase()) || null;
+  const selectedAddress = token.value.trim().toLowerCase();
+  const keepPrivateSelection = activeAction === "swap" && swapSource === "portfolio" && selectedWalletBalance?.address.toLowerCase() === selectedAddress;
+  if (!keepPrivateSelection) selectedWalletBalance = connectedWalletAssets.find((asset) => asset.address.toLowerCase() === selectedAddress) || null;
   showConversion(amount, payTokenMeta, amountUnits);
   await updateDexQuote();
 });
@@ -279,7 +287,7 @@ async function loadWalletAssets() {
         token.dispatchEvent(new Event("change"));
         amount.value = "";
         amount.focus();
-        walletAssetsStatus.textContent = `${asset.symbol} selected. Enter an amount or choose Half or Max.`;
+        walletAssetsStatus.textContent = `${asset.symbol} selected. Enter an amount or choose Half or Max.${activeAction === "swap" ? " ZKTX will shield it automatically before selling." : ""}`;
       });
       walletAssetsList.append(button);
     }
@@ -294,6 +302,72 @@ async function loadWalletAssets() {
   }
 }
 walletAssetsRefresh.addEventListener("click", () => void loadWalletAssets());
+
+async function loadPrivateSwapAssets() {
+  swapPrivateRefresh.disabled = true;
+  swapPrivateAssetsList.replaceChildren();
+  swapPrivateAssetsStatus.textContent = "Decrypting spendable private balances in this browser…";
+  try {
+    if (!connected || !account) throw new Error("Connect your wallet to open the Private Portfolio");
+    const notes = await window.ZKTXWallet.privatePortfolio(await notePassword());
+    const eligible = swapDirection === "buy"
+      ? notes.filter((note) => note.asset.toLowerCase() === token.value.toLowerCase())
+      : notes;
+    for (const note of eligible) {
+      const response = await fetch(`./api/token/${note.asset}`);
+      const metadata = response.ok ? await response.json() : { name: "Unknown token", symbol: `${note.asset.slice(0, 6)}…`, decimals: 0 };
+      const asset = { address: note.asset, name: metadata.name, symbol: metadata.symbol, decimals: metadata.decimals, balance: String(note.amount) };
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "wallet-asset";
+      const identity = document.createElement("span");
+      const symbol = document.createElement("b"); symbol.textContent = asset.symbol;
+      const name = document.createElement("small"); name.textContent = asset.name;
+      const balance = document.createElement("strong"); balance.textContent = formatTokenAmount(asset.balance, asset.decimals);
+      identity.append(symbol, name); button.append(identity, balance);
+      button.addEventListener("click", () => {
+        swapPrivateAssetsList.querySelector(".selected")?.classList.remove("selected");
+        button.classList.add("selected");
+        selectedWalletBalance = asset;
+        if (swapDirection === "sell") {
+          token.value = asset.address;
+          token.dispatchEvent(new Event("change"));
+        }
+        amount.value = formatTokenAmount(asset.balance, asset.decimals);
+        amount.dispatchEvent(new Event("input"));
+        swapPrivateAssetsStatus.textContent = `${asset.symbol} private note selected. This balance will trade directly from the Private Portfolio.`;
+      });
+      swapPrivateAssetsList.append(button);
+    }
+    swapPrivateAssetsStatus.textContent = eligible.length
+      ? `${eligible.length} spendable private note${eligible.length === 1 ? "" : "s"} available. Choose one to trade it directly.`
+      : swapDirection === "buy"
+        ? "No private notes match the selected base asset. Choose Connected Wallet or add that asset to your Private Portfolio."
+        : "No spendable private notes are available. Choose Connected Wallet to sell a public wallet balance.";
+  } catch (error) {
+    swapPrivateAssetsStatus.textContent = error?.message || "Could not open private balances.";
+  } finally {
+    swapPrivateRefresh.disabled = false;
+  }
+}
+swapPrivateRefresh.addEventListener("click", () => void loadPrivateSwapAssets());
+
+function refreshSwapFundingSource() {
+  const inSwap = activeAction === "swap";
+  const usePortfolio = inSwap && swapSource === "portfolio";
+  const showWalletSellBalances = inSwap && swapSource === "wallet" && swapDirection === "sell";
+  swapPrivateAssets.hidden = !usePortfolio;
+  walletAssets.hidden = !(activeAction === "shield" || showWalletSellBalances);
+  walletAssetsTitle.textContent = activeAction === "shield" ? "Tokens in your connected wallet" : "Tokens available to sell";
+  const showShortcuts = activeAction === "shield" || showWalletSellBalances;
+  amountHalf.hidden = !showShortcuts;
+  amountMax.hidden = !showShortcuts;
+  if (inSwap) swapPrerequisite.textContent = usePortfolio
+    ? "Choose an exact private note above. ZKTX trades it directly without returning it to your public wallet."
+    : "Choose a connected-wallet balance. ZKTX shields the selected amount automatically, then opens the swap.";
+  selectedWalletBalance = null;
+  if (showWalletSellBalances) void loadWalletAssets();
+}
 
 let quoteRequest = 0;
 async function updateDexQuote() {
@@ -461,13 +535,22 @@ function applySwapDirection() {
   const address = quoteAssets[quote];
   if (swapDirection === "buy") { token.value = address; token.disabled = true; receiveToken.disabled = false; tokenLabel.textContent = "You pay with"; priceProtectionCopy.innerHTML = "<b>Buy protection:</b> A cheaper price is always accepted. The order is blocked only when the live price is higher than your selected limit."; }
   else { receiveToken.value = address; receiveToken.disabled = true; token.disabled = false; tokenLabel.textContent = "Token you sell"; priceProtectionCopy.innerHTML = "<b>Sell protection:</b> A higher price is always accepted. The order is blocked only when the live price is lower than your selected limit."; }
+  swapPrivateAssetsList.replaceChildren();
+  swapPrivateAssetsStatus.textContent = "Load your spendable private balances for this trade direction.";
   token.dispatchEvent(new Event("change")); receiveToken.dispatchEvent(new Event("change"));
+  refreshSwapFundingSource();
 }
 document.querySelectorAll(".swap-direction button").forEach((button) => button.addEventListener("click", () => {
   document.querySelector(".swap-direction .selected")?.classList.remove("selected"); button.classList.add("selected"); swapDirection = button.dataset.direction; applySwapDirection();
 }));
 document.querySelectorAll(".quote-assets button").forEach((button) => button.addEventListener("click", () => {
   document.querySelector(".quote-assets .selected")?.classList.remove("selected"); button.classList.add("selected"); applySwapDirection();
+}));
+document.querySelectorAll(".swap-source button").forEach((button) => button.addEventListener("click", () => {
+  document.querySelector(".swap-source .selected")?.classList.remove("selected");
+  button.classList.add("selected");
+  swapSource = button.dataset.source;
+  refreshSwapFundingSource();
 }));
 
 function refreshLocalNotes() {
@@ -489,9 +572,9 @@ function refreshLocalNotes() {
   marketSettlement.hidden = pending.length === 0;
   if (pending.length) pendingMarketOrder.value = pending[0].orderId;
   settleMarket.disabled = pending.length === 0;
-  swapPrerequisite.textContent = count === 0
-    ? "No matching private balance yet. ZKTX will automatically shield the input amount when you submit."
-    : "ZKTX will use a matching private balance, or automatically shield the exact input amount if needed.";
+  if (activeAction === "swap") swapPrerequisite.textContent = swapSource === "portfolio"
+    ? "Choose an exact private note above. ZKTX trades it directly without returning it to your public wallet."
+    : "Choose a connected-wallet balance. ZKTX shields the selected amount automatically, then opens the swap.";
 }
 
 pendingMarketOrder.addEventListener("change", () => { settleMarket.disabled = !pendingMarketOrder.value; });
@@ -513,15 +596,13 @@ function selectTab(button) {
   receiveFields.hidden = button.dataset.tab !== "receive";
   workflowGuide.hidden = button.dataset.tab !== "send";
   portfolioPanel.hidden = button.dataset.tab !== "portfolio";
-  walletAssets.hidden = button.dataset.tab !== "shield";
   const receiveMode = button.dataset.tab === "receive";
   const portfolioMode = button.dataset.tab === "portfolio";
   tokenField.hidden = receiveMode || portfolioMode;
   amountField.hidden = receiveMode || portfolioMode;
   actionCard.hidden = receiveMode || portfolioMode;
   submit.hidden = receiveMode || portfolioMode;
-  amountHalf.hidden = button.dataset.tab !== "shield";
-  amountMax.hidden = button.dataset.tab !== "shield";
+  refreshSwapFundingSource();
   submit.disabled = button.dataset.tab === "swap";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
@@ -595,7 +676,7 @@ connect.addEventListener("click", async () => {
     result.textContent = protocol.contractsReady
       ? "Wallet connected. Your private workspace is ready."
       : "Wallet connected, but the private workspace is temporarily unavailable.";
-    if (activeAction === "shield") await loadWalletAssets();
+    if (activeAction === "shield" || (activeAction === "swap" && swapSource === "wallet" && swapDirection === "sell")) await loadWalletAssets();
   } catch (error) {
     result.textContent = error?.message || "Wallet connection was cancelled.";
   }
@@ -662,11 +743,8 @@ form.addEventListener("submit", async (event) => {
       });
       let order;
       let submittedOrder = orderInput();
-      try {
-        order = await window.ZKTXWallet.openMarketOrderLive(submittedOrder);
-      } catch (error) {
-        if (!String(error?.message || "").includes("No unspent local note exactly matches")) throw error;
-        logActivity("Preparing the private swap balance from your wallet.");
+      if (swapSource === "wallet") {
+        logActivity("Shielding the selected connected-wallet balance before trading.");
         await window.ZKTXWallet.shieldLive({
           account, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress,
           asset: token.value, amount: payUnits, password: privateNoteKey,
@@ -675,6 +753,15 @@ form.addEventListener("submit", async (event) => {
         logActivity("Private swap balance ready. Opening the order.", "success");
         submittedOrder = orderInput();
         order = await window.ZKTXWallet.openMarketOrderLive(submittedOrder);
+      } else {
+        try {
+          order = await window.ZKTXWallet.openMarketOrderLive(submittedOrder);
+        } catch (error) {
+          if (String(error?.message || "").includes("No unspent local note exactly matches")) {
+            throw new Error("Choose an exact Private Portfolio note, or switch Trade from to Connected Wallet");
+          }
+          throw error;
+        }
       }
       refreshLocalNotes();
       logActivity("Private order relayed to the execution vault.");

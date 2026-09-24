@@ -32,6 +32,12 @@ async function runViewport(name, viewport) {
   check(await page.locator(".terminal").isVisible(), `${name}: dapp workspace is visible`);
   check((await page.locator("#action-title").textContent()) === "Swap without exposing your wallet", `${name}: private swap is the default first tab`);
   check(await page.locator("#market-settlement").isHidden(), `${name}: manual settlement panel does not interrupt the swap flow`);
+  check(await page.locator("#swap-private-assets").isVisible(), `${name}: swap can trade directly from the Private Portfolio`);
+  check((await page.locator("#swap-prerequisite").textContent()).includes("without returning it to your public wallet"), `${name}: portfolio-funded swap explains direct private trading`);
+  await page.locator('[data-direction="sell"]').click();
+  await page.locator('[data-source="wallet"]').click();
+  check(await page.locator("#wallet-assets").isVisible(), `${name}: sell flow exposes connected-wallet token balances`);
+  check(await page.locator("#amount-half").isVisible() && await page.locator("#amount-max").isVisible(), `${name}: wallet-funded sells offer Half and Max`);
   check(await page.locator("#portfolio-panel").isHidden(), `${name}: portfolio stays out of transaction forms`);
   const tabRows = await page.locator(".tabs button").evaluateAll((buttons) => new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size);
   check(tabRows === 1, `${name}: all four dapp tabs stay on one row`);
@@ -45,7 +51,7 @@ async function runViewport(name, viewport) {
   check(await page.locator("#swap-fields").isVisible(), `${name}: swap fields appear`);
   check(await page.locator("#swap-setup").isVisible(), `${name}: swap setup appears before execution fields`);
   check(await page.locator("#workflow-guide").isHidden(), `${name}: swap does not expose a separate shielding step`);
-  check((await page.locator("#swap-prerequisite").textContent()).includes("automatically shield"), `${name}: swap explains automatic shielding`);
+  check((await page.locator("#swap-prerequisite").textContent()).includes("shields the selected amount automatically"), `${name}: wallet-funded swap explains automatic shielding`);
   check((await page.locator("#action-title").textContent()) === "Swap without exposing your wallet", `${name}: swap copy updates`);
   check((await page.locator("#action-submit").textContent()) === "Submit Private Swap", `${name}: swap action is bound to the form submit button`);
   check((await page.locator("#settle-market").textContent()) === "Add completed swap to private portfolio", `${name}: settlement action remains independently bound`);
