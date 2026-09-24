@@ -3,204 +3,49 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="description" content="How ZKTX adapts Zcash-style shielded notes, commitments, nullifiers, and zero-knowledge proofs for Robinhood Chain tokens." />
+    <meta name="description" content="How ZKTX brings Zcash-style private ownership and shielded execution to Robinhood Chain tokens." />
     <link rel="canonical" href="https://zktx.tech/docs.html" />
-    <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="ZKTX" />
-    <meta property="og:url" content="https://zktx.tech/docs.html" />
-    <meta property="og:title" content="ZKTX | Zcash-style privacy for RH tokens" />
-    <meta property="og:description" content="Shield, transfer, and swap RH tokens with a Zcash-style note model, without ZEC or bridging." />
-    <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="ZKTX | shielded transactions on Robinhood Chain" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ZKTX | Zcash-style privacy for RH tokens" />
-    <meta name="twitter:description" content="Shield, transfer, and swap RH tokens with a Zcash-style note model, without ZEC or bridging." />
-    <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
+    <meta property="og:type" content="article" /><meta property="og:site_name" content="ZKTX" /><meta property="og:url" content="https://zktx.tech/docs.html" />
+    <meta property="og:title" content="ZKTX | How shielded RH transactions work" /><meta property="og:description" content="Private notes, shielded sends and wallet-private swaps using existing Robinhood Chain liquidity." />
+    <meta property="og:image" content="https://zktx.tech/assets/zktx-social-card.png" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX Docs</title>
-    <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
-    <link rel="stylesheet" href="./veil.css" />
-    <link rel="stylesheet" href="./docs.css" />
+    <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" /><link rel="stylesheet" href="./veil.css" /><link rel="stylesheet" href="./docs.css" />
   </head>
   <body>
     <div class="noise"></div>
-    <header class="topbar">
-      <a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>protocol documentation</small></span></a>
-      <nav><a href="#overview">Overview</a><a href="#flows">Flows</a><a href="#privacy">Privacy</a><a href="#security">Security</a><a href="./case-study.html">Case study</a></nav>
-      <a class="connect docs-home" href="./">Open app</a>
-    </header>
-
+    <header class="topbar"><a class="brand" href="./"><img src="./assets/zktx-mark-v2.png" alt="ZKTX" /><span><b>ZKTX</b><small>protocol documentation</small></span></a><nav><a href="#overview">Overview</a><a href="#flows">Flows</a><a href="#privacy">Privacy</a><a href="#architecture">Architecture</a><a href="./case-study.html">Case study</a></nav><a class="connect docs-home" href="./">Open app</a></header>
     <main class="docs-layout">
-      <aside class="docs-nav">
-        <b>CONTENTS</b>
-        <a href="#status">Current status</a><a href="#overview">Overview</a><a href="#zcash-model">Zcash-style model</a><a href="#architecture">Architecture</a>
-        <a href="#notes">Private notes</a><a href="#flows">Transaction flows</a><a href="#withdrawals">Withdrawals</a>
-        <a href="#swaps">Private swaps</a><a href="#proofs">Proof system</a><a href="#contracts">Contracts</a>
-        <a href="#services">Relayer and indexer</a><a href="#privacy">Privacy model</a><a href="#tee">Private TEE direction</a><a href="#security">Security</a>
-        <a href="#operations">Operations</a><a href="#limitations">Limitations</a><a href="#glossary">Glossary</a>
-      </aside>
-
+      <aside class="docs-nav"><b>CONTENTS</b><a href="#overview">What ZKTX is</a><a href="#why-zcash">Why Zcash-style notes</a><a href="#notes">How notes work</a><a href="#flows">User flows</a><a href="#swaps">Shielded swaps</a><a href="#privacy">What stays private</a><a href="#recovery">Portfolio and recovery</a><a href="#architecture">Under the hood</a><a href="#fees">Fees and flywheel</a><a href="#evidence">Onchain evidence</a><a href="#glossary">Glossary</a></aside>
       <article class="docs-content">
-        <header class="docs-hero">
-          <p class="kicker">ZKTX DOCUMENTATION · ROBINHOOD CHAIN</p>
-          <h1>Zcash-style privacy for Robinhood Chain tokens.</h1>
-          <p>ZKTX adapts the shielded-note model, using commitments, nullifiers, Merkle membership and zero-knowledge proofs for standard RH ERC-20 tokens. Users keep their existing token and wallet. No ZEC, bridge, wrapper purchase, or pre-swap is required.</p>
-        </header>
+        <header class="docs-hero"><p class="kicker">ZKTX · ROBINHOOD CHAIN</p><h1>Private ownership for public tokens.</h1><p>ZKTX lets people hold, send and trade Robinhood Chain tokens through shielded notes. Users keep the tokens and wallets they already use. The privacy layer sits between the public wallet and public market.</p></header>
 
-        <section id="status">
-          <p class="kicker">01 · STATUS</p><h2>What works today</h2>
-          <div class="status-grid">
-            <div><b>Implemented</b><ul><li>Zcash-style private notes and one-time nullifiers</li><li>Poseidon incremental Merkle commitment tree</li><li>Deposit, private-transfer, withdrawal, RFQ, market-order, and market-settlement circuits</li><li>Verifier-compatible Solidity vault</li><li>Encrypted local note and settlement-secret storage</li><li>Adapter-based RH execution, including PONS curves and Uniswap pools</li><li>Simulation-first relayer and market keeper</li><li>Browser market-order and settlement proof workflows</li><li>Reserve caps, pausing, and replay protection</li></ul></div>
-            <div><b>Still gated</b><ul><li>Final production Groth16 keys and verifiers</li><li>Final ZKTX and quote-token configuration</li><li>Production vault and adapter deployment</li><li>Private TEE deployment and remote attestation</li><li>Encrypted order batching and aggregate settlement</li><li>Browser transfer and RFQ settlement workflows</li><li>Operational monitoring and incident controls</li></ul></div>
-          </div>
-        </section>
+        <section id="overview"><p class="kicker">01 · WHAT IT IS</p><h2>A private account layer for RH tokens</h2><p>ERC-20 balances normally belong to visible wallet addresses. ZKTX changes the ownership representation without changing the asset. A user deposits a token into the vault and receives an encrypted private note representing the same value.</p><p>From there, the note can be sent privately, used in a shielded swap, or converted back into public tokens. The vault holds the real ERC-20 reserves while zero-knowledge proofs control who may move them.</p><div class="diagram"><span>Public RH token</span><i>shield</i><span class="highlight">Private note</span><i>send or swap</i><span class="highlight">New private note</span><i>unshield</i><span>Public RH token</span></div></section>
 
-        <section id="overview">
-          <p class="kicker">02 · OVERVIEW</p><h2>The simple model</h2>
-          <p>A user deposits the RH token they already own. Their browser creates a Zcash-style secret note representing ownership of that balance, while the vault holds the original ERC-20 reserve. The chain stores a commitment instead of a public user balance. Later actions consume notes and create new notes while a zero-knowledge proof demonstrates that every rule was followed.</p>
-          <div class="diagram"><span>Public token</span><i>deposit</i><span>Vault reserve</span><i>commitment</i><span class="highlight">Private notes</span><i>proof</i><span>New notes or withdrawal</span></div>
-          <p>The vault never creates underlying tokens. Its public token reserves must always cover the total value represented by unspent private notes.</p>
-        </section>
+        <section id="why-zcash"><p class="kicker">02 · WHY THIS DESIGN</p><h2>Zcash solved the ownership problem</h2><p>Zcash introduced a useful idea: value does not need to sit in a public account to remain provably valid. It can live in a private note. The chain records a commitment to that note, and a zero-knowledge proof authorizes each spend without revealing the note owner.</p><p>ZKTX uses that model because it fits the problem better than temporary wallets, centralized ledgers or a second private liquidity pool. Temporary wallets remain traceable. Centralized ledgers require custody. A separate pool needs platform liquidity and becomes an isolated market. Shielded notes keep ownership private while the underlying tokens remain backed inside an onchain vault.</p><table><thead><tr><th>Zcash concept</th><th>ZKTX implementation</th></tr></thead><tbody><tr><td>Shielded note</td><td>A private claim on an RH token and amount held by the vault.</td></tr><tr><td>Commitment tree</td><td>An onchain set of note hashes that reveals no owner or balance.</td></tr><tr><td>Nullifier</td><td>A one-time marker proving a note was spent only once.</td></tr><tr><td>Zero-knowledge proof</td><td>Proof that the action is valid without publishing the secret note.</td></tr><tr><td>Shielded transfer</td><td>One private note becomes new recipient and change notes.</td></tr></tbody></table><div class="notice"><b>Inspired by Zcash, built for RH assets</b><span>ZKTX does not use ZEC, require a Zcash wallet or bridge tokens to another chain. It applies the shielded-note pattern to Robinhood Chain ERC-20 tokens.</span></div></section>
 
-        <section id="zcash-model">
-          <p class="kicker">02A · DESIGN ORIGIN</p><h2>Borrow the privacy model, not the ZEC asset</h2>
-          <p>ZKTX does not bridge ZEC onto Robinhood Chain and does not require a Zcash wallet. It adapts the architectural concepts behind shielded payments to an EVM-compatible vault for native RH tokens.</p>
-          <table><thead><tr><th>Shielded-payment concept</th><th>ZKTX on Robinhood Chain</th></tr></thead><tbody>
-            <tr><td>Private note</td><td>A secret claim on a specific ERC-20 amount held by the ZKTX vault.</td></tr>
-            <tr><td>Commitment</td><td>A Poseidon hash recorded onchain without exposing the note owner or contents.</td></tr>
-            <tr><td>Merkle tree</td><td>A compact commitment set used to prove that a valid note exists.</td></tr>
-            <tr><td>Nullifier</td><td>A one-time spend marker that prevents reuse without identifying the consumed note.</td></tr>
-            <tr><td>Zero-knowledge proof</td><td>An EVM-verifiable Groth16 proof that authorizes a transfer, swap, or withdrawal without revealing the private witness.</td></tr>
-            <tr><td>Relayed transaction</td><td>A platform-funded broadcaster submits valid proofs so the private note owner does not appear as the gas payer.</td></tr>
-          </tbody></table>
-          <div class="notice"><b>No ZEC required</b><span>Connect the same RH wallet, select an RH token, and shield it directly. ZKTX is an independent implementation inspired by shielded-payment architecture; it is not an Orchard deployment and is not affiliated with the Zcash project.</span></div>
-        </section>
+        <section id="notes"><p class="kicker">03 · PRIVATE NOTES</p><h2>Your balance becomes a secret you control</h2><p>A note contains the asset, amount, owner key and random blinding value. It is also bound to Robinhood Chain and the deployed vault, preventing reuse somewhere else. Only its Poseidon commitment is recorded publicly.</p><pre><code>commitment = Poseidon(
+  chainId, vaultAddress, token,
+  amount, ownerPublicKey, blinding
+)</code></pre><p>When the note is spent, the browser creates a nullifier. The contract can recognize a repeated nullifier and reject double spending, but it cannot use the nullifier to identify the original commitment.</p><pre><code>nullifier = Poseidon(commitment, ownerSecret, chainId, vaultAddress)</code></pre></section>
 
-        <section id="architecture">
-          <p class="kicker">03 · ARCHITECTURE</p><h2>Protocol components</h2>
-          <div class="card-grid">
-            <article><b>Browser wallet</b><p>Creates secrets, commitments, nullifiers, proofs, and encrypted note backups. Sensitive note data remains in the browser unless the user explicitly exports it.</p></article>
-            <article><b>Shielded vault</b><p>Custodies supported ERC-20 assets, verifies proofs, tracks roots and nullifiers, enforces reserve caps, and releases tokens during valid withdrawals.</p></article>
-            <article><b>Circuits</b><p>Prove note membership, ownership, correct nullifiers, asset and amount binding, conservation of value, and valid output commitments.</p></article>
-            <article><b>Indexer</b><p>Reads vault events, rebuilds the commitment tree, records spent nullifiers, and supplies Merkle paths required to create proofs.</p></article>
-            <article><b>Relayer</b><p>Simulates and broadcasts approved private transfers and withdrawals so users do not need a separate public gas-paying wallet for each action.</p></article>
-            <article><b>Market executor</b><p>Uses direct canonical V3 pools when available and aggregated RH liquidity for V4 or multi-hop routes, executes shielded intents in 3 to 7 public slices, and returns actual proceeds to private notes.</p></article>
-          </div>
-        </section>
+        <section id="flows"><p class="kicker">04 · USER FLOWS</p><h2>What a user actually does</h2><ol class="steps"><li><b>Add a private balance</b><p>Choose a token and amount. The wallet approves and deposits it. The browser creates the secret note and encrypts it locally with the user's private-note password.</p></li><li><b>Private send</b><p>Choose a recipient. A proof spends the existing note and creates a recipient note plus private change. The public chain sees a valid vault state transition, not a wallet-to-wallet token transfer.</p></li><li><b>Shielded Swap</b><p>Choose Buy or Sell and the desired token. The vault executes through existing RH liquidity, then returns the real proceeds as a new private note.</p></li><li><b>Unshield to wallet</b><p>Open the private portfolio, select a note and choose a destination. The proof authorizes the vault to release the underlying ERC-20 tokens.</p></li></ol></section>
 
-        <section id="notes">
-          <p class="kicker">04 · PRIVATE NOTES</p><h2>The Zcash-style object that replaces a public balance</h2>
-          <p>A note commits to the Robinhood chain ID, vault address, asset contract, amount, owner public key, and random blinding value. The chain stores the resulting Poseidon hash, not the private fields.</p>
-          <pre><code>commitment = Poseidon(
-  chainId,
-  vaultAddress,
-  assetAddress,
-  amount,
-  ownerPublicKey,
-  blinding
-)</code></pre>
-          <p>Binding the chain and vault prevents a proof or note from being replayed in another deployment. The nullifier binds the commitment to the owner secret and identifies a spend without revealing which commitment was spent.</p>
-          <pre><code>nullifier = Poseidon(commitment, ownerSecret, chainId, vaultAddress)</code></pre>
-          <div class="notice"><b>Back up note secrets</b><span>Losing the encrypted note data or its password can make the shielded balance unrecoverable. The operator cannot reconstruct a user secret from an onchain commitment.</span></div>
-        </section>
+        <section id="swaps"><p class="kicker">05 · SHIELDED SWAPS</p><h2>Use the real market without exposing the originating wallet</h2><p>ZKTX does not create an isolated exchange and does not ask the platform to take the other side. It routes through existing Robinhood Chain liquidity. Direct V3 pools are used when available, with aggregated RH routing for compatible V4 and multi-hop paths.</p><p>The input comes from a private note. The vault becomes the visible market participant. Each order executes in 3 to 7 variable slices. When several traders are active together, their slices naturally overlap in the same rolling window. After execution, the actual proceeds settle into a new encrypted note owned by the user.</p><div class="card-grid"><article><b>Buy privately</b><p>Spend shielded WETH or USDG and receive the purchased token as a private note.</p></article><article><b>Sell privately</b><p>Spend a shielded RH token and receive WETH or USDG as a private note.</p></article><article><b>Existing liquidity</b><p>Execution follows the approved RH route instead of relying on platform-funded inventory.</p></article><article><b>Actual proceeds</b><p>The note records what the route really returned after execution and fees.</p></article></div></section>
 
-        <section id="flows">
-          <p class="kicker">05 · TRANSACTION FLOWS</p><h2>Deposit, send, and withdraw</h2>
-          <ol class="steps">
-            <li><b>Shield</b><p>The user approves the vault and submits a deposit proof. The proof binds the deposited asset and public amount to the hidden note. The vault transfers the tokens, checks its reserve cap, appends the commitment, and records a new Merkle root.</p></li>
-            <li><b>Private send</b><p>The owner proves membership and knowledge of the note secret. The circuit consumes the note, creates a recipient note and a private change note, and proves that the output amounts equal the input amount. The vault records the nullifier and two new commitments.</p></li>
-            <li><b>Withdraw</b><p>The owner proves an unspent note exists under a known historical root and binds the proof to the public asset, recipient, and amount. The vault marks the nullifier spent and releases the original ERC-20 tokens.</p></li>
-          </ol>
-        </section>
+        <section id="privacy"><p class="kicker">06 · PRIVACY BOUNDARY</p><h2>What changes and what remains public</h2><table><thead><tr><th>Kept inside the shielded layer</th><th>Still visible onchain</th></tr></thead><tbody><tr><td>Private-note owner<br />Shielded portfolio balance<br />Private sender-to-recipient relationship<br />Ownership of swap proceeds</td><td>Deposits and unshield withdrawals<br />Token contracts and boundary amounts<br />Vault market transactions<br />Market price movement and timing</td></tr></tbody></table><p>A public AMM trade cannot be removed from the chain. ZKTX instead breaks the direct identity link: the pool sees the ZKTX vault trading, while the user's input ownership and resulting ownership remain in private notes.</p><p>Privacy becomes stronger when unrelated users transact during the same period. Overlapping variable slices make simple wallet-to-trade matching harder without forcing everyone to wait for a scheduled batch.</p></section>
 
-        <section id="withdrawals">
-          <p class="kicker">06 · WITHDRAWAL PLANNING</p><h2>Reducing simple boundary correlation</h2>
-          <p>A single deposit followed by an equal withdrawal to one wallet is easy to correlate. ZKTX therefore plans withdrawals across two to four user-controlled destinations, uses standard denominations, applies independent delay windows, and retains unmatched value as private change.</p>
-          <div class="example"><b>Example</b><p>A shielded balance of 12,347 units could produce standardized withdrawals totalling 12,000 units across several destinations. The remaining 347 units stay shielded. The number and timing of outputs should vary across users.</p></div>
-          <p>The vault recognizes historical Merkle roots, allowing a proof created for a valid earlier root to remain usable after unrelated commitments are appended. Every root accepted by the vault must have been created by a verified state transition.</p>
-          <div class="notice warning"><b>Not anonymity by itself</b><span>Splitting and delaying withdrawals weakens basic amount-and-time matching. It cannot guarantee anonymity, especially when pool activity is low or a user follows a distinctive pattern.</span></div>
-        </section>
+        <section id="recovery"><p class="kicker">07 · PORTFOLIO AND RECOVERY</p><h2>The browser is the private wallet</h2><p>The private portfolio is reconstructed from encrypted note records stored on the user's device. The password decrypts those records locally. It is never sent to the server.</p><p>This design removes server custody, but it also gives the user real responsibility. A commitment cannot reveal its note secret. If both the encrypted note record and its recovery backup are lost, the operator cannot recreate access to that value.</p><div class="notice"><b>Back up before moving meaningful value</b><span>Keep the encrypted recovery export and private-note password in separate safe locations. Test recovery with a small note before relying on it.</span></div></section>
 
-        <section id="swaps">
-          <p class="kicker">07 · SWAPS</p><h2>Swap RH tokens as shielded notes</h2>
-          <h3>Atomic private swaps</h3><p>A maker locks a shielded note into exact order terms: requested asset and amount, maker receive key, deadline, nonce, and a cancellation key. A taker can fill only those exact terms. One proof consumes the maker and taker notes, pays the maker and taker as new private notes, and returns any taker change.</p>
-          <p>The maker never shares the cancellation secret. A separate cancellation proof lets only the maker consume an unfilled order and recreate the original sell balance as a private refund note. Both fill and cancellation use the same nullifier, so only one can succeed.</p>
-          <h3>Sliced RH market execution</h3><p>A market-order proof privately spends one shielded note while binding the public pair, input, minimum net output, deadline, and a secret settlement key. The keeper submits 3 to 7 variable slices, at most one per block, through the vault's approved execution adapter. Each public pool trade remains visible as ZKTX adapter activity; the mechanism obscures the originating wallet but cannot make AMM reserve changes invisible.</p>
-          <p>The fee is fixed at 1.5%: 0.5% remains in the quote asset for execution costs and 1% immediately buys ZKTX and calls its native burn function. After the final slice, the user waits 30 seconds and proves two new notes: actual net proceeds and any unspent refund. The protocol never promises a fixed fill or carries market-maker inventory risk.</p>
-          <p>The execution layer is not PONS-exclusive. A standard RH token can be entered by contract address. ZKTX prefers a canonical direct V3 pool, then falls back to aggregated RH liquidity for V4 and multi-hop execution. The exact direction is activated on first use and fails before order creation when no executable liquidity exists. Native ETH is wrapped at the vault boundary.</p>
-        </section>
+        <section id="architecture"><p class="kicker">08 · UNDER THE HOOD</p><h2>The parts that make it work</h2><div class="card-grid"><article><b>Browser wallet</b><p>Creates secrets, encrypted notes, commitments, nullifiers and Groth16 proofs.</p></article><article><b>Shielded vault</b><p>Holds the ERC-20 reserves, verifies proofs and records commitments and nullifiers.</p></article><article><b>Merkle indexer</b><p>Rebuilds the commitment tree from vault events and supplies membership paths.</p></article><article><b>Relayer</b><p>Simulates and broadcasts valid private actions while the platform pays gas.</p></article><article><b>Market keeper</b><p>Executes approved routes in variable slices and records the real output.</p></article><article><b>Routing adapters</b><p>Connect the vault to compatible direct and aggregated RH liquidity.</p></article></div><p>The circuits enforce note ownership, membership, amount conservation, unique nullifiers, correct outputs and deployment binding. The contracts enforce the same public inputs on Robinhood Chain.</p></section>
 
-        <section id="proofs">
-          <p class="kicker">08 · PROOF SYSTEM</p><h2>Groth16 over BN254</h2>
-          <p>The current circuits use Circom, Poseidon hashes, a depth-20 commitment tree, and Groth16 proofs on BN254. Separate verifiers are used because each circuit has a different public-signal layout.</p>
-          <table><thead><tr><th>Circuit</th><th>Public information</th><th>Private witness</th></tr></thead><tbody>
-            <tr><td>Deposit</td><td>Roots, commitment, index, asset, amount, chain, vault</td><td>Owner key, blinding, insertion path</td></tr>
-            <tr><td>Transfer</td><td>Roots, nullifier, output commitments, indices, chain, vault</td><td>Input note, membership path, recipients, amounts, blindings</td></tr>
-            <tr><td>Withdrawal</td><td>Root, nullifier, asset, recipient, amount, chain, vault</td><td>Owner secret, blinding, membership path</td></tr>
-            <tr><td>RFQ swap</td><td>Roots, nullifiers, output commitments, indices, chain, vault, deadline</td><td>Both input notes, membership paths, exact order terms, output owners and blindings</td></tr>
-            <tr><td>Cancel order</td><td>Roots, order nullifier, refund commitment and index, chain, vault</td><td>Cancel secret, order terms, maker note and membership path</td></tr>
-            <tr><td>Market order</td><td>Root, nullifier, pair, input, minimum output, deadline, settlement key, chain, vault</td><td>Input note and membership path, output owner and blindings</td></tr>
-            <tr><td>Market settlement</td><td>Roots, output/refund commitments and amounts, indices, order, chain, vault</td><td>Settlement-key preimage and insertion paths</td></tr>
-          </tbody></table>
-          <p>Development proofs have been generated and verified end to end. Those development keys are server-local and excluded from source control.</p>
-        </section>
+        <section id="fees"><p class="kicker">09 · FEES AND FLYWHEEL</p><h2>Execution funds the protocol token</h2><p>A Shielded Swap charges a 1.5% total fee. The execution allocation covers routing and operation. The protocol allocation is used for ZKTX buyback and burn once the token route is active.</p><div class="diagram"><span>Shielded Swap</span><i>1.5% fee</i><span>0.5% execution</span><i>+</i><span class="highlight">1% ZKTX buyback and burn</span></div><p>More shielded volume creates more protocol buy pressure and permanent token burns. Users get private execution, while usage feeds the ZKTX flywheel.</p></section>
 
-        <section id="contracts">
-          <p class="kicker">09 · CONTRACTS</p><h2>Vault controls and invariants</h2>
-          <ul><li>Only explicitly supported assets can enter or leave.</li><li>Every supported asset has an owner-configured reserve cap.</li><li>Commitments cannot be inserted twice.</li><li>Nullifiers cannot be spent twice.</li><li>State transitions must start from the current root.</li><li>Withdrawals may reference only roots previously recorded by the vault.</li><li>Token reserves are tracked and checked before release.</li><li>Deposits and transfers can be paused by the owner.</li><li>External token transfers use return-value checks and reentrancy protection.</li></ul>
-          <p>The pilot owner is an encrypted server-held wallet. Control should be transferred to a multisig before broader usage.</p>
-        </section>
+        <section id="evidence"><p class="kicker">10 · VERIFY IT</p><h2>Every public step is inspectable</h2><p>The app links every confirmed deposit, order, execution slice, settlement and withdrawal to Blockscout. The case study records a funded WETH to USDG run transaction by transaction.</p><p><a class="cta" href="./case-study.html">Open the onchain case study</a></p></section>
 
-        <section id="services">
-          <p class="kicker">10 · SERVICES</p><h2>Indexer and platform-funded relayer</h2>
-          <p>The indexer reconstructs the commitment tree exclusively from verified vault events. It persists commitments, nullifiers, the last indexed block, leaf count, and current locally derived root.</p>
-          <p>The relayer accepts strictly validated private-action payloads, simulates the contract call, applies per-IP limits, and broadcasts only if simulation succeeds. Its signing key is loaded from server configuration and is never sent to the browser. The keeper separately simulates each exact slice, derives a protected buyback minimum from the simulated burn amount, and broadcasts only successful slices.</p>
-          <p>Platform-funded gas improves usability and avoids forcing the recipient to acquire RH gas before withdrawing. It also creates abuse and availability risks, so production requires quotas, monitoring, multiple relayers, and a defined shutdown policy.</p>
-        </section>
-
-        <section id="privacy">
-          <p class="kicker">11 · PRIVACY MODEL</p><h2>What the Zcash-style layer changes</h2>
-          <table><thead><tr><th>Hidden inside the pool</th><th>Visible at the boundary</th></tr></thead><tbody><tr><td>Note owners<br />Private balances<br />Internal transfer amounts<br />Sender-to-recipient relationship</td><td>Depositor and deposit amount<br />Withdrawal recipient and amount<br />Asset contracts<br />Transaction timing<br />Aggregate public market trades</td></tr></tbody></table>
-          <p>Privacy depends on the anonymity set. A vault with one active user provides little practical privacy even when its proofs are cryptographically correct. Larger shared activity, standard denominations, private change, batching, and varied timing improve resistance to correlation.</p>
-        </section>
-
-        <section id="tee">
-          <p class="kicker">11A · PRIVATE TEE DIRECTION</p><h2>Encrypted execution with user-controlled latency</h2>
-          <p>A Trusted Execution Environment is a hardware-isolated process that can decrypt and execute an order without exposing its plaintext to normal server memory. Remote attestation lets the client verify that the expected ZKTX executor code is running before it releases an encrypted order.</p>
-          <p>A TEE improves intent privacy, but it does not make a solo trade through a transparent AMM invisible. ZKTX therefore treats TEE execution and anonymity-set formation as separate controls.</p>
-          <table><thead><tr><th>Mode</th><th>User experience</th><th>Privacy tradeoff</th></tr></thead><tbody>
-            <tr><td>Instant shielded</td><td>Execute immediately using the existing vault and sliced RH route.</td><td>No waiting, but a lone vault trade can still be correlated with nearby activity.</td></tr>
-            <tr><td>Private TEE</td><td>Encrypt intent to an attested executor and start immediately.</td><td>Hides intent from the operator, but public settlement can still leak timing and net flow.</td></tr>
-            <tr><td>Overlapping trader flow</td><td>Execute immediately in randomized slices that naturally overlap when several traders are active.</td><td>Live today. A busier execution window makes simple wallet-to-trade correlation harder without forcing a scheduled wait.</td></tr>
-          </tbody></table>
-          <div class="notice warning"><b>Not active yet</b><span>The current production path does not claim TEE protection. Enabling this mode requires attested hardware, encrypted-order contracts, an attestation verifier, reproducible executor measurements, batch state proofs, failure recovery, and independent security review.</span></div>
-        </section>
-
-        <section id="security">
-          <p class="kicker">12 · SECURITY</p><h2>Threat model</h2>
-          <div class="card-grid"><article><b>Protected against</b><p>Commitment forgery, unbalanced private transfers, cross-vault replay, cross-chain replay, double spending, unsupported assets, reserve-cap overflow, and invalid proof submission.</p></article><article><b>Not automatically protected against</b><p>Device compromise, password loss, malicious browser extensions, traffic analysis, IP logging, timing correlation, unique amounts, coercion, compromised setup parameters, or contract/circuit implementation bugs.</p></article></div>
-          <h3>Trusted setup</h3><p>Groth16 requires a setup. Final keys are generated after the circuits are frozen: verify phase 1, run a multi-party phase 2 for each circuit, apply a public beacon, verify the transcripts, and publish the artifacts. PONS does not issue these keys. Development keys remain trusted and unsuitable for public funds.</p>
-          <h3>Unaudited release</h3><p>The requested release skips independent audits. Passing tests is not an audit, and the circuits, generated verifiers, execution routing, client cryptography, relayer, keeper, and operational setup may contain value-losing defects. The deployment acknowledgement records acceptance of this risk rather than claiming review.</p>
-        </section>
-
-        <section id="operations">
-          <p class="kicker">13 · OPERATIONS</p><h2>Capped mainnet pilot</h2>
-          <ol class="steps"><li><b>Configure</b><p>Set the final token, quote asset, wrapped native, approved RH adapter, small reserve caps, owner, verifier addresses, deployment block, RPC endpoint, relayer, and keeper.</p></li><li><b>Deploy paused</b><p>Deploy verifiers, the selected adapter, and vault; verify bytecode and route dependencies; register tokens and caps; then reconcile the genesis root before enabling deposits.</p></li><li><b>Canary testing</b><p>Perform tiny buys and sells across every enabled route, buyback burns, settlement, expiry refunds, and recovery tests. Compare roots and reserves after every step.</p></li><li><b>Monitor</b><p>Alert on root divergence, failed simulations, stalled orders, route transitions, cap pressure, RPC disagreement, burn mismatch, and reserve discrepancies.</p></li><li><b>Expand carefully</b><p>Raise caps only after final-key verification, stable reconciliation, and a published incident-response process. This release remains explicitly unaudited.</p></li></ol>
-          <h3>September 23 WETH/USDG canary</h3><p>The live Robinhood deployment completed real WETH and USDG deposits, a relayed private transfer, withdrawal to a fresh wallet, a private WETH/USDG RFQ settlement, order cancellation, and replay-rejection check. The final onchain commitment root matched the independently computed root, with 23 commitments indexed. Test amounts were intentionally tiny and caps remain restrictive.</p>
-        </section>
-
-        <section id="limitations">
-          <p class="kicker">14 · LIMITATIONS</p><h2>Important realities</h2>
-          <ul><li>ZKTX does not make deposits or withdrawals invisible.</li><li>Small anonymity sets allow strong statistical inference.</li><li>Variable slices and delays reduce correlation but do not eliminate it.</li><li>A relayer can observe request timing and network metadata unless additional transport privacy is used.</li><li>Every public market slice and immediate buyback remains visible and may reveal the aggregate order when only one user is active.</li><li>Market intent pair, input, minimum output, and deadline are public, although the shielded note owner is not.</li><li>Local encrypted storage is only as safe as the device and password; losing settlement secrets can strand proceeds.</li><li>The browser market flow remains gated until final keys and production services are configured.</li><li>The current proving setup is for development validation, not trust-minimized production.</li><li>The implementation has not received an independent security audit.</li></ul>
-        </section>
-
-        <section id="glossary">
-          <p class="kicker">15 · GLOSSARY</p><h2>Key terms</h2>
-          <dl class="glossary"><div><dt>Commitment</dt><dd>A hash representing a private note without revealing its contents.</dd></div><div><dt>Nullifier</dt><dd>A unique value published when a note is spent, preventing reuse.</dd></div><div><dt>Merkle root</dt><dd>A compact fingerprint of every commitment currently recorded in the tree.</dd></div><div><dt>Witness</dt><dd>The private information supplied to a circuit to generate a proof.</dd></div><div><dt>Relayer</dt><dd>A service that submits a valid transaction and pays public network gas.</dd></div><div><dt>Anonymity set</dt><dd>The group of plausible users or notes among which activity may be hidden.</dd></div><div><dt>Private change</dt><dd>Unwithdrawn value returned to a new private note controlled by the user.</dd></div><div><dt>Trusted setup</dt><dd>The parameter-generation process required by Groth16.</dd></div></dl>
-        </section>
+        <section id="glossary"><p class="kicker">11 · GLOSSARY</p><h2>Key terms</h2><dl class="glossary"><div><dt>Shield</dt><dd>Convert a public token balance into an encrypted private note.</dd></div><div><dt>Unshield</dt><dd>Redeem a private note to a public wallet.</dd></div><div><dt>Commitment</dt><dd>A public hash representing a private note.</dd></div><div><dt>Nullifier</dt><dd>A one-time marker that prevents a note from being spent twice.</dd></div><div><dt>Merkle root</dt><dd>A compact fingerprint of the vault's commitment set.</dd></div><div><dt>Relayer</dt><dd>The service that broadcasts a valid proof and pays network gas.</dd></div><div><dt>Private change</dt><dd>Unspent value returned to a new note controlled by the user.</dd></div></dl></section>
       </article>
     </main>
-    <footer><span>ZKTX DOCS</span><p>Zcash-style architecture for RH tokens. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p></footer>
+    <footer><span>ZKTX DOCS</span><p>Zcash-style private ownership for Robinhood Chain tokens.</p></footer>
   </body>
 </html>

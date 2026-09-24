@@ -59,7 +59,7 @@ async function runViewport(name, viewport) {
 
   const docsResponse = await page.goto(`${base}/docs.html`, { waitUntil: "networkidle" });
   check(docsResponse?.ok(), `${name}: docs return success`);
-  check((await page.locator("body").innerText()).includes("Capped mainnet pilot"), `${name}: docs disclose capped mainnet pilot`);
+  check((await page.locator("body").innerText()).includes("Zcash solved the ownership problem"), `${name}: docs explain the design choice`);
   check(await page.locator('a[href="./case-study.html"]').count() > 0, `${name}: docs link to evidence`);
   check(runtimeErrors.length === 0, `${name}: no console, page, or failed-request errors${runtimeErrors.length ? ` (${runtimeErrors.join(" | ")})` : ""}`);
   await context.close();
