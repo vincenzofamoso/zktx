@@ -22466,6 +22466,7 @@ var init_wallet2 = __esm({
       privateSendLive,
       privateReceiveAddress,
       importPrivateTransfer,
+      syncPrivateInbox,
       openMarketOrderLive,
       withdrawLive,
       settleMarketOrderLive,

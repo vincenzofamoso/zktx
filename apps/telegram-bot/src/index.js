@@ -41,15 +41,16 @@ const signerButton = (label, query) => new InlineKeyboard().webApp(label, signer
 
 function homeKeyboard(userId) {
   const keyboard = new InlineKeyboard()
-    .text("Shielded Swap", "flow:market").row();
-  if (store.vaults[String(userId)]) keyboard.webApp("Trusted Device Wallet", signerLink("action=wallet"));
-  else keyboard.webApp("Set Up Wallet", signerLink("action=import"));
+    .text("Private Swap", "flow:market")
+    .webApp("Portfolio", signerLink("action=wallet")).row();
+  if (store.vaults[String(userId)]) keyboard.webApp("Wallet settings", signerLink("action=wallet"));
+  else keyboard.webApp("Create or import wallet", signerLink("action=import"));
   return keyboard;
 }
 
 function startDraft(ctx, type) {
   if (!ctx.chat || !ctx.from) return null;
-  if (type !== "market") return ctx.reply("This bot is focused on Shielded Swaps. Use /trade to begin.");
+  if (type !== "market") return ctx.reply("Use /trade to start a Private Swap.");
   const vault = vaultFor(ctx);
   if (!vault) return ctx.reply("Set up your Trusted Device Wallet before creating ZKTX actions.", { reply_markup: signerButton("Set Up Wallet", "action=import") });
   const firstStep = type === "market" ? "direction" : type === "send" || type === "withdraw" ? "recipient" : "token";
@@ -105,7 +106,7 @@ function executionUrl(job) {
   if (job.receiveAmount) query.set("minimum", job.receiveAmount);
   if (job.deadlineSeconds) query.set("deadline", String(job.deadlineSeconds));
   if (job.recipient) query.set("recipient", job.recipient);
-  return `${protocolUrl}/?${query}`;
+  return `${protocolUrl}/app?${query}`;
 }
 
 async function finalizeDraft(ctx, draft) {
@@ -118,24 +119,25 @@ async function finalizeDraft(ctx, draft) {
 
 const bot = new Bot(token);
 bot.use(async (ctx, next) => { if (!permitted(ctx)) return ctx.reply("This bot is not enabled in this chat."); await next(); });
-bot.command("start", async (ctx) => ctx.from && ctx.reply("<b>ZKTX Shielded Swap</b>\n\nCreate or import a wallet, then buy or sell through compatible Robinhood Chain liquidity without exposing that wallet as the public trader. ZKTX prepares the private balance, executes the swap, and returns the proceeds to the wallet flow.\n\nChoose Shielded Swap to begin.", { parse_mode: "HTML", reply_markup: homeKeyboard(ctx.from.id) }));
-bot.command("wallet", async (ctx) => ctx.from && ctx.reply(vaultFor(ctx) ? `<b>Trusted Device Wallet</b>\n<code>${vaultFor(ctx).address}</code>` : "No wallet is set up on this device.", { parse_mode: "HTML", reply_markup: vaultFor(ctx) ? signerButton("Open Trusted Device Wallet", "action=wallet") : signerButton("Set Up Wallet", "action=import") }));
+bot.command("start", async (ctx) => ctx.from && ctx.reply("<b>ZKTX</b>\n\nChoose Private Swap to trade, or Portfolio to view and manage private balances. Wallet setup stays on your device.", { parse_mode: "HTML", reply_markup: homeKeyboard(ctx.from.id) }));
+bot.command("portfolio", async (ctx) => ctx.from && ctx.reply("<b>Private Portfolio</b>\n\nView shielded balances and resume pending swaps.", { parse_mode: "HTML", reply_markup: signerButton("Open Portfolio", "action=wallet") }));
+bot.command("wallet", async (ctx) => ctx.from && ctx.reply(vaultFor(ctx) ? `<b>Wallet</b>\n<code>${vaultFor(ctx).address}</code>` : "No wallet is set up on this device.", { parse_mode: "HTML", reply_markup: vaultFor(ctx) ? signerButton("Wallet settings", "action=wallet") : signerButton("Create or import wallet", "action=import") }));
 bot.command("trade", (ctx) => startDraft(ctx, "market"));
 bot.command("swap", (ctx) => startDraft(ctx, "market"));
 bot.command("cancel", async (ctx) => { if (ctx.chat) delete store.drafts[String(ctx.chat.id)]; await save(); await ctx.reply("Current action cancelled."); });
 bot.callbackQuery("flow:market", async (ctx) => { await ctx.answerCallbackQuery(); await startDraft(ctx, "market"); });
-bot.callbackQuery(/^deadline:(60|180|300|600|900)$/, async (ctx) => { await ctx.answerCallbackQuery(); const draft = draftFor(ctx); if (!draft || draft.type !== "market" || draft.step !== "deadline") return ctx.reply("That Shielded Swap is no longer active."); draft.deadlineSeconds = Number(ctx.match[1]); await finalizeDraft(ctx, draft); });
+bot.callbackQuery(/^deadline:(60|180|300|600|900)$/, async (ctx) => { await ctx.answerCallbackQuery(); const draft = draftFor(ctx); if (!draft || draft.type !== "market" || draft.step !== "deadline") return ctx.reply("That Private Swap is no longer active."); draft.deadlineSeconds = Number(ctx.match[1]); await finalizeDraft(ctx, draft); });
 bot.callbackQuery(/^swap-direction:(buy|sell)$/, async (ctx) => {
   await ctx.answerCallbackQuery();
   const draft = draftFor(ctx);
-  if (!draft || draft.type !== "market" || draft.step !== "direction") return ctx.reply("That Shielded Swap is no longer active.");
+  if (!draft || draft.type !== "market" || draft.step !== "direction") return ctx.reply("That Private Swap is no longer active.");
   draft.direction = ctx.match[1]; draft.step = "baseAsset"; await save();
   await ctx.reply(`Choose the base asset you want to ${draft.direction === "buy" ? "spend" : "receive"}.`, { reply_markup: new InlineKeyboard().text("WETH", "swap-base:weth").text("USDG", "swap-base:usdg") });
 });
 bot.callbackQuery(/^swap-base:(weth|usdg)$/, async (ctx) => {
   await ctx.answerCallbackQuery();
   const draft = draftFor(ctx);
-  if (!draft || draft.type !== "market" || draft.step !== "baseAsset") return ctx.reply("That Shielded Swap is no longer active.");
+  if (!draft || draft.type !== "market" || draft.step !== "baseAsset") return ctx.reply("That Private Swap is no longer active.");
   draft.baseAsset = ctx.match[1]; draft.step = "targetToken"; await save();
   await ctx.reply(`Send the contract address of the token you want to ${draft.direction}.`);
 });
@@ -217,5 +219,5 @@ app.post("/api/v1/jobs/:id/settle", async (req, res) => {
 });
 app.listen(port, "127.0.0.1", () => console.log(`ZKTX Telegram API listening on ${port}`));
 bot.catch(({ error }) => console.error("ZKTX bot", error?.message || error));
-await bot.api.setMyCommands([{ command: "trade", description: "Start a Shielded Swap" }, { command: "wallet", description: "Create, import, or open your wallet" }, { command: "cancel", description: "Cancel the current swap" }]);
+await bot.api.setMyCommands([{ command: "trade", description: "Start a Private Swap" }, { command: "portfolio", description: "Open your Private Portfolio" }, { command: "wallet", description: "Wallet setup and settings" }, { command: "cancel", description: "Cancel the current swap" }]);
 await bot.start({ allowed_updates: ["message", "callback_query"] });
