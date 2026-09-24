@@ -124,7 +124,7 @@ bot.command("trade", (ctx) => startDraft(ctx, "market"));
 bot.command("swap", (ctx) => startDraft(ctx, "market"));
 bot.command("cancel", async (ctx) => { if (ctx.chat) delete store.drafts[String(ctx.chat.id)]; await save(); await ctx.reply("Current action cancelled."); });
 bot.callbackQuery("flow:market", async (ctx) => { await ctx.answerCallbackQuery(); await startDraft(ctx, "market"); });
-bot.callbackQuery(/^deadline:(120|300|900)$/, async (ctx) => { await ctx.answerCallbackQuery(); const draft = draftFor(ctx); if (!draft || draft.type !== "market" || draft.step !== "deadline") return ctx.reply("That Shielded Swap is no longer active."); draft.deadlineSeconds = Number(ctx.match[1]); await finalizeDraft(ctx, draft); });
+bot.callbackQuery(/^deadline:(60|180|300|600|900)$/, async (ctx) => { await ctx.answerCallbackQuery(); const draft = draftFor(ctx); if (!draft || draft.type !== "market" || draft.step !== "deadline") return ctx.reply("That Shielded Swap is no longer active."); draft.deadlineSeconds = Number(ctx.match[1]); await finalizeDraft(ctx, draft); });
 bot.callbackQuery(/^swap-direction:(buy|sell)$/, async (ctx) => {
   await ctx.answerCallbackQuery();
   const draft = draftFor(ctx);
@@ -157,7 +157,7 @@ bot.on("message:text", async (ctx) => {
     if (draft.step === "token") { if (!addressPattern.test(text)) throw new Error("Send a valid token contract address."); draft.token = getAddress(text); draft.step = "amount"; await save(); return ctx.reply("Send the amount as a normal token amount, for example: 5 or 0.25"); }
     if (draft.step === "amount") { if (!/^\d+(?:\.\d+)?$/.test(text) || Number(text) <= 0) throw new Error("Amount must be a positive token amount."); draft.amount = text; if (draft.type === "market") { draft.step = "receiveAmount"; await save(); return ctx.reply(`Send the minimum ${draft.direction === "buy" ? "tokens" : draft.baseAsset.toUpperCase()} you are willing to receive after fees and slippage.`); } return finalizeDraft(ctx, draft); }
     if (draft.step === "receiveToken") { if (!addressPattern.test(text)) throw new Error("Send a valid receive-token contract."); draft.receiveToken = getAddress(text); draft.step = "receiveAmount"; await save(); return ctx.reply("Send the minimum net amount you are willing to receive as a normal token amount. The 1.5% ZKTX fee must fit inside this limit."); }
-    if (draft.step === "receiveAmount") { if (!/^\d+(?:\.\d+)?$/.test(text) || Number(text) <= 0) throw new Error("Minimum received must be positive."); draft.receiveAmount = text; draft.step = "deadline"; await save(); return ctx.reply("Choose how long the order may execute.", { reply_markup: new InlineKeyboard().text("2 minutes", "deadline:120").text("5 minutes", "deadline:300").text("15 minutes", "deadline:900") }); }
+    if (draft.step === "receiveAmount") { if (!/^\d+(?:\.\d+)?$/.test(text) || Number(text) <= 0) throw new Error("Minimum received must be positive."); draft.receiveAmount = text; draft.step = "deadline"; await save(); return ctx.reply("Choose how long the order may execute.", { reply_markup: new InlineKeyboard().text("1 min", "deadline:60").text("3 min", "deadline:180").text("5 min", "deadline:300").row().text("10 min", "deadline:600").text("15 min", "deadline:900") }); }
   } catch (error) { await ctx.reply(error.message || "Invalid input"); }
 });
 
