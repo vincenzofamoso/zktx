@@ -30,7 +30,8 @@ async function runViewport(name, viewport) {
   check(await page.locator(".usp-grid").isHidden(), `${name}: dapp hides homepage marketing cards`);
   check(await page.locator(".workspace-copy").isHidden(), `${name}: dapp only shows the product workspace`);
   check(await page.locator(".terminal").isVisible(), `${name}: dapp workspace is visible`);
-  check((await page.locator("#action-title").textContent())?.includes("private note"), `${name}: private-send workspace initializes`);
+  check((await page.locator("#action-title").textContent()) === "Swap without exposing your wallet", `${name}: private swap is the default first tab`);
+  check(await page.locator("#market-settlement").isHidden(), `${name}: manual settlement panel does not interrupt the swap flow`);
   check(await page.locator("#portfolio-panel").isHidden(), `${name}: portfolio stays out of transaction forms`);
   const tabRows = await page.locator(".tabs button").evaluateAll((buttons) => new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size);
   check(tabRows === 1, `${name}: all four dapp tabs stay on one row`);
