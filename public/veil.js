@@ -44,6 +44,13 @@ const sendFields = document.querySelector("#send-fields");
 const receiveFields = document.querySelector("#receive-fields");
 const tokenField = document.querySelector("#token-field");
 const amountField = document.querySelector("#amount-field");
+const amountHalf = document.querySelector("#amount-half");
+const amountMax = document.querySelector("#amount-max");
+const walletAssets = document.querySelector("#wallet-assets");
+const walletAssetsAccount = document.querySelector("#wallet-assets-account");
+const walletAssetsList = document.querySelector("#wallet-assets-list");
+const walletAssetsStatus = document.querySelector("#wallet-assets-status");
+const walletAssetsRefresh = document.querySelector("#wallet-assets-refresh");
 const actionCard = document.querySelector("#action-card");
 const privateRecipient = document.querySelector("#private-recipient");
 const receiveAddressAction = document.querySelector("#receive-address-action");
@@ -73,6 +80,8 @@ let account = null;
 let protocol = { mode: "preview", contractsReady: false, chainId: 4663, vaultAddress: null };
 let payTokenMeta = null;
 let receiveTokenMeta = null;
+let connectedWalletAssets = [];
+let selectedWalletBalance = null;
 let activityLastMessage = "";
 let automaticNotePassword;
 
@@ -211,10 +220,80 @@ function formatTokenAmount(value, decimals) {
   return fraction ? `${whole}.${fraction}` : whole;
 }
 
-token.addEventListener("change", async () => { payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta); showConversion(amount, payTokenMeta, amountUnits); await updateDexQuote(); });
+token.addEventListener("change", async () => {
+  payTokenMeta = await readTokenMetadata(token, tokenMetaText, payTokenMeta);
+  selectedWalletBalance = connectedWalletAssets.find((asset) => asset.address.toLowerCase() === token.value.trim().toLowerCase()) || null;
+  showConversion(amount, payTokenMeta, amountUnits);
+  await updateDexQuote();
+});
 receiveToken.addEventListener("change", async () => { receiveTokenMeta = await readTokenMetadata(receiveToken, receiveTokenMetaText, receiveTokenMeta); await updateDexQuote(); });
 amount.addEventListener("input", () => { showConversion(amount, payTokenMeta, amountUnits); void updateDexQuote(); });
 priceDeviation.addEventListener("input", () => void updateDexQuote());
+
+function applyWalletAmount(portion) {
+  if (!selectedWalletBalance) {
+    result.textContent = "Choose a token from your connected wallet first.";
+    return;
+  }
+  const raw = portion === "half" ? BigInt(selectedWalletBalance.balance) / 2n : BigInt(selectedWalletBalance.balance);
+  if (raw <= 0n) {
+    result.textContent = "This token balance is too small to use.";
+    return;
+  }
+  amount.value = formatTokenAmount(raw, selectedWalletBalance.decimals);
+  amount.dispatchEvent(new Event("input"));
+}
+amountHalf.addEventListener("click", () => applyWalletAmount("half"));
+amountMax.addEventListener("click", () => applyWalletAmount("max"));
+
+async function loadWalletAssets() {
+  walletAssetsList.replaceChildren();
+  selectedWalletBalance = null;
+  if (!connected || !account) {
+    walletAssetsAccount.textContent = "Connect a wallet to load balances.";
+    walletAssetsStatus.textContent = "Your token list will appear here after connecting.";
+    return;
+  }
+  walletAssetsRefresh.disabled = true;
+  walletAssetsAccount.textContent = `${account.slice(0, 8)}…${account.slice(-6)}`;
+  walletAssetsStatus.textContent = "Loading token names and balances from Robinhood Chain…";
+  try {
+    const response = await fetch(`./api/wallet/${account}/assets`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Wallet balances are unavailable");
+    connectedWalletAssets = (payload.assets || []).sort((left, right) => left.symbol.localeCompare(right.symbol));
+    for (const asset of connectedWalletAssets) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "wallet-asset";
+      const identity = document.createElement("span");
+      const symbol = document.createElement("b"); symbol.textContent = asset.symbol;
+      const name = document.createElement("small"); name.textContent = asset.name;
+      const balance = document.createElement("strong"); balance.textContent = formatTokenAmount(asset.balance, asset.decimals);
+      identity.append(symbol, name); button.append(identity, balance);
+      button.addEventListener("click", () => {
+        walletAssetsList.querySelector(".selected")?.classList.remove("selected");
+        button.classList.add("selected");
+        selectedWalletBalance = asset;
+        token.value = asset.address;
+        token.dispatchEvent(new Event("change"));
+        amount.value = "";
+        amount.focus();
+        walletAssetsStatus.textContent = `${asset.symbol} selected. Enter an amount or choose Half or Max.`;
+      });
+      walletAssetsList.append(button);
+    }
+    walletAssetsStatus.textContent = connectedWalletAssets.length
+      ? `${connectedWalletAssets.length} token balance${connectedWalletAssets.length === 1 ? "" : "s"} found. Choose one to continue.${payload.truncated ? " Showing the first 100 indexed balances." : ""}`
+      : "No ERC-20 token balances were found in this wallet.";
+  } catch (error) {
+    connectedWalletAssets = [];
+    walletAssetsStatus.textContent = error?.message || "Could not load wallet token balances.";
+  } finally {
+    walletAssetsRefresh.disabled = false;
+  }
+}
+walletAssetsRefresh.addEventListener("click", () => void loadWalletAssets());
 
 let quoteRequest = 0;
 async function updateDexQuote() {
@@ -434,12 +513,15 @@ function selectTab(button) {
   receiveFields.hidden = button.dataset.tab !== "receive";
   workflowGuide.hidden = button.dataset.tab !== "send";
   portfolioPanel.hidden = button.dataset.tab !== "portfolio";
+  walletAssets.hidden = button.dataset.tab !== "shield";
   const receiveMode = button.dataset.tab === "receive";
   const portfolioMode = button.dataset.tab === "portfolio";
   tokenField.hidden = receiveMode || portfolioMode;
   amountField.hidden = receiveMode || portfolioMode;
   actionCard.hidden = receiveMode || portfolioMode;
   submit.hidden = receiveMode || portfolioMode;
+  amountHalf.hidden = button.dataset.tab !== "shield";
+  amountMax.hidden = button.dataset.tab !== "shield";
   submit.disabled = button.dataset.tab === "swap";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
@@ -457,7 +539,7 @@ fundAction.addEventListener("click", () => {
   returnAfterShield = activeAction === "swap" ? "swap" : "send";
   selectTab(document.querySelector("#shield-action"));
   result.textContent = "Step 1: choose the token and exact amount you want to use, then create your private balance.";
-  token.focus();
+  void loadWalletAssets();
 });
 
 // Trusted entry points pass action details without secrets in the URL.
@@ -513,6 +595,7 @@ connect.addEventListener("click", async () => {
     result.textContent = protocol.contractsReady
       ? "Wallet connected. Your private workspace is ready."
       : "Wallet connected, but the private workspace is temporarily unavailable.";
+    if (activeAction === "shield") await loadWalletAssets();
   } catch (error) {
     result.textContent = error?.message || "Wallet connection was cancelled.";
   }

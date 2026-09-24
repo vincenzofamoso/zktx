@@ -61,6 +61,9 @@ async function runViewport(name, viewport) {
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);
 
   await page.locator("#fund-action").click();
+  check(await page.locator("#wallet-assets").isVisible(), `${name}: add private balance shows connected-wallet assets`);
+  check(await page.locator("#amount-half").isVisible() && await page.locator("#amount-max").isVisible(), `${name}: shield amount offers Half and Max controls`);
+  check(Number.parseFloat(await page.locator("#token-label").evaluate((element) => getComputedStyle(element).fontSize)) >= 12, `${name}: dapp helper text remains readable`);
   await page.locator("#token").fill("0xC026Ab5fFE8F5AF0C62f9D7c8567af6e967A1e18");
   await page.locator("#token").dispatchEvent("change");
   await page.waitForFunction(() => document.querySelector("#token-meta")?.textContent.includes("SI"));

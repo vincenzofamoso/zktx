@@ -38,6 +38,7 @@ const v3Adapters = new Map([
   [10000, "0x63da34029B8705b49a68dCc3442D7EC91E322B9D"],
 ]);
 const tokenCache = new Map();
+const walletAssetsCache = new Map();
 const store = new StateStore(process.env.ZKTX_STATE_FILE || path.join(root, "data", "state.json"));
 await store.load();
 let indexer = null;
@@ -220,6 +221,52 @@ app.get("/api/token/:address", async (req, res) => {
     return res.json(metadata);
   } catch {
     return res.status(404).json({ error: "Token metadata could not be read on Robinhood Chain" });
+  }
+});
+
+app.get("/api/wallet/:address/assets", async (req, res) => {
+  const address = req.params.address;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return res.status(400).json({ error: "Invalid wallet address" });
+  if (!rpcUrl) return res.status(503).json({ error: "Robinhood RPC is unavailable" });
+  const key = address.toLowerCase();
+  const cached = walletAssetsCache.get(key);
+  if (cached && Date.now() - cached.loadedAt < 15_000) return res.json(cached.payload);
+  try {
+    const upstream = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "alchemy_getTokenBalances", params: [address, "erc20", { maxCount: 100 }] }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const body = await upstream.json();
+    if (!upstream.ok || body.error) throw new Error(body.error?.message || "Token holdings request failed");
+    const balances = (body.result?.tokenBalances || []).filter((item) => {
+      try { return BigInt(item.tokenBalance || 0) > 0n; } catch { return false; }
+    });
+    const assets = [];
+    for (let offset = 0; offset < balances.length; offset += 10) {
+      const batch = balances.slice(offset, offset + 10);
+      const records = await Promise.all(batch.map(async (item) => {
+        try {
+          const metadataResponse = await fetch(rpcUrl, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "alchemy_getTokenMetadata", params: [item.contractAddress] }),
+            signal: AbortSignal.timeout(10_000),
+          });
+          const metadataBody = await metadataResponse.json();
+          const metadata = metadataBody.result;
+          if (!metadata || !Number.isInteger(metadata.decimals) || metadata.decimals < 0 || metadata.decimals > 36) return null;
+          return { address: item.contractAddress, name: metadata.name || metadata.symbol || "Unknown token", symbol: metadata.symbol || "TOKEN", decimals: metadata.decimals, balance: String(BigInt(item.tokenBalance)) };
+        } catch { return null; }
+      }));
+      assets.push(...records.filter(Boolean));
+    }
+    const payload = { address, assets, truncated: Boolean(body.result?.pageKey) };
+    walletAssetsCache.set(key, { loadedAt: Date.now(), payload });
+    return res.json(payload);
+  } catch (error) {
+    return res.status(502).json({ error: error?.message || "Wallet token holdings are temporarily unavailable" });
   }
 });
 

@@ -20,7 +20,7 @@
     <meta name="twitter:image" content="https://zktx.tech/assets/zktx-social-card.png" />
     <title>ZKTX Dapp | private RH transactions</title>
     <link rel="icon" type="image/png" href="./assets/zktx-mark-v2.png" />
-    <link rel="stylesheet" href="./veil.css?v=19" />
+    <link rel="stylesheet" href="./veil.css?v=20" />
     <link rel="stylesheet" href="./withdrawal.css" />
     <link rel="stylesheet" href="./hero-logo.css" />
     <link rel="stylesheet" href="./usp.css" />
@@ -74,6 +74,7 @@
           <form id="veil-form">
             <button id="shield-action" data-tab="shield" type="button" hidden></button><button id="withdraw-action" data-tab="withdraw" type="button" hidden></button>
             <section id="workflow-guide" class="workflow-guide"><div><b>1. Add a private balance</b><small>Shield the exact token amount you want to send.</small></div><button id="fund-action" class="secondary-action" type="button">Add private balance</button><div><b>2. Complete Private Send</b><small>Return here to send from that private balance.</small></div></section>
+            <section id="wallet-assets" class="wallet-assets" hidden><div class="wallet-assets-heading"><div><b>Tokens in your connected wallet</b><small id="wallet-assets-account">Connect a wallet to load balances.</small></div><button id="wallet-assets-refresh" class="secondary-action" type="button">Refresh</button></div><div id="wallet-assets-list"></div><p id="wallet-assets-status" class="field-note"></p></section>
             <section id="receive-fields" class="private-receive-tools" hidden><div class="portfolio-heading"><span class="portfolio-icon">↓</span><div><b>Receive privately</b><small>Share your private address, then add the sender's receipt when it arrives.</small></div></div><button id="receive-address-action" class="secondary-action" type="button">Copy my private receive address</button><output id="receive-address" hidden></output><label>Transfer receipt from the sender<textarea id="transfer-receipt" rows="2" placeholder="Paste the private transfer receipt"></textarea></label><button id="import-transfer" class="submit" type="button">Add received tokens to portfolio</button></section>
             <section id="portfolio-panel" class="portfolio-panel" hidden><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your combined shielded balances, unlocked by your connected wallet.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div class="bulk-unshield"><label>Bulk unshield destination<input id="bulk-unshield-recipient" autocomplete="off" placeholder="0x… receiving EVM wallet" /></label><button id="bulk-unshield" class="secondary-action" type="button">Unshield all</button><small>Withdraw every spendable private note to this wallet. Each note is processed separately.</small></div><div id="portfolio-list" hidden></div></section>
             <section id="market-settlement" class="settlement-panel" hidden>
@@ -90,7 +91,7 @@
               <p class="field-note">Buying with WETH can use native RH ETH. ZKTX wraps the required amount in your wallet before shielding.</p>
             </div>
             <label id="token-field"><span id="token-label">Token you want to shield</span><input id="token" autocomplete="off" placeholder="0x… token contract on Robinhood Chain" /><small id="token-meta" class="token-meta">Paste a contract address to load its symbol and decimals.</small></label>
-            <label id="amount-field"><span id="amount-label">Amount to shield</span><input id="amount" inputmode="decimal" placeholder="Example: 5" /><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
+            <label id="amount-field"><span id="amount-label">Amount to shield</span><div class="amount-entry"><input id="amount" inputmode="decimal" placeholder="Enter amount" /><button id="amount-half" type="button">Half</button><button id="amount-max" type="button">Max</button></div><small id="amount-units" class="token-meta">Enter a normal token amount. ZKTX converts it automatically.</small></label>
             <div id="swap-fields" hidden>
               <label>You receive<input id="receive-token" autocomplete="off" placeholder="0x… token contract you want to receive" /><small id="receive-token-meta" class="token-meta">Paste the token you want to buy or receive.</small></label>
               <div class="field-row"><label>Maximum unfavorable price deviation (%)<input id="price-deviation" type="number" inputmode="decimal" min="0.1" max="25" step="0.1" value="5" /><small id="receive-amount-units" class="token-meta">Loading the Dexscreener reference and live RH route...</small></label><label>Execution deadline<select id="quote-lifetime"><option value="60">1 minute</option><option value="180">3 minutes</option><option value="300">5 minutes</option><option value="600">10 minutes</option><option value="900">15 minutes</option></select></label></div><p id="price-protection-copy" class="price-protection-copy"><b>Buy protection:</b> A cheaper price is always accepted. The order is blocked only when the live price is higher than your selected limit.</p><input id="receive-amount" type="hidden" />
@@ -144,6 +145,6 @@
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
     <script type="module" src="./zk-client.js?v=8"></script>
-    <script type="module" src="./veil.js?v=20"></script>
+    <script type="module" src="./veil.js?v=21"></script>
   </body>
 </html>
