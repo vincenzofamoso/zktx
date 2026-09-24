@@ -41,10 +41,7 @@ const signerButton = (label, query) => new InlineKeyboard().webApp(label, signer
 
 function homeKeyboard(userId) {
   const keyboard = new InlineKeyboard()
-    .text("Shield", "flow:shield").text("Unshield", "flow:withdraw").row()
-    .text("Private Send", "flow:send").text("Shielded Swap", "flow:market").row()
-    .text("Shielded Portfolio", "balance").row()
-    .text("How It Works", "how").text("Fees & Flywheel", "fees").row();
+    .text("Shielded Swap", "flow:market").row();
   if (store.vaults[String(userId)]) keyboard.webApp("Trusted Device Wallet", signerLink("action=wallet"));
   else keyboard.webApp("Set Up Wallet", signerLink("action=import"));
   return keyboard;
@@ -52,7 +49,7 @@ function homeKeyboard(userId) {
 
 function startDraft(ctx, type) {
   if (!ctx.chat || !ctx.from) return null;
-  if (type === "withdraw") return ctx.reply("Unshield is temporarily gated in the bot. It remains available from the web portfolio.");
+  if (type !== "market") return ctx.reply("This bot is focused on Shielded Swaps. Use /trade to begin.");
   const vault = vaultFor(ctx);
   if (!vault) return ctx.reply("Set up your Trusted Device Wallet before creating ZKTX actions.", { reply_markup: signerButton("Set Up Wallet", "action=import") });
   const firstStep = type === "market" ? "direction" : type === "send" || type === "withdraw" ? "recipient" : "token";
@@ -121,21 +118,12 @@ async function finalizeDraft(ctx, draft) {
 
 const bot = new Bot(token);
 bot.use(async (ctx, next) => { if (!permitted(ctx)) return ctx.reply("This bot is not enabled in this chat."); await next(); });
-bot.command("start", async (ctx) => ctx.from && ctx.reply("<b>ZKTX</b>\n\nShield Robinhood Chain tokens, send private notes, or trade through compatible existing RH liquidity without exposing your wallet as the public trader. Proceeds settle back into shielded notes.\n\nNo ZEC, bridge, wrapped privacy asset, or new wallet required.", { parse_mode: "HTML", reply_markup: homeKeyboard(ctx.from.id) }));
+bot.command("start", async (ctx) => ctx.from && ctx.reply("<b>ZKTX Shielded Swap</b>\n\nCreate or import a wallet, then buy or sell through compatible Robinhood Chain liquidity without exposing that wallet as the public trader. ZKTX prepares the private balance, executes the swap, and returns the proceeds to the wallet flow.\n\nChoose Shielded Swap to begin.", { parse_mode: "HTML", reply_markup: homeKeyboard(ctx.from.id) }));
 bot.command("wallet", async (ctx) => ctx.from && ctx.reply(vaultFor(ctx) ? `<b>Trusted Device Wallet</b>\n<code>${vaultFor(ctx).address}</code>` : "No wallet is set up on this device.", { parse_mode: "HTML", reply_markup: vaultFor(ctx) ? signerButton("Open Trusted Device Wallet", "action=wallet") : signerButton("Set Up Wallet", "action=import") }));
-bot.command("shield", (ctx) => startDraft(ctx, "shield"));
-bot.command("send", (ctx) => startDraft(ctx, "send"));
 bot.command("trade", (ctx) => startDraft(ctx, "market"));
 bot.command("swap", (ctx) => startDraft(ctx, "market"));
-bot.command("withdraw", (ctx) => startDraft(ctx, "withdraw"));
-bot.command("balance", async (ctx) => ctx.reply("Your Shielded Portfolio is decrypted only on your trusted device.", { reply_markup: signerButton("View Shielded Portfolio", "action=wallet") }));
-bot.command("status", async (ctx) => { const jobs = store.jobs.filter((job) => job.userId === ctx.from?.id).slice(-5).reverse(), status = await protocolStatus(); const readiness = !status ? "Protocol API unavailable" : [`Vault: ${status.contractsReady ? "ready" : "not ready"}`, `Relayer: ${status.relayerReady ? "ready" : "offline"}`, `Execution keeper: ${status.marketKeeperReady ? "ready" : "offline"}`].join(" · "); await ctx.reply(`<b>ZKTX status</b>\n${escape(readiness)}\n\n${jobs.length ? jobs.map((job) => `${escape(job.type)}: ${escape(job.status)}`).join("\n") : "No recent actions."}`, { parse_mode: "HTML" }); });
-bot.command("how", async (ctx) => ctx.reply("<b>How ZKTX works</b>\n\n1. Shield the RH token you already own.\n2. Ownership becomes an encrypted private note.\n3. For a Shielded Swap, the ZKTX vault uses a compatible approved RH liquidity route in 3 to 7 slices.\n4. The venue sees the vault, not your originating wallet.\n5. Your actual proceeds return as shielded notes.\n\nAMM swaps remain public; wallet ownership and private-note transfers are shielded.", { parse_mode: "HTML" }));
-bot.command("fees", async (ctx) => ctx.reply("<b>Fees and Flywheel</b>\n\nShielded Swaps charge 1.5% total:\n• 1% is reserved for ZKTX buyback-and-burn\n• 0.5% supports execution\n\nDuring the capped pre-token pilot, the 1% remains accounted as WETH. Once the real ZKTX token is activated, accumulated and future allocations can buy and burn ZKTX.", { parse_mode: "HTML" }));
 bot.command("cancel", async (ctx) => { if (ctx.chat) delete store.drafts[String(ctx.chat.id)]; await save(); await ctx.reply("Current action cancelled."); });
-bot.callbackQuery(/^flow:(shield|send|market|withdraw)$/, async (ctx) => { await ctx.answerCallbackQuery(); await startDraft(ctx, ctx.match[1]); });
-bot.callbackQuery("how", async (ctx) => { await ctx.answerCallbackQuery(); await ctx.reply("Shield RH tokens into private notes. ZKTX can then execute through a compatible RH market route, split across 3 to 7 blocks, and return the proceeds to you as shielded notes. The public sees vault execution, not your wallet as the trader."); });
-bot.callbackQuery("fees", async (ctx) => { await ctx.answerCallbackQuery(); await ctx.reply("Market fee: 1.5%. During the capped pre-token pilot, 1% accumulates as WETH for later ZKTX buyback-and-burn; 0.5% supports execution."); });
+bot.callbackQuery("flow:market", async (ctx) => { await ctx.answerCallbackQuery(); await startDraft(ctx, "market"); });
 bot.callbackQuery(/^deadline:(120|300|900)$/, async (ctx) => { await ctx.answerCallbackQuery(); const draft = draftFor(ctx); if (!draft || draft.type !== "market" || draft.step !== "deadline") return ctx.reply("That Shielded Swap is no longer active."); draft.deadlineSeconds = Number(ctx.match[1]); await finalizeDraft(ctx, draft); });
 bot.callbackQuery(/^swap-direction:(buy|sell)$/, async (ctx) => {
   await ctx.answerCallbackQuery();
@@ -151,7 +139,6 @@ bot.callbackQuery(/^swap-base:(weth|usdg)$/, async (ctx) => {
   draft.baseAsset = ctx.match[1]; draft.step = "targetToken"; await save();
   await ctx.reply(`Send the contract address of the token you want to ${draft.direction}.`);
 });
-bot.callbackQuery("balance", async (ctx) => { await ctx.answerCallbackQuery(); await ctx.reply("Your Shielded Portfolio is decrypted only on your trusted device.", { reply_markup: signerButton("View Shielded Portfolio", "action=wallet") }); });
 bot.on("message:text", async (ctx) => {
   const draft = draftFor(ctx); if (!draft || ctx.message.text.startsWith("/")) return;
   const text = ctx.message.text.trim();
@@ -230,5 +217,5 @@ app.post("/api/v1/jobs/:id/settle", async (req, res) => {
 });
 app.listen(port, "127.0.0.1", () => console.log(`ZKTX Telegram API listening on ${port}`));
 bot.catch(({ error }) => console.error("ZKTX bot", error?.message || error));
-await bot.api.setMyCommands([{ command: "shield", description: "Shield an RH token" }, { command: "withdraw", description: "Unshield to a public wallet" }, { command: "send", description: "Start a Private Send" }, { command: "trade", description: "Start a Shielded Swap" }, { command: "balance", description: "View Shielded Portfolio" }, { command: "wallet", description: "Open Trusted Device Wallet" }, { command: "how", description: "How ZKTX works" }, { command: "fees", description: "Fees and Flywheel" }, { command: "status", description: "Protocol status and recent actions" }, { command: "cancel", description: "Cancel current action" }]);
+await bot.api.setMyCommands([{ command: "trade", description: "Start a Shielded Swap" }, { command: "wallet", description: "Create, import, or open your wallet" }, { command: "cancel", description: "Cancel the current swap" }]);
 await bot.start({ allowed_updates: ["message", "callback_query"] });

@@ -3,7 +3,7 @@ import { privateKeyToAccount } from "viem/accounts";
 
 globalThis.ZKTX_RUNTIME_CONFIG = { apiBase: "https://zktx.tech", provingBase: "https://zktx.tech/proving" };
 const walletModule = await import("../../../client/wallet.js");
-const { shieldLive, privateSendLive, privateReceiveAddress, importPrivateTransfer, openMarketOrderLive, settleMarketOrderLive, privatePortfolio, storedMarketOrders } = walletModule;
+const { shieldLive, openMarketOrderLive, settleMarketOrderLive, privatePortfolio, storedMarketOrders } = walletModule;
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -198,16 +198,20 @@ async function execute(job) {
     return { transactionHash: result.depositHash, approvalHash: result.approvalHash };
   }
   if (job.type === "market") {
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(job.deadlineSeconds));
-    const result = await openMarketOrderLive({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message, details) => log(message, "normal", details) });
+    const amountIn = await tokenUnits(job.token, job.amount);
+    const minimumAmountOut = await tokenUnits(job.receiveToken, job.receiveAmount);
+    const orderInput = () => ({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn, assetOut: job.receiveToken, minimumAmountOut, deadline: BigInt(Math.floor(Date.now() / 1000) + Number(job.deadlineSeconds)), password, onProgress: (message, details) => log(message, "normal", details) });
+    let result;
+    try {
+      result = await openMarketOrderLive(orderInput());
+    } catch (error) {
+      if (!String(error?.message || "").includes("No unspent local note exactly matches")) throw error;
+      log("No matching private balance found. Preparing it from the wallet now.");
+      await shieldLive({ account: activeAccount.address, chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: amountIn, password, onProgress: (message, details) => log(message, "normal", details) });
+      log("Private swap balance is ready. Opening the order.", "success");
+      result = await openMarketOrderLive(orderInput());
+    }
     return { transactionHash: result.transactionHash, orderId: result.orderId };
-  }
-  if (job.type === "send") {
-    const result = await privateSendLive({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), recipientPrivateAddress: job.recipient, password, onProgress: (message, details) => log(message, "normal", details) });
-    document.querySelector("#transfer-receipt").value = result.receipt;
-    document.querySelector("#transfer-receipt-wrap").hidden = false;
-    await navigator.clipboard?.writeText(result.receipt);
-    return { transactionHash: result.transactionHash, transferReceipt: result.receipt };
   }
   throw new Error("This action does not yet have a live trusted-device executor");
 }
@@ -333,26 +337,6 @@ async function bootstrap() {
 }
 
 document.querySelector("#refresh-dashboard").onclick = async () => { try { await loadDashboard(); } catch (error) { status(error.message || "Could not load portfolio"); } };
-document.querySelector("#private-address").onclick = async () => {
-  try {
-    const password = document.querySelector("#dashboard-password").value;
-    const address = await privateReceiveAddress(password);
-    const output = document.querySelector("#private-address-output");
-    output.hidden = false; output.textContent = address;
-    await navigator.clipboard?.writeText(address);
-    status("Private receive address copied. Share it with the sender.");
-  } catch (error) { status(error.message || "Could not create the private receive address"); }
-};
-document.querySelector("#import-transfer").onclick = async () => {
-  try {
-    const password = document.querySelector("#dashboard-password").value;
-    const input = document.querySelector("#import-receipt");
-    await importPrivateTransfer(input.value, password);
-    input.value = "";
-    await loadDashboard();
-    status("Private transfer imported into this portfolio.");
-  } catch (error) { status(error.message || "Could not import the private transfer"); }
-};
 document.querySelector("#create-wallet").onclick = async () => { try { await storeNewWallet(randomHex()); } catch (error) { status(error.message || "Wallet creation failed"); } };
 document.querySelector("#import-existing").onsubmit = async (event) => { event.preventDefault(); const secret = document.querySelector("#private-key"); try { await storeNewWallet(secret.value.trim()); secret.value = ""; } catch (error) { secret.value = ""; status(error.message || "Import failed"); } };
 document.querySelector("#copy-recovery").onclick = async () => { await navigator.clipboard?.writeText(document.querySelector("#recovery-code").textContent); status("Recovery code copied. Keep it somewhere safe."); };
