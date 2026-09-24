@@ -34,6 +34,8 @@ async function runViewport(name, viewport) {
   check(await page.locator("#withdrawal-planner").isVisible(), `${name}: portfolio withdrawal flow appears`);
   await page.locator('[data-tab="send"]').click();
   check((await page.locator("#action-title").textContent()) === "Send a private note", `${name}: send copy updates`);
+  check(await page.locator("#private-recipient").isVisible(), `${name}: private send asks for the recipient private address`);
+  check(await page.locator("#receive-address-action").isVisible(), `${name}: portfolio offers a private receive address`);
 
   await page.locator("#connect").click();
   check((await page.locator("#form-result").textContent())?.includes("Install an EVM wallet"), `${name}: missing-wallet state is safe`);

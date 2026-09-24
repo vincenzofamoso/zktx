@@ -52,7 +52,7 @@ function homeKeyboard(userId) {
 
 function startDraft(ctx, type) {
   if (!ctx.chat || !ctx.from) return null;
-  if (type === "send" || type === "withdraw") return ctx.reply("Private Send and Unshield are temporarily gated while their trusted-device proof executors are completed. Shield and Shielded Swap are available in this bot.");
+  if (type === "withdraw") return ctx.reply("Unshield is temporarily gated in the bot. It remains available from the web portfolio.");
   const vault = vaultFor(ctx);
   if (!vault) return ctx.reply("Set up your Trusted Device Wallet before creating ZKTX actions.", { reply_markup: signerButton("Set Up Wallet", "action=import") });
   const firstStep = type === "market" ? "direction" : type === "send" || type === "withdraw" ? "recipient" : "token";
@@ -60,7 +60,7 @@ function startDraft(ctx, type) {
   const prompt = firstStep === "direction"
     ? "Do you want to buy a token or sell a token?"
     : firstStep === "recipient"
-    ? "Send the destination Robinhood Chain wallet address."
+    ? type === "send" ? "Send the recipient's ZKTX private receive address. They can copy it from their Shielded Portfolio." : "Send the destination Robinhood Chain wallet address."
     : type === "market"
       ? "Send the contract address of the Robinhood Chain token you want to swap."
       : "Send the Robinhood Chain token contract address.";
@@ -156,7 +156,16 @@ bot.on("message:text", async (ctx) => {
   const draft = draftFor(ctx); if (!draft || ctx.message.text.startsWith("/")) return;
   const text = ctx.message.text.trim();
   try {
-    if (draft.step === "recipient") { if (!isAddress(text)) throw new Error("Send a valid 0x destination address."); draft.recipient = getAddress(text); draft.step = draft.type === "send" ? "token" : "token"; await save(); return ctx.reply("Send the token contract address."); }
+    if (draft.step === "recipient") {
+      if (draft.type === "send") {
+        if (!/^0x[0-9a-fA-F]{64}$/.test(text)) throw new Error("Send a valid ZKTX private receive address.");
+        draft.recipient = text;
+      } else {
+        if (!isAddress(text)) throw new Error("Send a valid 0x destination address.");
+        draft.recipient = getAddress(text);
+      }
+      draft.step = "token"; await save(); return ctx.reply("Send the token contract address.");
+    }
     if (draft.step === "targetToken") { if (!addressPattern.test(text)) throw new Error("Send a valid token contract address."); const target = getAddress(text); const base = baseAssets[draft.baseAsset]; draft.token = draft.direction === "buy" ? base : target; draft.receiveToken = draft.direction === "buy" ? target : base; draft.step = "amount"; await save(); return ctx.reply(`How much ${draft.direction === "buy" ? draft.baseAsset.toUpperCase() : "of the token"} do you want to spend? Send a normal token amount, for example: 5 or 0.25`); }
     if (draft.step === "token") { if (!addressPattern.test(text)) throw new Error("Send a valid token contract address."); draft.token = getAddress(text); draft.step = "amount"; await save(); return ctx.reply("Send the amount as a normal token amount, for example: 5 or 0.25"); }
     if (draft.step === "amount") { if (!/^\d+(?:\.\d+)?$/.test(text) || Number(text) <= 0) throw new Error("Amount must be a positive token amount."); draft.amount = text; if (draft.type === "market") { draft.step = "receiveAmount"; await save(); return ctx.reply(`Send the minimum ${draft.direction === "buy" ? "tokens" : draft.baseAsset.toUpperCase()} you are willing to receive after fees and slippage.`); } return finalizeDraft(ctx, draft); }
@@ -194,12 +203,15 @@ app.post("/api/v1/jobs/:id/complete", async (req, res) => {
     if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) throw new Error("Invalid transaction receipt");
     const orderId = req.body?.orderId == null ? null : String(req.body.orderId);
     if (orderId && !/^0x[0-9a-fA-F]{64}$/.test(orderId)) throw new Error("Invalid market order id");
-    await verifiedVaultReceipt(transactionHash, { eventName: orderId ? "MarketOrderOpened" : "Deposit", orderId });
+    const transferReceipt = job.type === "send" ? String(req.body?.transferReceipt || "") : "";
+    if (job.type === "send" && !/^[A-Za-z0-9+/=]{100,4000}$/.test(transferReceipt)) throw new Error("Invalid private transfer receipt");
+    const eventName = orderId ? "MarketOrderOpened" : job.type === "send" ? "PrivateTransfer" : "Deposit";
+    await verifiedVaultReceipt(transactionHash, { eventName, orderId });
     job.status = "executed"; job.executedAt = new Date().toISOString(); job.transactionHash = transactionHash;
     if (orderId) job.orderId = orderId;
     await save();
     const explorer = `https://robinhoodchain.blockscout.com/tx/${transactionHash}`;
-    await bot.api.sendMessage(job.chatId, `✅ <b>${job.type === "market" ? "Shielded Swap submitted" : "Shield confirmed"}</b>\n\nTransaction: <a href="${explorer}">${transactionHash.slice(0, 12)}…${transactionHash.slice(-8)}</a>${orderId ? `\nOrder: <code>${orderId}</code>` : ""}`, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
+    await bot.api.sendMessage(job.chatId, `✅ <b>${job.type === "market" ? "Shielded Swap submitted" : job.type === "send" ? "Private Send confirmed" : "Shield confirmed"}</b>\n\nTransaction: <a href="${explorer}">${transactionHash.slice(0, 12)}…${transactionHash.slice(-8)}</a>${orderId ? `\nOrder: <code>${orderId}</code>` : ""}${transferReceipt ? `\n\nSend this receipt to the recipient:\n<code>${transferReceipt}</code>` : ""}`, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
     return res.json({ ok: true, status: job.status });
   } catch (error) { return res.status(400).json({ error: error.message || "Could not record execution" }); }
 });

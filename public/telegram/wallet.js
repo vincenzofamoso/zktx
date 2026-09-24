@@ -21621,9 +21621,12 @@ __export(wallet_exports, {
   createEncryptedNote: () => createEncryptedNote,
   decryptNote: () => decryptNote,
   encryptNote: () => encryptNote,
+  importPrivateTransfer: () => importPrivateTransfer,
   openMarketOrderLive: () => openMarketOrderLive,
   prepareEncryptedNote: () => prepareEncryptedNote,
   privatePortfolio: () => privatePortfolio,
+  privateReceiveAddress: () => privateReceiveAddress,
+  privateSendLive: () => privateSendLive,
   settleMarketOrderLive: () => settleMarketOrderLive,
   shieldLive: () => shieldLive,
   storeEncryptedNote: () => storeEncryptedNote,
@@ -21703,6 +21706,31 @@ async function privatePortfolio(password) {
     }
   }
   return entries;
+}
+async function privateReceiveAddress(password) {
+  let encrypted;
+  try {
+    encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null");
+  } catch {
+  }
+  let ownerSecret;
+  if (encrypted) ownerSecret = BigInt(await decryptText(encrypted, password));
+  else {
+    ownerSecret = randomField();
+    encrypted = await encryptText(ownerSecret.toString(), password);
+    localStorage.setItem(RECEIVE_IDENTITY_KEY, JSON.stringify(encrypted));
+  }
+  return hex32(ownerPublicKey(ownerSecret));
+}
+async function receiveIdentity(password) {
+  let encrypted;
+  try {
+    encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null");
+  } catch {
+  }
+  if (!encrypted) throw new Error("Create your private receive address first");
+  const ownerSecret = BigInt(await decryptText(encrypted, password));
+  return { ownerSecret, ownerPublicKey: ownerPublicKey(ownerSecret) };
 }
 async function createEncryptedNote(input, password) {
   const privateNote = createNote(input);
@@ -22034,6 +22062,137 @@ async function openMarketOrderLive({
   markNoteSpent(selectedRecord.id, orderId);
   return record;
 }
+async function privateSendLive({
+  chainId,
+  vaultAddress,
+  asset,
+  amount,
+  recipientPrivateAddress,
+  password,
+  onProgress = () => {
+  }
+}) {
+  if (!window.snarkjs?.groth16) throw new Error("The browser proof engine did not load");
+  const recipientOwner = BigInt(recipientPrivateAddress);
+  if (recipientOwner <= 0n || recipientOwner >= SNARK_FIELD) throw new Error("Enter a valid ZKTX private receive address");
+  const status2 = await protocolStatus();
+  if (!status2.contractsReady || !status2.relayerReady) throw new Error("The private-send relayer is not ready");
+  onProgress("Unlocking the matching private note...");
+  let selectedRecord;
+  let input;
+  let inputPath;
+  for (const record of storedNotes()) {
+    if (record.spentBy) continue;
+    try {
+      const candidate = await decryptNote(record.encrypted, password);
+      if (candidate.note.chainId === BigInt(chainId) && candidate.note.vaultAddress.toLowerCase() === vaultAddress.toLowerCase() && candidate.note.asset.toLowerCase() === asset.toLowerCase() && candidate.note.amount === BigInt(amount) && candidate.index !== null) {
+        const path = await loadMerklePath(candidate.index);
+        if (noteMatchesPath(candidate, path)) {
+          selectedRecord = record;
+          input = candidate;
+          inputPath = path;
+          break;
+        }
+      }
+    } catch {
+    }
+  }
+  if (!input) throw new Error("No spendable private note exactly matches this token and amount");
+  const tree = new IncrementalMerkleTree(status2.treeDepth, status2.state.leaves.map(BigInt));
+  if (tree.root() !== BigInt(status2.state.root)) throw new Error("The private-note tree is still synchronizing");
+  const change = createNote({ chainId: BigInt(chainId), vaultAddress, asset, amount: 0n });
+  const recipientBlinding = randomField();
+  const recipientNote = createNote({
+    chainId: BigInt(chainId),
+    vaultAddress,
+    asset,
+    amount: BigInt(amount),
+    ownerSecret: 1n,
+    blinding: recipientBlinding
+  });
+  recipientNote.ownerSecret = 0n;
+  recipientNote.note.ownerPublicKey = recipientOwner;
+  recipientNote.commitment = noteCommitment(recipientNote.note);
+  const insertionOne = tree.proof(tree.leaves.length);
+  tree.insert(change.commitment);
+  change.index = tree.leaves.length - 1;
+  const insertionTwo = tree.proof(tree.leaves.length);
+  tree.insert(recipientNote.commitment);
+  recipientNote.index = tree.leaves.length - 1;
+  const nullifier = noteNullifier(input.note, input.ownerSecret);
+  onProgress("Building the private transfer proof...");
+  const { proof, publicSignals } = await window.snarkjs.groth16.fullProve({
+    oldRoot: BigInt(inputPath.root),
+    newRoot: tree.root(),
+    nullifier,
+    outputCommitmentOne: change.commitment,
+    outputCommitmentTwo: recipientNote.commitment,
+    insertionIndexOne: change.index,
+    insertionIndexTwo: recipientNote.index,
+    chainId: BigInt(chainId),
+    vaultAddress: BigInt(vaultAddress),
+    ownerSecret: input.ownerSecret,
+    assetId: BigInt(asset),
+    inputAmount: input.note.amount,
+    inputBlinding: input.note.blinding,
+    inputPathElements: inputPath.pathElements.map(BigInt),
+    inputPathIndices: inputPath.pathIndices,
+    outputOwnerOne: change.note.ownerPublicKey,
+    outputAmountOne: change.note.amount,
+    outputBlindingOne: change.note.blinding,
+    outputOwnerTwo: recipientOwner,
+    outputAmountTwo: recipientNote.note.amount,
+    outputBlindingTwo: recipientBlinding,
+    insertionPathOneElements: insertionOne.pathElements.map(BigInt),
+    insertionPathOneIndices: insertionOne.pathIndices,
+    insertionPathTwoElements: insertionTwo.pathElements.map(BigInt),
+    insertionPathTwoIndices: insertionTwo.pathIndices
+  }, provingUrl("transfer.wasm"), provingUrl("transfer_final.zkey"));
+  const encodedProof = await proofBytes(proof, publicSignals);
+  onProgress("Relaying the private transfer...");
+  const transactionHash = await relay({
+    action: "transfer",
+    proof: encodedProof,
+    oldRoot: hex32(inputPath.root),
+    newRoot: hex32(tree.root()),
+    nullifier: hex32(nullifier),
+    outputOne: hex32(change.commitment),
+    outputTwo: hex32(recipientNote.commitment)
+  });
+  await waitForReceipt(transactionHash, 18e4, "Private transfer");
+  markNoteSpent(selectedRecord.id, transactionHash);
+  onProgress("Private transfer confirmed", { transactionHash });
+  const receipt = bytesToBase64(encoder5.encode(JSON.stringify({
+    version: 1,
+    note: {
+      version: 1,
+      chainId: String(chainId),
+      vaultAddress,
+      asset,
+      amount: BigInt(amount).toString(),
+      ownerPublicKey: recipientOwner.toString(),
+      blinding: recipientBlinding.toString()
+    },
+    commitment: recipientNote.commitment.toString(),
+    index: recipientNote.index
+  })));
+  return { transactionHash, receipt };
+}
+async function importPrivateTransfer(receipt, password) {
+  let payload;
+  try {
+    payload = JSON.parse(decoder2.decode(base64ToBytes(receipt.trim())));
+  } catch {
+    throw new Error("Enter a valid ZKTX private transfer receipt");
+  }
+  const identity = await receiveIdentity(password);
+  if (BigInt(payload.note.ownerPublicKey) !== identity.ownerPublicKey) throw new Error("This transfer was sent to a different ZKTX private address");
+  const privateNote = parsePrivateNote(JSON.stringify({ ...payload, ownerSecret: identity.ownerSecret.toString() }));
+  if (privateNote.commitment !== noteCommitment(privateNote.note)) throw new Error("The transfer receipt is invalid");
+  const path = await loadMerklePath(privateNote.index);
+  if (!noteMatchesPath(privateNote, path)) throw new Error("The private transfer is not indexed yet. Try again in a few seconds");
+  return storeEncryptedNote(privateNote, password);
+}
 async function withdrawLive({
   chainId,
   vaultAddress,
@@ -22206,7 +22365,7 @@ async function settleMarketOrderLive({ orderId, password, onProgress = () => {
 function clearStoredNotes() {
   localStorage.removeItem(STORE_KEY);
 }
-var import_poseidon_lite3, STORE_KEY, MARKET_STORE_KEY, encoder5, decoder2, runtime, WETH, apiUrl, provingUrl, vaultAbi, tokenAbi, hex32;
+var import_poseidon_lite3, STORE_KEY, MARKET_STORE_KEY, RECEIVE_IDENTITY_KEY, encoder5, decoder2, runtime, WETH, apiUrl, provingUrl, vaultAbi, tokenAbi, hex32;
 var init_wallet2 = __esm({
   "client/wallet.js"() {
     init_notes();
@@ -22216,6 +22375,7 @@ var init_wallet2 = __esm({
     init_esm();
     STORE_KEY = "zktx.encrypted-notes.v1";
     MARKET_STORE_KEY = "zktx.market-orders.v1";
+    RECEIVE_IDENTITY_KEY = "zktx.receive-identity.v1";
     encoder5 = new TextEncoder();
     decoder2 = new TextDecoder();
     runtime = globalThis.ZKTX_RUNTIME_CONFIG || {};
@@ -22237,6 +22397,9 @@ var init_wallet2 = __esm({
       commitEncryptedNote,
       storeEncryptedNote,
       shieldLive,
+      privateSendLive,
+      privateReceiveAddress,
+      importPrivateTransfer,
       openMarketOrderLive,
       withdrawLive,
       settleMarketOrderLive,
@@ -22403,7 +22566,7 @@ function privateKeyToAccount(privateKey, options = {}) {
 // apps/telegram-bot/web-src/wallet.js
 globalThis.ZKTX_RUNTIME_CONFIG = { apiBase: "https://zktx.tech", provingBase: "https://zktx.tech/proving" };
 var walletModule = await Promise.resolve().then(() => (init_wallet2(), wallet_exports));
-var { shieldLive: shieldLive2, openMarketOrderLive: openMarketOrderLive2, settleMarketOrderLive: settleMarketOrderLive2, privatePortfolio: privatePortfolio2, storedMarketOrders: storedMarketOrders2 } = walletModule;
+var { shieldLive: shieldLive2, privateSendLive: privateSendLive2, privateReceiveAddress: privateReceiveAddress2, importPrivateTransfer: importPrivateTransfer2, openMarketOrderLive: openMarketOrderLive2, settleMarketOrderLive: settleMarketOrderLive2, privatePortfolio: privatePortfolio2, storedMarketOrders: storedMarketOrders2 } = walletModule;
 var tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
@@ -22583,6 +22746,13 @@ async function execute(job) {
     const result = await openMarketOrderLive2({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message, details) => log(message, "normal", details) });
     return { transactionHash: result.transactionHash, orderId: result.orderId };
   }
+  if (job.type === "send") {
+    const result = await privateSendLive2({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), recipientPrivateAddress: job.recipient, password, onProgress: (message, details) => log(message, "normal", details) });
+    document.querySelector("#transfer-receipt").value = result.receipt;
+    document.querySelector("#transfer-receipt-wrap").hidden = false;
+    await navigator.clipboard?.writeText(result.receipt);
+    return { transactionHash: result.transactionHash, transferReceipt: result.receipt };
+  }
   throw new Error("This action does not yet have a live trusted-device executor");
 }
 function showOnly(id) {
@@ -22725,6 +22895,31 @@ document.querySelector("#refresh-dashboard").onclick = async () => {
     await loadDashboard();
   } catch (error) {
     status(error.message || "Could not load portfolio");
+  }
+};
+document.querySelector("#private-address").onclick = async () => {
+  try {
+    const password = document.querySelector("#dashboard-password").value;
+    const address = await privateReceiveAddress2(password);
+    const output = document.querySelector("#private-address-output");
+    output.hidden = false;
+    output.textContent = address;
+    await navigator.clipboard?.writeText(address);
+    status("Private receive address copied. Share it with the sender.");
+  } catch (error) {
+    status(error.message || "Could not create the private receive address");
+  }
+};
+document.querySelector("#import-transfer").onclick = async () => {
+  try {
+    const password = document.querySelector("#dashboard-password").value;
+    const input = document.querySelector("#import-receipt");
+    await importPrivateTransfer2(input.value, password);
+    input.value = "";
+    await loadDashboard();
+    status("Private transfer imported into this portfolio.");
+  } catch (error) {
+    status(error.message || "Could not import the private transfer");
   }
 };
 document.querySelector("#import").onsubmit = async (event) => {

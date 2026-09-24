@@ -74,7 +74,7 @@
           <form id="veil-form">
             <button id="shield-action" data-tab="shield" type="button" hidden></button><button id="withdraw-action" data-tab="withdraw" type="button" hidden></button>
             <section class="workflow-guide"><div><b>1. Add a private balance</b><small>Shield the exact token amount you want to use.</small></div><button id="fund-action" class="secondary-action" type="button">Add private balance</button><div><b>2. Complete your action</b><small>Return here to send or swap from that private balance.</small></div></section>
-            <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your unspent shielded notes, decrypted only on this device.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div></section>
+            <section class="portfolio-panel"><div class="portfolio-heading"><span class="portfolio-icon">◈</span><div><b>Private portfolio</b><small>Your unspent shielded notes, decrypted only on this device.</small></div></div><button id="portfolio-toggle" class="secondary-action" type="button">View portfolio</button><div id="portfolio-list" hidden></div><div class="private-receive-tools"><button id="receive-address-action" class="secondary-action" type="button">Create private receive address</button><output id="receive-address" hidden></output><label>Import a received private transfer<textarea id="transfer-receipt" rows="2" placeholder="Paste the ZKTX transfer receipt"></textarea></label><button id="import-transfer" class="secondary-action" type="button">Import received transfer</button></div></section>
             <label>Private-note password<input id="note-password" type="password" autocomplete="new-password" placeholder="Enter the password used when shielding" /></label>
             <section id="market-settlement" class="settlement-panel" hidden>
               <div class="portfolio-heading"><span class="portfolio-icon">✓</span><div><b>Your swap is ready to finish</b><small>Settle the completed market order to add the purchased tokens to your private portfolio.</small></div></div>
@@ -96,6 +96,10 @@
               <div class="field-row"><label>Minimum received (slippage protection)<input id="receive-amount" inputmode="decimal" placeholder="Enter protected minimum" /><small id="receive-amount-units" class="token-meta">A route-derived quote is required; token supply is not a price quote.</small></label><label>Execution deadline<select id="quote-lifetime"><option value="300">5 minutes</option><option value="120">2 minutes</option><option value="900">15 minutes</option></select></label></div>
               <div class="explain-box"><b>Shielded Swap · 1.5% total fee</b><span>Choose Buy or Sell and paste any tradable RH token contract. ZKTX finds an executable direct or aggregated route, then executes in 3 to 7 slices. Actual proceeds return as a private note.</span></div>
               <p id="swap-prerequisite" class="field-note">Before swapping, use Shield to create a private note for the WETH or USDG you want to spend.</p>
+            </div>
+            <div id="send-fields">
+              <label>Recipient ZKTX private address<input id="private-recipient" autocomplete="off" placeholder="Ask the recipient to copy their private receive address" /><small class="token-meta">This is a ZKTX private address, not their public 0x wallet address.</small></label>
+              <label id="send-receipt-wrap" hidden>Receipt for the recipient<textarea id="send-receipt" rows="3" readonly></textarea><small class="token-meta">Send this receipt privately. The recipient imports it from their Private Portfolio.</small></label>
             </div>
             <div id="withdrawal-planner" hidden>
               <label>Destination wallet<textarea id="destinations" rows="1" placeholder="0x… receiving EVM wallet"></textarea></label>
@@ -139,7 +143,7 @@
     </main>
     <footer><span>ZKTX</span><p>Zcash-style privacy architecture adapted for Robinhood Chain. No ZEC required. Independent prototype; not affiliated with the Zcash project.</p><a href="https://github.com/vincenzofamoso/zktx" target="_blank" rel="noopener noreferrer">Open source on GitHub ↗</a></footer>
     <script src="./vendor/snarkjs.min.js"></script>
-    <script type="module" src="./zk-client.js?v=7"></script>
-    <script type="module" src="./veil.js?v=8"></script>
+    <script type="module" src="./zk-client.js?v=8"></script>
+    <script type="module" src="./veil.js?v=9"></script>
   </body>
 </html>

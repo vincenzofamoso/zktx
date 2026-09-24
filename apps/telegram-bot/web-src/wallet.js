@@ -3,7 +3,7 @@ import { privateKeyToAccount } from "viem/accounts";
 
 globalThis.ZKTX_RUNTIME_CONFIG = { apiBase: "https://zktx.tech", provingBase: "https://zktx.tech/proving" };
 const walletModule = await import("../../../client/wallet.js");
-const { shieldLive, openMarketOrderLive, settleMarketOrderLive, privatePortfolio, storedMarketOrders } = walletModule;
+const { shieldLive, privateSendLive, privateReceiveAddress, importPrivateTransfer, openMarketOrderLive, settleMarketOrderLive, privatePortfolio, storedMarketOrders } = walletModule;
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -201,6 +201,13 @@ async function execute(job) {
     const result = await openMarketOrderLive({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, assetIn: job.token, amountIn: await tokenUnits(job.token, job.amount), assetOut: job.receiveToken, minimumAmountOut: await tokenUnits(job.receiveToken, job.receiveAmount), deadline, password, onProgress: (message, details) => log(message, "normal", details) });
     return { transactionHash: result.transactionHash, orderId: result.orderId };
   }
+  if (job.type === "send") {
+    const result = await privateSendLive({ chainId: protocol.chainId, vaultAddress: protocol.vaultAddress, asset: job.token, amount: await tokenUnits(job.token, job.amount), recipientPrivateAddress: job.recipient, password, onProgress: (message, details) => log(message, "normal", details) });
+    document.querySelector("#transfer-receipt").value = result.receipt;
+    document.querySelector("#transfer-receipt-wrap").hidden = false;
+    await navigator.clipboard?.writeText(result.receipt);
+    return { transactionHash: result.transactionHash, transferReceipt: result.receipt };
+  }
   throw new Error("This action does not yet have a live trusted-device executor");
 }
 
@@ -299,6 +306,26 @@ async function bootstrap() {
 }
 
 document.querySelector("#refresh-dashboard").onclick = async () => { try { await loadDashboard(); } catch (error) { status(error.message || "Could not load portfolio"); } };
+document.querySelector("#private-address").onclick = async () => {
+  try {
+    const password = document.querySelector("#dashboard-password").value;
+    const address = await privateReceiveAddress(password);
+    const output = document.querySelector("#private-address-output");
+    output.hidden = false; output.textContent = address;
+    await navigator.clipboard?.writeText(address);
+    status("Private receive address copied. Share it with the sender.");
+  } catch (error) { status(error.message || "Could not create the private receive address"); }
+};
+document.querySelector("#import-transfer").onclick = async () => {
+  try {
+    const password = document.querySelector("#dashboard-password").value;
+    const input = document.querySelector("#import-receipt");
+    await importPrivateTransfer(input.value, password);
+    input.value = "";
+    await loadDashboard();
+    status("Private transfer imported into this portfolio.");
+  } catch (error) { status(error.message || "Could not import the private transfer"); }
+};
 document.querySelector("#import").onsubmit = async (event) => { event.preventDefault(); const secret = document.querySelector("#private-key"), passphrase = document.querySelector("#passphrase"); try { status("Encrypting locally..."); const result = await encrypt(secret.value.trim(), passphrase.value); secret.value = ""; passphrase.value = ""; await api("/api/v1/vault", { method: "PUT", body: JSON.stringify(result.envelope) }); await saveKey(result.account.address, result.key); document.querySelector("#import").hidden = true; await ready(result.account); } catch (error) { secret.value = ""; passphrase.value = ""; status(error.message || "Import failed"); } };
 document.querySelector("#unlock").onsubmit = async (event) => { event.preventDefault(); const passphrase = document.querySelector("#unlock-passphrase"); try { const { vault } = await api("/api/v1/vault"), key = await derive(passphrase.value, vault); passphrase.value = ""; const account = await decryptVault(vault, key); await saveKey(vault.address, key); document.querySelector("#unlock").hidden = true; await ready(account); } catch { passphrase.value = ""; status("Wallet unlock failed."); } };
 void bootstrap();

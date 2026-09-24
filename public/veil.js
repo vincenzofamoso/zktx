@@ -33,6 +33,14 @@ const activitySteps = document.querySelector("#activity-steps");
 const activityState = document.querySelector("#activity-state");
 const activityAction = document.querySelector("#activity-action");
 const fundAction = document.querySelector("#fund-action");
+const sendFields = document.querySelector("#send-fields");
+const privateRecipient = document.querySelector("#private-recipient");
+const receiveAddressAction = document.querySelector("#receive-address-action");
+const receiveAddress = document.querySelector("#receive-address");
+const transferReceipt = document.querySelector("#transfer-receipt");
+const importTransfer = document.querySelector("#import-transfer");
+const sendReceiptWrap = document.querySelector("#send-receipt-wrap");
+const sendReceipt = document.querySelector("#send-receipt");
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const quoteAssets = { weth: WETH, usdg: USDG };
@@ -209,6 +217,28 @@ async function showPortfolio() {
 }
 portfolioToggle.addEventListener("click", () => void showPortfolio());
 
+receiveAddressAction.addEventListener("click", async () => {
+  try {
+    if (password.value.length < 10) throw new Error("Enter your private-note password first");
+    const address = await window.ZKTXWallet.privateReceiveAddress(password.value);
+    receiveAddress.hidden = false;
+    receiveAddress.textContent = address;
+    await navigator.clipboard?.writeText(address);
+    result.textContent = "Private receive address copied. Send it to the person who will make the private transfer.";
+  } catch (error) { result.textContent = error?.message || "Could not create the private receive address."; }
+});
+
+importTransfer.addEventListener("click", async () => {
+  try {
+    if (password.value.length < 10) throw new Error("Enter your private-note password first");
+    await window.ZKTXWallet.importPrivateTransfer(transferReceipt.value, password.value);
+    transferReceipt.value = "";
+    refreshLocalNotes();
+    await showPortfolio();
+    result.textContent = "Private transfer imported into this portfolio.";
+  } catch (error) { result.textContent = error?.message || "Could not import the private transfer."; }
+});
+
 function applySwapDirection() {
   const quote = document.querySelector(".quote-assets button.selected")?.dataset.quote;
   if (!quote) return;
@@ -263,6 +293,7 @@ function selectTab(button) {
   planner.hidden = button.dataset.tab !== "withdraw";
   swapFields.hidden = button.dataset.tab !== "swap";
   swapSetup.hidden = button.dataset.tab !== "swap";
+  sendFields.hidden = button.dataset.tab !== "send";
   token.disabled = false; receiveToken.disabled = false;
   tokenLabel.textContent = button.dataset.tab === "swap" ? "You pay with" : button.dataset.tab === "withdraw" ? "Token you want to withdraw" : "Token you want to shield";
   amountLabel.textContent = button.dataset.tab === "swap" ? "Amount to spend" : button.dataset.tab === "withdraw" ? "Total amount to withdraw" : "Amount to shield";
@@ -435,8 +466,36 @@ form.addEventListener("submit", async (event) => {
     }
     return;
   }
+  if (selected === "send") {
+    try {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(privateRecipient.value.trim())) throw new Error("Enter the recipient's ZKTX private receive address");
+      startActivity();
+      result.textContent = "Private Send started. Follow the live terminal below.";
+      const sent = await window.ZKTXWallet.privateSendLive({
+        chainId: protocol.chainId,
+        vaultAddress: protocol.vaultAddress,
+        asset: token.value,
+        amount: payUnits,
+        recipientPrivateAddress: privateRecipient.value.trim(),
+        password: password.value,
+        onProgress: (message, details) => logActivity(message, "done", details),
+      });
+      refreshLocalNotes();
+      activityState.textContent = "Complete";
+      logActivity("Private Send completed. Share the receipt with the recipient.", "success");
+      sendReceiptWrap.hidden = false;
+      sendReceipt.value = sent.receipt;
+      await navigator.clipboard?.writeText(sent.receipt);
+      result.innerHTML = `Private transfer confirmed. The recipient receipt was copied. Send that receipt to the recipient so they can import it. <a href="https://robinhoodchain.blockscout.com/tx/${sent.transactionHash}" target="_blank" rel="noopener">View transaction ↗</a>`;
+    } catch (error) {
+      activityState.textContent = "Action needed";
+      logActivity(error?.message || "Private Send stopped.", "error");
+      result.textContent = error?.message || "Could not complete the Private Send.";
+    }
+    return;
+  }
   if (selected !== "shield") {
-    result.textContent = "Private sends and withdrawals need a deposited note and production proof keys.";
+    result.textContent = "This action is unavailable.";
     return;
   }
   if (!/^0x[0-9a-fA-F]{40}$/.test(token.value)) {

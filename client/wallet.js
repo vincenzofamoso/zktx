@@ -2,6 +2,7 @@ import {
   SNARK_FIELD,
   createNote,
   marketSettlementKey,
+  noteCommitment,
   noteNullifier,
   ownerPublicKey,
   randomField,
@@ -15,6 +16,7 @@ import { encodeAbiParameters, encodeFunctionData, parseAbi } from "viem";
 
 const STORE_KEY = "zktx.encrypted-notes.v1";
 const MARKET_STORE_KEY = "zktx.market-orders.v1";
+const RECEIVE_IDENTITY_KEY = "zktx.receive-identity.v1";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const runtime = globalThis.ZKTX_RUNTIME_CONFIG || {};
@@ -94,6 +96,27 @@ export async function privatePortfolio(password) {
     } catch { /* A different password or corrupt record must not expose other notes. */ }
   }
   return entries;
+}
+
+export async function privateReceiveAddress(password) {
+  let encrypted;
+  try { encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null"); } catch {}
+  let ownerSecret;
+  if (encrypted) ownerSecret = BigInt(await decryptText(encrypted, password));
+  else {
+    ownerSecret = randomField();
+    encrypted = await encryptText(ownerSecret.toString(), password);
+    localStorage.setItem(RECEIVE_IDENTITY_KEY, JSON.stringify(encrypted));
+  }
+  return hex32(ownerPublicKey(ownerSecret));
+}
+
+async function receiveIdentity(password) {
+  let encrypted;
+  try { encrypted = JSON.parse(localStorage.getItem(RECEIVE_IDENTITY_KEY) || "null"); } catch {}
+  if (!encrypted) throw new Error("Create your private receive address first");
+  const ownerSecret = BigInt(await decryptText(encrypted, password));
+  return { ownerSecret, ownerPublicKey: ownerPublicKey(ownerSecret) };
 }
 
 export async function createEncryptedNote(input, password) {
@@ -457,6 +480,106 @@ export async function openMarketOrderLive({
   return record;
 }
 
+export async function privateSendLive({
+  chainId,
+  vaultAddress,
+  asset,
+  amount,
+  recipientPrivateAddress,
+  password,
+  onProgress = () => {},
+}) {
+  if (!window.snarkjs?.groth16) throw new Error("The browser proof engine did not load");
+  const recipientOwner = BigInt(recipientPrivateAddress);
+  if (recipientOwner <= 0n || recipientOwner >= SNARK_FIELD) throw new Error("Enter a valid ZKTX private receive address");
+  const status = await protocolStatus();
+  if (!status.contractsReady || !status.relayerReady) throw new Error("The private-send relayer is not ready");
+
+  onProgress("Unlocking the matching private note...");
+  let selectedRecord;
+  let input;
+  let inputPath;
+  for (const record of storedNotes()) {
+    if (record.spentBy) continue;
+    try {
+      const candidate = await decryptNote(record.encrypted, password);
+      if (
+        candidate.note.chainId === BigInt(chainId)
+        && candidate.note.vaultAddress.toLowerCase() === vaultAddress.toLowerCase()
+        && candidate.note.asset.toLowerCase() === asset.toLowerCase()
+        && candidate.note.amount === BigInt(amount)
+        && candidate.index !== null
+      ) {
+        const path = await loadMerklePath(candidate.index);
+        if (noteMatchesPath(candidate, path)) { selectedRecord = record; input = candidate; inputPath = path; break; }
+      }
+    } catch { /* Continue searching notes protected by this password. */ }
+  }
+  if (!input) throw new Error("No spendable private note exactly matches this token and amount");
+
+  const tree = new IncrementalMerkleTree(status.treeDepth, status.state.leaves.map(BigInt));
+  if (tree.root() !== BigInt(status.state.root)) throw new Error("The private-note tree is still synchronizing");
+  const change = createNote({ chainId: BigInt(chainId), vaultAddress, asset, amount: 0n });
+  const recipientBlinding = randomField();
+  const recipientNote = createNote({
+    chainId: BigInt(chainId), vaultAddress, asset, amount: BigInt(amount),
+    ownerSecret: 1n, blinding: recipientBlinding,
+  });
+  recipientNote.ownerSecret = 0n;
+  recipientNote.note.ownerPublicKey = recipientOwner;
+  recipientNote.commitment = noteCommitment(recipientNote.note);
+  const insertionOne = tree.proof(tree.leaves.length);
+  tree.insert(change.commitment); change.index = tree.leaves.length - 1;
+  const insertionTwo = tree.proof(tree.leaves.length);
+  tree.insert(recipientNote.commitment); recipientNote.index = tree.leaves.length - 1;
+  const nullifier = noteNullifier(input.note, input.ownerSecret);
+
+  onProgress("Building the private transfer proof...");
+  const { proof, publicSignals } = await window.snarkjs.groth16.fullProve({
+    oldRoot: BigInt(inputPath.root), newRoot: tree.root(), nullifier,
+    outputCommitmentOne: change.commitment, outputCommitmentTwo: recipientNote.commitment,
+    insertionIndexOne: change.index, insertionIndexTwo: recipientNote.index,
+    chainId: BigInt(chainId), vaultAddress: BigInt(vaultAddress), ownerSecret: input.ownerSecret,
+    assetId: BigInt(asset), inputAmount: input.note.amount, inputBlinding: input.note.blinding,
+    inputPathElements: inputPath.pathElements.map(BigInt), inputPathIndices: inputPath.pathIndices,
+    outputOwnerOne: change.note.ownerPublicKey, outputAmountOne: change.note.amount, outputBlindingOne: change.note.blinding,
+    outputOwnerTwo: recipientOwner, outputAmountTwo: recipientNote.note.amount, outputBlindingTwo: recipientBlinding,
+    insertionPathOneElements: insertionOne.pathElements.map(BigInt), insertionPathOneIndices: insertionOne.pathIndices,
+    insertionPathTwoElements: insertionTwo.pathElements.map(BigInt), insertionPathTwoIndices: insertionTwo.pathIndices,
+  }, provingUrl("transfer.wasm"), provingUrl("transfer_final.zkey"));
+  const encodedProof = await proofBytes(proof, publicSignals);
+  onProgress("Relaying the private transfer...");
+  const transactionHash = await relay({
+    action: "transfer", proof: encodedProof, oldRoot: hex32(inputPath.root), newRoot: hex32(tree.root()),
+    nullifier: hex32(nullifier), outputOne: hex32(change.commitment), outputTwo: hex32(recipientNote.commitment),
+  });
+  await waitForReceipt(transactionHash, 180_000, "Private transfer");
+  markNoteSpent(selectedRecord.id, transactionHash);
+  onProgress("Private transfer confirmed", { transactionHash });
+  const receipt = bytesToBase64(encoder.encode(JSON.stringify({
+    version: 1,
+    note: {
+      version: 1, chainId: String(chainId), vaultAddress, asset,
+      amount: BigInt(amount).toString(), ownerPublicKey: recipientOwner.toString(), blinding: recipientBlinding.toString(),
+    },
+    commitment: recipientNote.commitment.toString(), index: recipientNote.index,
+  })));
+  return { transactionHash, receipt };
+}
+
+export async function importPrivateTransfer(receipt, password) {
+  let payload;
+  try { payload = JSON.parse(decoder.decode(base64ToBytes(receipt.trim()))); }
+  catch { throw new Error("Enter a valid ZKTX private transfer receipt"); }
+  const identity = await receiveIdentity(password);
+  if (BigInt(payload.note.ownerPublicKey) !== identity.ownerPublicKey) throw new Error("This transfer was sent to a different ZKTX private address");
+  const privateNote = parsePrivateNote(JSON.stringify({ ...payload, ownerSecret: identity.ownerSecret.toString() }));
+  if (privateNote.commitment !== noteCommitment(privateNote.note)) throw new Error("The transfer receipt is invalid");
+  const path = await loadMerklePath(privateNote.index);
+  if (!noteMatchesPath(privateNote, path)) throw new Error("The private transfer is not indexed yet. Try again in a few seconds");
+  return storeEncryptedNote(privateNote, password);
+}
+
 export async function withdrawLive({
   chainId,
   vaultAddress,
@@ -649,6 +772,9 @@ window.ZKTXWallet = {
   commitEncryptedNote,
   storeEncryptedNote,
   shieldLive,
+  privateSendLive,
+  privateReceiveAddress,
+  importPrivateTransfer,
   openMarketOrderLive,
   withdrawLive,
   settleMarketOrderLive,

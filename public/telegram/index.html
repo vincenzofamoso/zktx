@@ -40,8 +40,13 @@
         <p class="step">SHIELDED PORTFOLIO</p>
         <label>Private-note password<input id="dashboard-password" type="password" minlength="10" autocomplete="current-password" /></label>
         <button id="refresh-dashboard">Load portfolio and pending swaps</button>
+        <button id="private-address">Create or copy private receive address</button>
+        <code id="private-address-output" hidden></code>
+        <label>Import received transfer<textarea id="import-receipt" rows="3" placeholder="Paste the ZKTX transfer receipt"></textarea></label>
+        <button id="import-transfer">Import received transfer</button>
         <div id="dashboard-output"></div>
       </section>
+      <section id="transfer-receipt-wrap" hidden><p class="step">SEND THIS TO THE RECIPIENT</p><textarea id="transfer-receipt" rows="5" readonly></textarea><small>The recipient imports this receipt from their Shielded Portfolio.</small></section>
     </main>
     <script type="module" src="./wallet.js?v=4"></script>
   </body>
